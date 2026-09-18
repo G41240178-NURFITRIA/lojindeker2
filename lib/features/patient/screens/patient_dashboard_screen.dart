@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'risk_check_screen.dart';
+import 'support_menu_screen.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
@@ -262,6 +263,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 28),
                   title: 'Menu\nPenunjang',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SupportMenuScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
