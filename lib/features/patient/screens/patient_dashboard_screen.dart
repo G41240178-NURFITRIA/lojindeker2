@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'consultation_screen.dart';
+import 'risk_check_screen.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
@@ -217,6 +218,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
                   title: 'Cek Risiko',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RiskCheckScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 10),
