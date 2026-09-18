@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'detail_resep_screen.dart';
 
 class MedicineModel {
   final String name;
   final String dosage;
   final String instruction;
   final String quantity;
+  final bool isBottle;
 
   const MedicineModel({
     required this.name,
     required this.dosage,
     required this.instruction,
     required this.quantity,
+    this.isBottle = false,
   });
 
   String get displayName => '$name $dosage';
@@ -21,6 +24,7 @@ class PrescriptionModel {
   final String id;
   final String date;
   final String doctorName;
+  final String doctorSpecialty;
   final String status; // 'Aktif' | 'Selesai'
   final List<MedicineModel> medicines;
   final String notes;
@@ -29,6 +33,7 @@ class PrescriptionModel {
     required this.id,
     required this.date,
     required this.doctorName,
+    this.doctorSpecialty = 'Sp. Penyakit Dalam',
     required this.status,
     required this.medicines,
     this.notes = 'Konsumsi obat sesuai anjuran dan pantau gula darah secara berkala.',
@@ -60,9 +65,10 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
       id: 'RXP-001',
       date: '18 Mei 2024',
       doctorName: 'dr. Andini Putri',
+      doctorSpecialty: 'Sp. Penyakit Dalam',
       status: 'Aktif',
       notes:
-          'Minum Metformin setelah makan untuk meminimalkan efek samping gastrointestinal. Glimepiride diminum sebelum sarapan pagi.',
+          'Kontrol gula darah rutin, kurangi konsumsi gula dan karbohidrat sederhana. Kontrol ulang 2 minggu lagi.',
       medicines: [
         MedicineModel(
           name: 'Metformin',
@@ -80,11 +86,12 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
     ),
     PrescriptionModel(
       id: 'RXP-002',
-      date: '5 Februari 2024',
+      date: '15 Februari 2024',
       doctorName: 'dr. Andini Putri',
+      doctorSpecialty: 'Sp. Penyakit Dalam',
       status: 'Selesai',
       notes:
-          'Terapi evaluasi 3 bulan pertama menunjukkan respon baik pada kadar HbA1c.',
+          'Kondisi Stabil. Tambahkan suplemen vitamin D3 untuk daya tahan tubuh. Kontrol rutin sebulan sekali.',
       medicines: [
         MedicineModel(
           name: 'Metformin',
@@ -97,16 +104,18 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
           dosage: '1000 IU',
           instruction: '1x sehari sesudah makan',
           quantity: '30 kapsul',
+          isBottle: true,
         ),
       ],
     ),
     PrescriptionModel(
       id: 'RXP-003',
-      date: '10 Nov 2023',
+      date: '10 November 2023',
       doctorName: 'dr. Budi Santoso',
+      doctorSpecialty: 'Sp. Penyakit Dalam',
       status: 'Selesai',
       notes:
-          'Resep awal pasca skrining gula darah puasa terkonfirmasi di atas ambang normal.',
+          'Pemeriksaan awal terdeteksi gula darah tinggi. Mulai terapi obat dan disarankan mengatur pola makan.',
       medicines: [
         MedicineModel(
           name: 'Metformin',
@@ -392,7 +401,15 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
 
           // "Lihat Detail" Button
           InkWell(
-            onTap: () => _showPrescriptionDetail(prescription),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      DetailResepScreen.fromPrescription(prescription),
+                ),
+              );
+            },
             borderRadius: BorderRadius.circular(20),
             child: Container(
               width: double.infinity,
@@ -472,200 +489,6 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  /// Detail Modal Bottom Sheet
-  void _showPrescriptionDetail(PrescriptionModel prescription) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE0D0D0),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Detail Resep Obat',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF8B1317),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: prescription.isActive
-                            ? const Color(0xFFE2F8E7)
-                            : const Color(0xFFEEEEEE),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        prescription.status,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: prescription.isActive
-                              ? const Color(0xFF1B8738)
-                              : const Color(0xFF757575),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'No. Resep: ${prescription.id} • ${prescription.date}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: const Color(0xFF666666),
-                  ),
-                ),
-                Text(
-                  'Dokter Pemeriksa: ${prescription.doctorName}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF333333),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Divider(height: 1, color: Color(0xFFF0DEDE)),
-                const SizedBox(height: 12),
-                Text(
-                  'Daftar Obat:',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1E1E1E),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...prescription.medicines.map((med) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Row(
-                        children: [
-                          _buildCustomPillIcon(),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  med.displayName,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF1E1E1E),
-                                  ),
-                                ),
-                                Text(
-                                  med.instruction,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 11.5,
-                                    color: const Color(0xFF555555),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            med.quantity,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFBA171E),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
-                const SizedBox(height: 14),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7F7),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFF3D5D5),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Catatan Dokter:',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF8B1317),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        prescription.notes,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11.5,
-                          color: const Color(0xFF444444),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFBA171E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      'Tutup',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
