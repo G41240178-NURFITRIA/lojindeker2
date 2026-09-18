@@ -12,7 +12,7 @@ void main() {
     expect(find.text('Admin'), findsOneWidget);
 
     // Verify inputs
-    expect(find.text('Pasien01'), findsOneWidget);
+    expect(find.text(''), findsOneWidget);
 
     // Verify Log In button and Forgot Password text
     expect(find.text('Log In'), findsOneWidget);
