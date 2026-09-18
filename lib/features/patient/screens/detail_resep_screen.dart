@@ -13,12 +13,26 @@ class DetailResepScreen extends StatefulWidget {
 
   const DetailResepScreen({
     super.key,
-    required this.date,
-    required this.status,
-    required this.doctorName,
+    this.date = '18 Mei 2024',
+    this.status = 'Aktif',
+    this.doctorName = 'dr. Andini Putri',
     this.doctorSpecialty = 'Sp. Penyakit Dalam',
-    required this.medicines,
-    required this.doctorNotes,
+    this.medicines = const [
+      MedicineModel(
+        name: 'Metformin',
+        dosage: '500 mg',
+        instruction: '2x sehari sesudah makan',
+        quantity: '30 tablet',
+      ),
+      MedicineModel(
+        name: 'Glimepiride',
+        dosage: '1 mg',
+        instruction: '1x sehari sebelum makan pagi',
+        quantity: '30 tablet',
+      ),
+    ],
+    this.doctorNotes =
+        'Kontrol gula darah rutin, kurangi konsumsi gula dan karbohidrat sederhana. Kontrol ulang 2 minggu lagi.',
     this.isReminderActive = true,
   });
 
@@ -486,6 +500,7 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
       ),
       child: Text(
         widget.doctorNotes,
+        textAlign: TextAlign.center,
         style: GoogleFonts.poppins(
           fontSize: 12,
           height: 1.45,
