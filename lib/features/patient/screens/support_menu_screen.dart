@@ -12,7 +12,7 @@ class SupportMenuScreen extends StatelessWidget {
         backgroundColor: const Color(0xFFB81018),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-          onTap: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Menu Penunjang',
@@ -432,7 +432,7 @@ class SupportMenuScreen extends StatelessWidget {
                 child: Switch(
                   value: isActive,
                   onChanged: (val) {},
-                  activeColor: Colors.white,
+                  activeThumbColor: Colors.white,
                   activeTrackColor: const Color(0xFF8F0D12),
                   inactiveThumbColor: const Color(0xFF8F0D12),
                   inactiveTrackColor: Colors.transparent,

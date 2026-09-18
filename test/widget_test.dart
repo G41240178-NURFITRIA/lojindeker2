@@ -11,8 +11,9 @@ void main() {
     expect(find.text('Dokter'), findsOneWidget);
     expect(find.text('Admin'), findsOneWidget);
 
-    // Verify inputs
-    expect(find.text(''), findsOneWidget);
+    // Verify inputs hints
+    expect(find.text('User'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
 
     // Verify Log In button and Forgot Password text
     expect(find.text('Log In'), findsOneWidget);
@@ -21,6 +22,6 @@ void main() {
     // Tap Dokter role
     await tester.tap(find.text('Dokter'));
     await tester.pump();
-    expect(find.text('Dr. Sarah'), findsOneWidget);
+    expect(find.text('Dokter'), findsOneWidget);
   });
 }

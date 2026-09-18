@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'consultation_screen.dart';
 import 'risk_check_screen.dart';
 import 'support_menu_screen.dart';
@@ -130,7 +131,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
                             color: const Color(0xFFB51419),
-                            child: const Icon(Icons.person, color: Colors.white, size: 24),
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 24,
+                            ),
                           );
                         },
                       ),
@@ -185,15 +190,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
         ],
       ),
-      child: Icon(
-        icon,
-        size: 18,
-        color: const Color(0xFF333333),
-      ),
+      child: Icon(icon, size: 18, color: const Color(0xFF333333)),
     );
   }
 
-  /// Dashboard Content 
+  /// Dashboard Content
   Widget _buildDashboardContent() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -217,7 +218,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             children: [
               Expanded(
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.health_and_safety_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   title: 'Cek Risiko',
                   onTap: () {
                     Navigator.push(
@@ -247,7 +252,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.calendar_month_outlined, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.calendar_month_outlined,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   title: 'Kalender\nKesehatan',
                 ),
               ),
@@ -262,7 +271,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               SizedBox(
                 width: 125,
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.folder_shared_outlined, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.folder_shared_outlined,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   title: 'Rekam\nMedis',
                 ),
               ),
@@ -270,7 +283,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               SizedBox(
                 width: 125,
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.medical_services_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   title: 'Menu\nPenunjang',
                   onTap: () {
                     Navigator.push(
@@ -373,7 +390,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.trending_up_rounded,
             iconColor: const Color(0xFFD32F2F),
             label: 'Highest Glucose',
-            value: 'AFIETA',
+            value: '166',
             valueColor: const Color(0xFFD32F2F),
           ),
           const SizedBox(height: 10),
@@ -381,7 +398,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.show_chart_rounded,
             iconColor: const Color(0xFF616161),
             label: 'Average Glucose',
-            value: 'FITRI',
+            value: '120',
             valueColor: const Color(0xFF141414),
           ),
           const SizedBox(height: 10),
@@ -389,7 +406,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.trending_down_rounded,
             iconColor: const Color(0xFF2E7D32),
             label: 'Lowest Glucose',
-            value: 'AGATHA',
+            value: '95',
             valueColor: const Color(0xFF2E7D32),
           ),
 
@@ -399,7 +416,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// Service Card 
+  /// Service Card
   Widget _buildServiceCard({
     required Widget icon,
     required String title,
@@ -417,10 +434,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             gradient: const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF8F0D12),
-                Color(0xFFBA171E),
-              ],
+              colors: [Color(0xFF8F0D12), Color(0xFFBA171E)],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
@@ -434,10 +448,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                height: 32,
-                child: Center(child: icon),
-              ),
+              SizedBox(height: 32, child: Center(child: icon)),
               const SizedBox(height: 6),
               Text(
                 title,
@@ -458,7 +469,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// History Tile 
+  /// History Tile
   Widget _buildHistoryTile({
     required IconData icon,
     required Color iconColor,
@@ -518,7 +529,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// Bottom Navigation Bar 
+  /// Bottom Navigation Bar
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 64,
@@ -538,16 +549,16 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
   Widget _buildNavItem(int index, IconData icon) {
     final isSelected = _selectedTabIndex == index;
-    final color = isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
+    final color = isSelected
+        ? const Color(0xFFBA171E)
+        : const Color(0xFFD65C62);
 
     return InkWell(
       onTap: () {
         if (index == 1) {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const ConsultationScreen(),
-            ),
+            MaterialPageRoute(builder: (_) => const ConsultationScreen()),
           );
         } else {
           setState(() => _selectedTabIndex = index);
@@ -556,11 +567,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Icon(
-          icon,
-          size: 26,
-          color: color,
-        ),
+        child: Icon(icon, size: 26, color: color),
       ),
     );
   }
@@ -605,20 +612,47 @@ class _DoctorOutlinePainter extends CustomPainter {
     // Doctor shoulders/torso
     final bodyPath = Path();
     bodyPath.moveTo(w * 0.15, h * 0.90);
-    bodyPath.cubicTo(w * 0.15, h * 0.60, w * 0.35, h * 0.55, w * 0.50, h * 0.55);
-    bodyPath.cubicTo(w * 0.65, h * 0.55, w * 0.85, h * 0.60, w * 0.85, h * 0.90);
+    bodyPath.cubicTo(
+      w * 0.15,
+      h * 0.60,
+      w * 0.35,
+      h * 0.55,
+      w * 0.50,
+      h * 0.55,
+    );
+    bodyPath.cubicTo(
+      w * 0.65,
+      h * 0.55,
+      w * 0.85,
+      h * 0.60,
+      w * 0.85,
+      h * 0.90,
+    );
     canvas.drawPath(bodyPath, paint);
 
     // Stethoscope loop around neck
     final stethPath = Path();
     stethPath.moveTo(w * 0.38, h * 0.55);
-    stethPath.cubicTo(w * 0.38, h * 0.72, w * 0.62, h * 0.72, w * 0.62, h * 0.55);
+    stethPath.cubicTo(
+      w * 0.38,
+      h * 0.72,
+      w * 0.62,
+      h * 0.72,
+      w * 0.62,
+      h * 0.55,
+    );
     stethPath.moveTo(w * 0.50, h * 0.68);
     stethPath.lineTo(w * 0.50, h * 0.80);
     canvas.drawPath(stethPath, paint..strokeWidth = 1.4);
 
     // Stethoscope bell
-    canvas.drawCircle(Offset(w * 0.50, h * 0.82), 1.8, Paint()..color = color..style = PaintingStyle.fill);
+    canvas.drawCircle(
+      Offset(w * 0.50, h * 0.82),
+      1.8,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
   }
 
   @override

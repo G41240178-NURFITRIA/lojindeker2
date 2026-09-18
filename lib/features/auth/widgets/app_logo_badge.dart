@@ -91,16 +91,19 @@ class AppLogoBadge extends StatelessWidget {
         const SizedBox(height: 4),
 
         // Subtitle: MONITOR • CONTROL • LIVE BETTER
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSubtitleWord('MONITOR'),
-            _buildDot(),
-            _buildSubtitleWord('CONTROL'),
-            _buildDot(),
-            _buildSubtitleWord('LIVE BETTER'),
-          ],
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildSubtitleWord('MONITOR'),
+              _buildDot(),
+              _buildSubtitleWord('CONTROL'),
+              _buildDot(),
+              _buildSubtitleWord('LIVE BETTER'),
+            ],
+          ),
         ),
       ],
     );
