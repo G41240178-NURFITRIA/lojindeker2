@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'consultation_screen.dart';
+import 'glucose_history_screen.dart';
 import 'risk_check_screen.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
@@ -248,6 +249,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const Icon(Icons.calendar_month_outlined, color: Colors.white, size: 28),
                   title: 'Kalender\nKesehatan',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const GlucoseHistoryScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -263,6 +272,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const Icon(Icons.folder_shared_outlined, color: Colors.white, size: 28),
                   title: 'Rekam\nMedis',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const GlucoseHistoryScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 16),
@@ -364,24 +381,42 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.trending_up_rounded,
             iconColor: const Color(0xFFD32F2F),
             label: 'Highest Glucose',
-            value: 'AFIETA',
+            value: '185',
             valueColor: const Color(0xFFD32F2F),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GlucoseHistoryScreen()),
+              );
+            },
           ),
           const SizedBox(height: 10),
           _buildHistoryTile(
             icon: Icons.show_chart_rounded,
             iconColor: const Color(0xFF616161),
             label: 'Average Glucose',
-            value: 'FITRI',
+            value: '128',
             valueColor: const Color(0xFF141414),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GlucoseHistoryScreen()),
+              );
+            },
           ),
           const SizedBox(height: 10),
           _buildHistoryTile(
             icon: Icons.trending_down_rounded,
             iconColor: const Color(0xFF2E7D32),
             label: 'Lowest Glucose',
-            value: 'AGATHA',
+            value: '78',
             valueColor: const Color(0xFF2E7D32),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GlucoseHistoryScreen()),
+              );
+            },
           ),
 
           const SizedBox(height: 28),
@@ -456,55 +491,63 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     required String label,
     required String value,
     required Color valueColor,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF424242),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
+            ],
           ),
-          RichText(
-            text: TextSpan(
-              text: value,
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: valueColor,
-              ),
-              children: [
-                TextSpan(
-                  text: ' mg/dL',
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
                   style: GoogleFonts.poppins(
                     fontSize: 12.5,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF757575),
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF424242),
                   ),
                 ),
-              ],
-            ),
+              ),
+              RichText(
+                text: TextSpan(
+                  text: value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: valueColor,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: ' mg/dL',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFF757575),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

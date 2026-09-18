@@ -26,16 +26,14 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
   bool? _hypertensionHistory; // true = Ya, false = Tidak
   bool? _cardiovascularHistory; // true = Ya, false = Tidak
 
-  // Style constants
-  static const Color _primaryMaroon = Color(0xFF6B181C);
-  static const Color _cardMaroon = Color(0xFF7B2024);
-  static const Color _lightBg = Color(0xFFFFF9F9);
-  static const Color _softPinkCard = Color(0xFFFFF6F6);
-  static const Color _softPinkBorder = Color(0xFFFBECEC);
-  static const Color _inputBorder = Color(0xFFF2D8D8);
-  static const Color _inputFocusedBorder = Color(0xFF6B181C);
-  static const Color _resultCardBg = Color(0xFFFDF1F1);
-  static const Color _resultCardBorder = Color(0xFFFCDDDD);
+  // Theme Red (#E53935) & Modern Color Palette
+  static const Color _primaryRed = Color(0xFFE53935); // Tema merah utama #E53935
+  static const Color _darkRed = Color(0xFF7B181C); // Solid merah gelap
+  static const Color _bannerBg = Color(0xFFFFF5F5); // Card banner merah muda
+  static const Color _bannerBorder = Color(0xFFFFCDD2); // Border banner merah muda
+  static const Color _inputBorder = Color(0xFFE8D0D0); // Border input netral lembut
+  static const Color _resultCardBg = Color(0xFFFFF0F0); // Card hasil IMT merah muda
+  static const Color _resultCardBorder = Color(0xFFFFCDD2);
 
   @override
   void dispose() {
@@ -59,10 +57,11 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
         SnackBar(
           content: Text(
             'Mohon masukkan berat badan dan tinggi badan yang valid',
-            style: GoogleFonts.poppins(fontSize: 12),
+            style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
           ),
-          backgroundColor: _cardMaroon,
+          backgroundColor: _darkRed,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       return;
@@ -109,15 +108,16 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
       SnackBar(
         content: Text(
           'Semua data telah direset',
-          style: GoogleFonts.poppins(fontSize: 12),
+          style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
         ),
+        backgroundColor: _darkRed,
         duration: const Duration(seconds: 1),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  /// Hitung total skor risiko diabetes komprehensif
   /// Hitung total skor risiko diabetes dan buka halaman Detail Risiko
   void _calculateRiskScore() {
     // Pastikan IMT sudah terhitung jika BB & TB diisi
@@ -142,17 +142,20 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
         SnackBar(
           content: Text(
             'Silakan lengkapi semua pertanyaan sebelum menghitung skor risiko',
-            style: GoogleFonts.poppins(fontSize: 12),
+            style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
           ),
-          backgroundColor: const Color(0xFFC62828),
+          backgroundColor: _primaryRed,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       return;
     }
 
-    final weight = double.tryParse(_weightController.text.trim().replaceAll(',', '.')) ?? 0;
-    final height = double.tryParse(_heightController.text.trim().replaceAll(',', '.')) ?? 0;
+    final weight =
+        double.tryParse(_weightController.text.trim().replaceAll(',', '.')) ?? 0;
+    final height =
+        double.tryParse(_heightController.text.trim().replaceAll(',', '.')) ?? 0;
 
     Navigator.push(
       context,
@@ -180,13 +183,13 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
       appBar: _buildAppBar(),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Banner Card: Kuisioner Gaya Hidup & Riwayat
+              // Header Section Banner: Kuesioner Gaya Hidup & Riwayat Kesehatan
               _buildTopBanner(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 22),
 
               // 1. Indeks Massa Tubuh (IMT) / Berat Badan
               _buildQuestionTitle('1. Indeks Massa Tubuh (IMT) / Berat Badan'),
@@ -210,7 +213,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
 
               // Action Row: Hitung IMT Button & Result Box
               _buildImtActionRow(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
               // 2. Riwayat Keluarga
               _buildQuestionTitle('2. Riwayat Keluarga'),
@@ -219,7 +222,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
                 currentValue: _familyHistory,
                 onChanged: (val) => setState(() => _familyHistory = val),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
               // 3. Usia
               _buildQuestionTitle('3. Usia'),
@@ -227,14 +230,15 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
               _buildInputField(
                 controller: _ageController,
                 hintText: 'Contoh: 45',
+                isInteger: true,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
               // 4. Jenis Kelamin
               _buildQuestionTitle('4. Jenis Kelamin'),
               const SizedBox(height: 10),
               _buildGenderToggle(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
               // 5. Riwayat Merokok
               _buildQuestionTitle('5. Riwayat Merokok'),
@@ -243,7 +247,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
                 currentValue: _smokingHistory,
                 onChanged: (val) => setState(() => _smokingHistory = val),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
               // 6. Riwayat Hipertensi
               _buildQuestionTitle('6. Riwayat Hipertensi'),
@@ -252,7 +256,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
                 currentValue: _hypertensionHistory,
                 onChanged: (val) => setState(() => _hypertensionHistory = val),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
 
               // 7. Riwayat Kardiovaskuler
               _buildQuestionTitle('7. Riwayat Kardiovaskuler'),
@@ -261,30 +265,11 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
                 currentValue: _cardiovascularHistory,
                 onChanged: (val) => setState(() => _cardiovascularHistory = val),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 30),
 
-              // Footer: Reset Text Button
-              Center(
-                child: InkWell(
-                  onTap: _resetForm,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Text(
-                      'Reset',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF757575),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Main Button: Hitung Skor Risiko ➔
-              _buildSubmitButton(),
+              // 2 Tombol di bagian bawah:
+              // Outline merah "Reset" & Solid merah gelap penuh "Hitung Skor Risiko"
+              _buildBottomActionButtons(),
               const SizedBox(height: 24),
             ],
           ),
@@ -293,50 +278,90 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
     );
   }
 
-  /// AppBar dengan tombol kembali `<` dan judul "Cek Risiko"
+  /// Header merah (#E53935) + tombol back, judul "Cek Risiko"
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: _lightBg,
+      backgroundColor: _primaryRed,
       elevation: 0,
       scrolledUnderElevation: 0,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: _primaryRed,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
       leading: IconButton(
         icon: const Icon(
           Icons.arrow_back_ios_new_rounded,
-          size: 18,
-          color: Color(0xFF222222),
+          size: 19,
+          color: Colors.white,
         ),
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
         'Cek Risiko',
         style: GoogleFonts.poppins(
-          fontSize: 16,
+          fontSize: 17,
           fontWeight: FontWeight.w700,
-          color: const Color(0xFF222222),
+          color: Colors.white,
         ),
       ),
       centerTitle: false,
     );
   }
 
-  /// Banner atas "Kuisioner Gaya Hidup & Riwayat"
+  /// Judul section "Kuesioner Gaya Hidup & Riwayat Kesehatan"
   Widget _buildTopBanner() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: _softPinkCard,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _softPinkBorder),
+        color: _bannerBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _bannerBorder, width: 1.0),
       ),
-      child: Text(
-        'Kuisioner Gaya Hidup &\nRiwayat',
-        style: GoogleFonts.poppins(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF333333),
-          height: 1.35,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _bannerBorder.withValues(alpha: 0.6)),
+            ),
+            child: const Icon(
+              Icons.health_and_safety_rounded,
+              color: _primaryRed,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Kuesioner Gaya Hidup & Riwayat Kesehatan',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF212121),
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Isi kuesioner untuk mengestimasi tingkat risiko diabetes',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                    color: const Color(0xFF666666),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -348,7 +373,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
       style: GoogleFonts.poppins(
         fontSize: 13.5,
         fontWeight: FontWeight.w600,
-        color: const Color(0xFF2A2A2A),
+        color: const Color(0xFF212121),
       ),
     );
   }
@@ -365,10 +390,11 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
     );
   }
 
-  /// Input text field dengan border merah muda lembut
+  /// Input text field dengan styling modern & bersih
   Widget _buildInputField({
     required TextEditingController controller,
     required String hintText,
+    bool isInteger = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -377,14 +403,19 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
       ),
       child: TextField(
         controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        keyboardType: isInteger
+            ? TextInputType.number
+            : const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*')),
+          if (isInteger)
+            FilteringTextInputFormatter.digitsOnly
+          else
+            FilteringTextInputFormatter.allow(RegExp(r'^\d*[\.,]?\d*')),
         ],
         style: GoogleFonts.poppins(
           fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: const Color(0xFF222222),
+          color: const Color(0xFF212121),
         ),
         decoration: InputDecoration(
           hintText: hintText,
@@ -393,39 +424,41 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
             fontWeight: FontWeight.w400,
             color: const Color(0xFFBDBDBD),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: _inputBorder, width: 1),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: _inputFocusedBorder, width: 1.5),
+            borderSide: const BorderSide(color: _primaryRed, width: 1.5),
           ),
           filled: true,
-          fillColor: const Color(0xFFFFFDFC),
+          fillColor: const Color(0xFFFAFAFA),
         ),
       ),
     );
   }
 
-  /// Tombol "Hitung IMT" berdampingan dengan kotak "HASIL IMT / IMT Anda: -"
+  /// Tombol solid merah gelap "Hitung IMT" di sebelah kiri,
+  /// hasil ditampilkan di kanan dalam card merah muda: "HASIL IMT — IMT Anda: [nilai]"
   Widget _buildImtActionRow() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Tombol Hitung IMT
+        // Tombol solid merah gelap "Hitung IMT"
         SizedBox(
-          height: 44,
+          height: 48,
           child: ElevatedButton(
             onPressed: _calculateImt,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _cardMaroon,
+              backgroundColor: _darkRed, // Solid merah gelap
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 18),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
             child: Text(
@@ -433,13 +466,14 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
           ),
         ),
         const SizedBox(width: 12),
 
-        // Kotak Hasil IMT
+        // Card merah muda hasil IMT: "HASIL IMT — IMT Anda: [nilai]"
         Expanded(
           child: Container(
             height: 48,
@@ -468,9 +502,9 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
                       ? 'IMT Anda: -'
                       : 'IMT Anda: ${_calculatedImt!.toStringAsFixed(1)} ($_imtCategory)',
                   style: GoogleFonts.poppins(
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: _cardMaroon,
+                    color: _darkRed,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -520,6 +554,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
         Expanded(
           child: _buildChoiceButton(
             title: 'Laki-Laki',
+            icon: Icons.male_rounded,
             isSelected: _gender == 'Laki-Laki',
             onTap: () => setState(() => _gender = 'Laki-Laki'),
           ),
@@ -528,6 +563,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
         Expanded(
           child: _buildChoiceButton(
             title: 'Perempuan',
+            icon: Icons.female_rounded,
             isSelected: _gender == 'Perempuan',
             onTap: () => setState(() => _gender = 'Perempuan'),
           ),
@@ -536,27 +572,45 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
     );
   }
 
-  /// Komponen tombol pilihan kartu (Ya, Tidak, Laki-Laki, Perempuan)
+  /// Tombol pilihan (toggle):
+  /// - Aktif: berwarna merah solid (#E53935) dengan teks putih
+  /// - Tidak aktif: outline merah tipis dengan teks merah
   Widget _buildChoiceButton({
     required String title,
     IconData? icon,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    // Sesuai requirement:
+    // Pilihan aktif: merah solid dengan teks putih
+    // Pilihan tidak aktif: outline merah tipis dengan teks merah
+    final Color bgColor = isSelected ? _primaryRed : Colors.white;
+    final Color contentColor = isSelected ? Colors.white : _primaryRed;
+    final Border border = isSelected
+        ? Border.all(color: _primaryRed, width: 1.5)
+        : Border.all(color: _primaryRed, width: 1.0); // Outline merah tipis
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
           height: 46,
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFFFF6F6) : Colors.white,
+            color: bgColor,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected ? _cardMaroon : _inputBorder,
-              width: isSelected ? 1.5 : 1,
-            ),
+            border: border,
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: _primaryRed.withValues(alpha: 0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -565,7 +619,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
                 Icon(
                   icon,
                   size: 19,
-                  color: isSelected ? _cardMaroon : const Color(0xFF4A4A4A),
+                  color: contentColor,
                 ),
                 const SizedBox(width: 8),
               ],
@@ -573,8 +627,8 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
                 title,
                 style: GoogleFonts.poppins(
                   fontSize: 12.5,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? _cardMaroon : const Color(0xFF333333),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: contentColor,
                 ),
               ),
             ],
@@ -584,38 +638,88 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
     );
   }
 
-  /// Tombol utama "Hitung Skor Risiko ➔"
-  Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: _calculateRiskScore,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryMaroon,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shadowColor: _primaryMaroon.withValues(alpha: 0.4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+  /// 2 tombol di bagian bawah:
+  /// - Outline merah "Reset"
+  /// - Solid merah gelap penuh "Hitung Skor Risiko" (dengan ikon panah)
+  Widget _buildBottomActionButtons() {
+    return Column(
+      children: [
+        // Tombol 1: Outline merah "Reset"
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: OutlinedButton(
+            onPressed: _resetForm,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primaryRed,
+              side: const BorderSide(color: _primaryRed, width: 1.2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.refresh_rounded,
+                  size: 18,
+                  color: _primaryRed,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Reset',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: _primaryRed,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Hitung Skor Risiko',
-              style: GoogleFonts.poppins(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.2,
+        const SizedBox(height: 12),
+
+        // Tombol 2: Solid merah gelap penuh "Hitung Skor Risiko" (dengan ikon panah)
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: _calculateRiskScore,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _darkRed, // Solid merah gelap
+              foregroundColor: Colors.white,
+              elevation: 2,
+              shadowColor: _darkRed.withValues(alpha: 0.35),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_rounded, size: 16),
-          ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Hitung Skor Risiko',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
