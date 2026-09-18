@@ -8,8 +8,8 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/glossy_login_button.dart';
 import '../widgets/role_selector.dart';
 import '../widgets/stethoscope_watermark.dart';
-import 'email_login_screen.dart';
 import 'forgot_password_screen.dart';
+import 'sign_up_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -198,28 +198,36 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Direct access to Section 4 Email Login / Sign Up Flow
+                        // Link Daftar Akun → langsung ke SignUpScreen
                         Center(
-                          child: TextButton.icon(
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(alpha: 0.15),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            ),
-                            icon: const Icon(Icons.mail_outline_rounded, color: Colors.white, size: 16),
-                            label: Text(
-                              'Masuk via Email / Daftar Akun',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            onPressed: () {
+                          child: GestureDetector(
+                            onTap: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const EmailLoginScreen()),
+                                MaterialPageRoute(builder: (_) => const SignUpScreen()),
                               );
                             },
+                            child: RichText(
+                              text: TextSpan(
+                                text: 'Belum punya akun? ',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: 'Daftar Sekarang',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
 
