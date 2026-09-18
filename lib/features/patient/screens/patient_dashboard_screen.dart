@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'consultation_screen.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
@@ -223,6 +224,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const _DoctorOutlineIcon(color: Colors.white, size: 28),
                   title: 'Konsultasi',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ConsultationScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 10),
@@ -376,49 +385,57 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   Widget _buildServiceCard({
     required Widget icon,
     required String title,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      height: 106,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF8F0D12),
-            Color(0xFFBA171E),
-          ],
-        ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF8F0D12).withValues(alpha: 0.35),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            height: 32,
-            child: Center(child: icon),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-              height: 1.2,
+        child: Container(
+          height: 106,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF8F0D12),
+                Color(0xFFBA171E),
+              ],
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF8F0D12).withValues(alpha: 0.35),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                height: 32,
+                child: Center(child: icon),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -506,7 +523,18 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     final color = isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
 
     return InkWell(
-      onTap: () => setState(() => _selectedTabIndex = index),
+      onTap: () {
+        if (index == 1) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ConsultationScreen(),
+            ),
+          );
+        } else {
+          setState(() => _selectedTabIndex = index);
+        }
+      },
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
