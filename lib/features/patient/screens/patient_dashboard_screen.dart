@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'consultation_list_screen.dart';
 import 'medical_records_screen.dart';
 import 'ai_risk_history_screen.dart';
 import 'support_menu_screen.dart';
@@ -369,7 +370,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.trending_up_rounded,
             iconColor: const Color(0xFFD32F2F),
             label: 'Highest Glucose',
+<<<<<<< HEAD
+            value: 'AFIETA',
+=======
             value: '165',
+>>>>>>> 34c68eb7c602b00ce37c6fbbb2e3425bcfce2210
             valueColor: const Color(0xFFD32F2F),
           ),
           const SizedBox(height: 10),
@@ -377,7 +382,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.show_chart_rounded,
             iconColor: const Color(0xFF616161),
             label: 'Average Glucose',
-            value: '120',
+            value: 'FITRI',
             valueColor: const Color(0xFF141414),
           ),
           const SizedBox(height: 10),
@@ -385,7 +390,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.trending_down_rounded,
             iconColor: const Color(0xFF2E7D32),
             label: 'Lowest Glucose',
-            value: '95',
+            value: 'AGATHA',
             valueColor: const Color(0xFF2E7D32),
           ),
 
@@ -538,7 +543,22 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     final color = isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
 
     return InkWell(
+<<<<<<< HEAD
+      onTap: () {
+        if (index == 1) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ConsultationScreen(),
+            ),
+          );
+        } else {
+          setState(() => _selectedTabIndex = index);
+        }
+      },
+=======
       onTap: () => setState(() => _selectedTabIndex = index),
+>>>>>>> 34c68eb7c602b00ce37c6fbbb2e3425bcfce2210
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -547,6 +567,8 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           size: 26,
           color: color,
         ),
+<<<<<<< HEAD
+=======
       ),
     );
   }
@@ -862,6 +884,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             child: Text('Tutup', style: GoogleFonts.poppins(color: const Color(0xFFBA171E), fontWeight: FontWeight.w600)),
           ),
         ],
+>>>>>>> 34c68eb7c602b00ce37c6fbbb2e3425bcfce2210
       ),
     );
   }
