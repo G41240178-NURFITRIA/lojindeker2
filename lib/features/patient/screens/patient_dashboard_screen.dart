@@ -190,7 +190,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// Dashboard Content (Murni Tampilan / Static)
+  /// Dashboard Content 
   Widget _buildDashboardContent() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -209,7 +209,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Row 1: 3 Red Cards (Cek Risiko, Konsultasi, Kalender Kesehatan)
+          // (Cek Risiko, Konsultasi, Kalender Kesehatan)
           Row(
             children: [
               Expanded(
@@ -236,7 +236,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Row 2: 2 Red Cards Centered (Rekam Medis, Menu Penunjang)
+          // (Rekam Medis, Menu Penunjang)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -346,7 +346,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.trending_up_rounded,
             iconColor: const Color(0xFFD32F2F),
             label: 'Highest Glucose',
-            value: '165',
+            value: 'AFIETA',
             valueColor: const Color(0xFFD32F2F),
           ),
           const SizedBox(height: 10),
@@ -354,7 +354,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.show_chart_rounded,
             iconColor: const Color(0xFF616161),
             label: 'Average Glucose',
-            value: '120',
+            value: 'FITRI',
             valueColor: const Color(0xFF141414),
           ),
           const SizedBox(height: 10),
@@ -362,7 +362,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.trending_down_rounded,
             iconColor: const Color(0xFF2E7D32),
             label: 'Lowest Glucose',
-            value: '95',
+            value: 'AGATHA',
             valueColor: const Color(0xFF2E7D32),
           ),
 
@@ -372,7 +372,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// Service Card (Tampilan saja / Static)
+  /// Service Card 
   Widget _buildServiceCard({
     required Widget icon,
     required String title,
@@ -423,7 +423,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// History Tile (Tampilan saja / Static)
+  /// History Tile 
   Widget _buildHistoryTile({
     required IconData icon,
     required Color iconColor,
@@ -483,7 +483,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// Bottom Navigation Bar (4 Outline Icons - Hanya ini yang dapat ditekan)
+  /// Bottom Navigation Bar 
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 64,
