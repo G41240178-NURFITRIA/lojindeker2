@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'risk_detail_screen.dart';
 
 class RiskCheckScreen extends StatefulWidget {
   const RiskCheckScreen({super.key});
@@ -117,6 +118,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
   }
 
   /// Hitung total skor risiko diabetes komprehensif
+  /// Hitung total skor risiko diabetes dan buka halaman Detail Risiko
   void _calculateRiskScore() {
     // Pastikan IMT sudah terhitung jika BB & TB diisi
     if (_calculatedImt == null &&
@@ -149,273 +151,25 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
       return;
     }
 
-    int score = 0;
+    final weight = double.tryParse(_weightController.text.trim().replaceAll(',', '.')) ?? 0;
+    final height = double.tryParse(_heightController.text.trim().replaceAll(',', '.')) ?? 0;
 
-    // 1. Poin IMT (Klasifikasi Asia-Pasifik)
-    if (_calculatedImt! >= 25) {
-      score += 3;
-    } else if (_calculatedImt! >= 23) {
-      score += 1;
-    }
-
-    // 2. Poin Usia
-    if (age >= 65) {
-      score += 4;
-    } else if (age >= 55) {
-      score += 3;
-    } else if (age >= 45) {
-      score += 2;
-    } else {
-      score += 0;
-    }
-
-    // 3. Poin Riwayat Keluarga
-    if (_familyHistory == true) {
-      score += 4;
-    }
-
-    // 4. Poin Jenis Kelamin (Laki-laki sedikit berisiko lebih tinggi)
-    if (_gender == 'Laki-Laki') {
-      score += 1;
-    }
-
-    // 5. Poin Merokok
-    if (_smokingHistory == true) {
-      score += 2;
-    }
-
-    // 6. Poin Hipertensi
-    if (_hypertensionHistory == true) {
-      score += 2;
-    }
-
-    // 7. Poin Kardiovaskuler
-    if (_cardiovascularHistory == true) {
-      score += 2;
-    }
-
-    // Tentukan tingkat risiko
-    String riskLevel;
-    Color riskColor;
-    String riskPercentage;
-    String recommendation;
-
-    if (score < 7) {
-      riskLevel = 'Risiko Rendah';
-      riskColor = const Color(0xFF2E7D32); // Hijau
-      riskPercentage = 'Hanya ~1% kemungkinan diabetes';
-      recommendation =
-          'Kondisi Anda sangat baik! Pertahankan pola makan sehat bergizi seimbang, hindari konsumsi gula berlebih, dan lakukan olahraga teratur minimal 150 menit per minggu.';
-    } else if (score <= 11) {
-      riskLevel = 'Risiko Sedang';
-      riskColor = const Color(0xFFE65100); // Oranye
-      riskPercentage = '~4% kemungkinan diabetes';
-      recommendation =
-          'Anda memiliki beberapa indikator risiko. Disarankan untuk mulai membatasi makanan tinggi gula dan karbohidrat olahan, aktif bergerak, serta cek gula darah rutin setahun sekali.';
-    } else if (score <= 14) {
-      riskLevel = 'Risiko Tinggi';
-      riskColor = const Color(0xFFD84315); // Oranye tua
-      riskPercentage = '~17% kemungkinan diabetes';
-      recommendation =
-          'Terdapat faktor risiko signifikan. Sebaiknya Anda berkonsultasi dengan tenaga medis untuk tes gula darah puasa (GDP) dan menerapkan diet ketat rendah indeks glikemik.';
-    } else {
-      riskLevel = 'Risiko Sangat Tinggi';
-      riskColor = const Color(0xFFC62828); // Merah
-      riskPercentage = '33% - 50% kemungkinan diabetes';
-      recommendation =
-          'Skor Anda menunjukkan risiko yang sangat tinggi. Sangat dianjurkan segera melakukan pemeriksaan komprehensif ke dokter atau laboratorium (HbA1c) untuk deteksi dini.';
-    }
-
-    _showResultDialog(
-      score: score,
-      riskLevel: riskLevel,
-      riskColor: riskColor,
-      riskPercentage: riskPercentage,
-      recommendation: recommendation,
-    );
-  }
-
-  /// Dialog hasil perhitungan skor risiko
-  void _showResultDialog({
-    required int score,
-    required String riskLevel,
-    required Color riskColor,
-    required String riskPercentage,
-    required String recommendation,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Drag handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 18),
-
-              // Title
-              Text(
-                'Hasil Analisis Risiko Diabetes',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF222222),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Status Badge Box
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: riskColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: riskColor.withValues(alpha: 0.3)),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      riskLevel,
-                      style: GoogleFonts.poppins(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: riskColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Total Skor: $score Poin • $riskPercentage',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF555555),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-
-              // Detail IMT & Usia
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFAFAFA),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFEEEEEE)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildMiniMetric(
-                      'IMT',
-                      _calculatedImt?.toStringAsFixed(1) ?? '-',
-                      _imtCategory ?? '-',
-                    ),
-                    Container(height: 28, width: 1, color: Colors.grey.shade300),
-                    _buildMiniMetric('Usia', '${_ageController.text} th', 'Tahun'),
-                    Container(height: 28, width: 1, color: Colors.grey.shade300),
-                    _buildMiniMetric('Gender', _gender ?? '-', ''),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Rekomendasi
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Rekomendasi Medis & Gaya Hidup:',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF222222),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                recommendation,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: const Color(0xFF555555),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 22),
-
-              // Tombol Tutup
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryMaroon,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    'Tutup & Simpan Catatan',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildMiniMetric(String label, String value, String sub) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(fontSize: 10.5, color: const Color(0xFF888888)),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RiskDetailScreen(
+          weight: weight,
+          height: height,
+          imt: _calculatedImt!,
+          imtCategory: _imtCategory ?? 'Normal',
+          age: age,
+          gender: _gender!,
+          familyHistory: _familyHistory!,
+          smokingHistory: _smokingHistory!,
+          hypertensionHistory: _hypertensionHistory!,
+          cardiovascularHistory: _cardiovascularHistory!,
         ),
-        Text(
-          value,
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF222222),
-          ),
-        ),
-        if (sub.isNotEmpty)
-          Text(
-            sub,
-            style: GoogleFonts.poppins(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: _primaryMaroon,
-            ),
-          ),
-      ],
+      ),
     );
   }
 
