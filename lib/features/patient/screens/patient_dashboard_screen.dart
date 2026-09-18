@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'medical_records_screen.dart';
 import 'ai_risk_history_screen.dart';
+import 'support_menu_screen.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
@@ -267,10 +268,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 28),
                   title: 'Menu\nPenunjang',
-                  onTap: () => _showFeatureDialog(
-                    'Menu Penunjang',
-                    'Layanan terintegrasi apotek online, tes laboratorium rekanan, dan ambulans siaga 24 jam.',
-                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SupportMenuScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

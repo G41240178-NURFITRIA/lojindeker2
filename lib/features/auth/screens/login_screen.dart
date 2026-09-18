@@ -99,6 +99,28 @@ class _LoginScreenState extends State<LoginScreen> {
               child: StethoscopeWatermark(height: 290),
             ),
 
+            // Back button to Landing Page
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 12, top: 8),
+                child: IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.all(8),
+                  ),
+                ),
+              ),
+            ),
+
             // 2. Main Scrollable Form Content
             SafeArea(
               child: Center(
