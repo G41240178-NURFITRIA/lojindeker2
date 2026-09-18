@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'consultation_screen.dart';
 import 'risk_check_screen.dart';
 import 'support_menu_screen.dart';
 
@@ -233,6 +234,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const _DoctorOutlineIcon(color: Colors.white, size: 28),
                   title: 'Konsultasi',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ConsultationScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 10),
@@ -532,7 +541,18 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     final color = isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
 
     return InkWell(
-      onTap: () => setState(() => _selectedTabIndex = index),
+      onTap: () {
+        if (index == 1) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ConsultationScreen(),
+            ),
+          );
+        } else {
+          setState(() => _selectedTabIndex = index);
+        }
+      },
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
