@@ -445,37 +445,39 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     );
   }
 
-  /// Custom supplement bottle icon matching screenshot 2 (Vitamin D3)
+  /// Custom supplement bottle icon matching screenshot (Vitamin D3)
   Widget _buildCustomBottleIcon() {
-    return Container(
+    return SizedBox(
       width: 18,
       height: 24,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: const Color(0xFFBA171E),
-          width: 1.5,
-        ),
-      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Cap
           Container(
-            height: 4,
-            decoration: const BoxDecoration(
-              color: Color(0xFFBA171E),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(2),
-              ),
+            width: 8,
+            height: 3,
+            decoration: BoxDecoration(
+              color: const Color(0xFFBA171E),
+              borderRadius: BorderRadius.circular(1),
             ),
           ),
-          Expanded(
+          const SizedBox(height: 1),
+          // Bottle Body
+          Container(
+            width: 16,
+            height: 19,
+            decoration: BoxDecoration(
+              color: const Color(0xFFBA171E),
+              borderRadius: BorderRadius.circular(4),
+            ),
             child: Center(
               child: Container(
                 width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFBA171E),
-                  shape: BoxShape.circle,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
             ),
