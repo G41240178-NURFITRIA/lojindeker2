@@ -67,7 +67,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         centerTitle: true,
         title: Text(
-          'New Account',
+          'Daftar Akun',
           style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -83,8 +83,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
             children: [
               // Full Name
               FigmaAuthField(
-                label: 'Full name',
-                hintText: 'Nama lengkap Anda',
+                label: 'Nama Lengkap',
+                hintText: 'Masukkan nama lengkap Anda',
                 controller: _fullNameController,
               ),
               const SizedBox(height: 14),
@@ -109,7 +109,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               // Mobile Number
               FigmaAuthField(
-                label: 'Mobile Number',
+                label: 'Nomor Telepon',
                 hintText: '0812xxxxxxxx',
                 controller: _mobileController,
                 keyboardType: TextInputType.phone,
@@ -118,7 +118,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               // Date Of Birth
               FigmaAuthField(
-                label: 'Date Of Birth',
+                label: 'Tanggal Lahir',
                 hintText: 'DD / MM / YYYY',
                 controller: _dobController,
                 keyboardType: TextInputType.datetime,
@@ -127,7 +127,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               // Terms & Privacy text
               Text(
-                'By signing up, you agree to the Terms of Service & Privacy Policy.',
+                'Dengan mendaftar, Anda menyetujui Syarat Layanan & Kebijakan Privasi kami.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 11,
@@ -139,7 +139,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               // Sign Up Button
               FigmaRedButton(
-                text: 'Sign Up',
+                text: 'Daftar',
                 isLoading: _isLoading,
                 onPressed: _handleSignUp,
               ),
@@ -151,14 +151,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   onTap: () => Navigator.of(context).pop(),
                   child: RichText(
                     text: TextSpan(
-                      text: "Already have an account? ",
+                      text: 'Sudah punya akun? ',
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         color: const Color(0xFF666666),
                       ),
                       children: [
                         TextSpan(
-                          text: 'Log In',
+                          text: 'Masuk',
                           style: GoogleFonts.poppins(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
