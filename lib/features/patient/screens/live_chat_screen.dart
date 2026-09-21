@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Model pesan chat
@@ -15,7 +16,7 @@ class ChatMessage {
   });
 }
 
-/// Layar Chat Konsultasi Interaktif & Hidup
+/// Layar Chat Konsultasi Interaktif (Tema Soft Pink)
 class LiveChatScreen extends StatefulWidget {
   final String doctorName;
   final String specialty;
@@ -23,7 +24,7 @@ class LiveChatScreen extends StatefulWidget {
 
   const LiveChatScreen({
     super.key,
-    this.doctorName = 'Dr. Kaka, Sp.PD',
+    this.doctorName = 'Dr. Kaka',
     this.specialty = 'Spesialis Penyakit Dalam',
     this.initials = 'DK',
   });
@@ -36,6 +37,12 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isDoctorTyping = false;
+
+  // Palette soft pink matching the screenshot design
+  static const Color _darkRose = Color(0xFF8B3A3A);       // User bubble & primary accent
+  static const Color _doctorBubbleBg = Color(0xFFFCECEF); // Soft Pink bubble dokter
+  static const Color _inputBarBg = Color(0xFFFAF1F2);     // Bottom input area tint
+  static const Color _borderSoft = Color(0xFFF3E2E4);
 
   late List<ChatMessage> _messages;
 
@@ -51,9 +58,14 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     super.initState();
     _messages = [
       ChatMessage(
-        text: 'Halo Muhammad Nizam! 🌸 Saya ${widget.doctorName}. Bagaimana kondisi gula darah dan kesehatanmu hari ini? Ada keluhan yang ingin dikonsultasikan?',
+        text: 'Selamat siang. Bagaimana perkembangan kadar gula darah Anda hari ini?',
         isUser: false,
-        time: '09:00',
+        time: '12:30',
+      ),
+      ChatMessage(
+        text: 'Perkembangan kadar gula saya sangat baik hari ini, lebih baik sebelumnya.',
+        isUser: true,
+        time: '12:45',
       ),
     ];
   }
@@ -82,7 +94,8 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     if (trimmed.isEmpty) return;
 
     final now = DateTime.now();
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
     setState(() {
       _messages.add(ChatMessage(
@@ -97,25 +110,40 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     _scrollToBottom();
 
     // Simulasi respons dokter yang hidup & komunikatif
-    Timer(const Duration(milliseconds: 1200), () {
+    Timer(const Duration(milliseconds: 1400), () {
       if (!mounted) return;
 
       String reply;
       final lower = trimmed.toLowerCase();
-      if (lower.contains('108') || lower.contains('gula darah') || lower.contains('normal')) {
-        reply = 'Bagus sekali Nizam! Angka 108 mg/dL menunjukkan gula darahmu terkontrol dengan sangat baik. Tetap pertahankan pola makan rendah gula ya!';
-      } else if (lower.contains('makan') || lower.contains('pantangan') || lower.contains('nasi')) {
-        reply = 'Untuk asupan makanan, utamakan karbohidrat kompleks seperti nasi merah atau oatmeal, perbanyak serat sayuran hijau, dan batasi konsumsi minuman manis kemasan.';
-      } else if (lower.contains('pusing') || lower.contains('obat') || lower.contains('metformin')) {
-        reply = 'Pusing ringan bisa terjadi penyesuaian tubuh. Pastikan obat diminum bersamaan atau sesaat setelah makan besar dan minumlah cukup air putih ya.';
-      } else if (lower.contains('jadwal') || lower.contains('evaluasi') || lower.contains('resep')) {
-        reply = 'Jadwal evaluasi resep berikutnya pada 20 Juni 2026. Jika obat habis lebih awal, kamu bisa pesan melalui Menu Penunjang ya.';
+      if (lower.contains('108') ||
+          lower.contains('gula darah') ||
+          lower.contains('normal') ||
+          lower.contains('baik')) {
+        reply =
+            'Bagus sekali! Angka dan perkembangan tersebut menunjukkan kondisi gula darah Anda terkontrol dengan sangat baik. Tetap pertahankan pola makan rendah gula ya!';
+      } else if (lower.contains('makan') ||
+          lower.contains('pantangan') ||
+          lower.contains('nasi')) {
+        reply =
+            'Untuk asupan makanan, utamakan karbohidrat kompleks seperti nasi merah atau oatmeal, perbanyak sayuran hijau, dan batasi konsumsi minuman manis kemasan.';
+      } else if (lower.contains('pusing') ||
+          lower.contains('obat') ||
+          lower.contains('metformin')) {
+        reply =
+            'Pusing ringan bisa terjadi penyesuaian tubuh. Pastikan obat diminum teratur sesaat setelah makan dan perbanyak minum air putih ya.';
+      } else if (lower.contains('jadwal') ||
+          lower.contains('evaluasi') ||
+          lower.contains('resep')) {
+        reply =
+            'Jadwal evaluasi kontrol rutin berikutnya pada 20 Juni 2026. Anda juga dapat memeriksa menu resep di aplikasi.';
       } else {
-        reply = 'Baik Nizam, terima kasih atas informasinya. Kondisimu tetap saya pantau di riwayat kesehatan. Segera hubungi saya kembali jika ada keluhan tambahan!';
+        reply =
+            'Baik, terima kasih atas informasinya. Kondisi Anda akan terus saya pantau. Segera kabari jika ada keluhan tambahan ya!';
       }
 
       final replyNow = DateTime.now();
-      final replyTime = '${replyNow.hour.toString().padLeft(2, '0')}:${replyNow.minute.toString().padLeft(2, '0')}';
+      final replyTime =
+          '${replyNow.hour.toString().padLeft(2, '0')}:${replyNow.minute.toString().padLeft(2, '0')}';
 
       setState(() {
         _isDoctorTyping = false;
@@ -133,35 +161,59 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F5), // Soft pink background
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF06292), // Soft Pink
-        elevation: 1,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         titleSpacing: 0,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.chevron_left_rounded,
+            color: Color(0xFF1E1E1E),
+            size: 32,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
           children: [
+            // Avatar Dokter dengan status Online
             Stack(
               clipBehavior: Clip.none,
               children: [
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFFDECEE),
+                      width: 1.5,
+                    ),
                   ),
-                  child: Center(
-                    child: Text(
-                      widget.initials,
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: const Color(0xFFD81B60),
-                      ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: const Color(0xFFFDECEE),
+                          child: Center(
+                            child: Text(
+                              widget.initials,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: _darkRose,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -169,8 +221,8 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   bottom: 0,
                   right: 0,
                   child: Container(
-                    width: 11,
-                    height: 11,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
                       color: const Color(0xFF00C853),
                       shape: BoxShape.circle,
@@ -188,33 +240,20 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   Text(
                     widget.doctorName,
                     style: GoogleFonts.poppins(
-                      fontSize: 14.5,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: const Color(0xFF1E1E1E),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Online • Komunikasi Aktif',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.95),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '${widget.specialty.length > 5 ? widget.specialty.substring(0, 5) + '...' : widget.specialty} • Online',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: const Color(0xFF8E8E8E),
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ],
               ),
@@ -224,90 +263,50 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
       ),
       body: Column(
         children: [
-          // Banner Komunikasi Sehat
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFCE4EC),
-              border: Border(
-                bottom: BorderSide(color: const Color(0xFFF8BBD0), width: 1),
-              ),
-            ),
-            child: Row(
+          const Divider(height: 1, color: _borderSoft),
+
+          // Message list
+          Expanded(
+            child: ListView(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              physics: const BouncingScrollPhysics(),
               children: [
-                const Icon(Icons.verified_user_rounded, color: Color(0xFFD81B60), size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Sesi konsultasi live dilindungi enkripsi medis RS D-Care.',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: const Color(0xFF880E4F),
-                      fontWeight: FontWeight.w500,
+                // Pill tanggal "Hari ini"
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 4, bottom: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFCE8EB),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Hari ini',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: _darkRose,
+                      ),
                     ),
                   ),
                 ),
+
+                // Daftar pesan
+                ..._messages.map((msg) => _buildMessageBubble(msg)),
+
+                // Typing indicator dokter
+                if (_isDoctorTyping) _buildTypingIndicator(),
               ],
             ),
           ),
 
-          // Message list
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              physics: const BouncingScrollPhysics(),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _buildMessageBubble(msg);
-              },
-            ),
-          ),
-
-          // Typing indicator
-          if (_isDoctorTyping)
-            Padding(
-              padding: const EdgeInsets.only(left: 16, bottom: 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFF8BBD0)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFFF06292),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${widget.doctorName} sedang mengetik...',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: const Color(0xFF757575),
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Quick action chips for quick communication
+          // Quick action chips (Pertanyaan Cepat)
           Container(
-            height: 38,
+            height: 36,
             margin: const EdgeInsets.only(bottom: 6),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
@@ -317,15 +316,17 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               itemBuilder: (context, index) {
                 final prompt = _quickPrompts[index];
                 return ActionChip(
-                  backgroundColor: Colors.white,
+                  backgroundColor: const Color(0xFFFFF7F8),
                   side: const BorderSide(color: Color(0xFFF8BBD0)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   label: Text(
                     prompt,
                     style: GoogleFonts.poppins(
                       fontSize: 11,
-                      color: const Color(0xFFD81B60),
+                      color: _darkRose,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -335,57 +336,90 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             ),
           ),
 
-          // Input area
+          // Input area soft pink bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: const BoxDecoration(
+              color: _inputBarBg,
               border: Border(
-                top: BorderSide(color: const Color(0xFFF8BBD0), width: 1),
+                top: BorderSide(color: _borderSoft, width: 1),
               ),
             ),
             child: SafeArea(
               child: Row(
                 children: [
+                  // Tombol Plus (+) Deep Rose
+                  InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: _darkRose,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.add_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  // Text Field Tulis pesan...
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF0F5),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: const Color(0xFFF8BBD0)),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: const Color(0xFFEFE4E6),
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: TextField(
                         controller: _controller,
-                        style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF1E1E1E)),
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: const Color(0xFF1E1E1E),
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Tulis pesan konsultasi...',
-                          hintStyle: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF9E9E9E)),
+                          hintText: 'Tulis pesan...',
+                          hintStyle: GoogleFonts.poppins(
+                            fontSize: 12.5,
+                            color: const Color(0xFF9E9E9E),
+                          ),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10,
+                          ),
                         ),
                         onSubmitted: _sendMessage,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+
+                  const SizedBox(width: 10),
+
+                  // Tombol Kirim Deep Rose
                   InkWell(
                     onTap: () => _sendMessage(_controller.text),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(20),
                     child: Container(
-                      width: 42,
-                      height: 42,
+                      width: 38,
+                      height: 38,
                       decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFFF8DA1), Color(0xFFF06292)],
-                        ),
+                        color: _darkRose,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.send_rounded,
                         color: Colors.white,
-                        size: 20,
+                        size: 18,
                       ),
                     ),
                   ),
@@ -398,61 +432,217 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     );
   }
 
+  /// Bubble Pesan sesuai screenshot (Soft Pink dokter, Deep Rose pasien)
   Widget _buildMessageBubble(ChatMessage msg) {
     final isUser = msg.isUser;
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          gradient: isUser
-              ? const LinearGradient(
-                  colors: [Color(0xFFFF8DA1), Color(0xFFF06292)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isUser ? null : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isUser ? 16 : 4),
-            bottomRight: Radius.circular(isUser ? 4 : 16),
-          ),
-          border: isUser ? null : Border.all(color: const Color(0xFFF8BBD0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+
+    if (isUser) {
+      // Bubble User / Pasien (Deep Rose Maroon)
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
         child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              msg.text,
-              style: GoogleFonts.poppins(
-                fontSize: 12.5,
-                color: isUser ? Colors.white : const Color(0xFF1E1E1E),
-                height: 1.4,
+            Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.78,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: _darkRose,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  topRight: Radius.circular(6),
+                  bottomLeft: Radius.circular(18),
+                  bottomRight: Radius.circular(18),
+                ),
+              ),
+              child: Text(
+                msg.text,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.white,
+                  height: 1.45,
+                ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              msg.time,
-              style: GoogleFonts.poppins(
-                fontSize: 9.5,
-                color: isUser ? Colors.white.withValues(alpha: 0.8) : const Color(0xFF9E9E9E),
+            const SizedBox(height: 3),
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    msg.time,
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      color: const Color(0xFF8E8E8E),
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  const Icon(
+                    Icons.done_all_rounded,
+                    size: 14,
+                    color: Color(0xFF8E8E8E),
+                  ),
+                ],
               ),
             ),
           ],
         ),
+      );
+    } else {
+      // Bubble Dokter (Soft Pink)
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Avatar Logo Dokter
+            Container(
+              width: 28,
+              height: 28,
+              margin: const EdgeInsets.only(top: 2, right: 8),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: const Color(0xFFFDECEE),
+                      child: Center(
+                        child: Text(
+                          widget.initials,
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            color: _darkRose,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            // Konten Pesan & Waktu
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.74,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: _doctorBubbleBg,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(6),
+                      topRight: Radius.circular(18),
+                      bottomLeft: Radius.circular(18),
+                      bottomRight: Radius.circular(18),
+                    ),
+                  ),
+                  child: Text(
+                    msg.text,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: const Color(0xFF2E2222),
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Text(
+                    msg.time,
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      color: const Color(0xFF8E8E8E),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  /// Typing indicator dokter: bubble tiga titik (...)
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            margin: const EdgeInsets.only(top: 2, right: 8),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.person,
+                  size: 16,
+                  color: _darkRose,
+                ),
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2ECEE),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF8E8E8E),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF8E8E8E),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF8E8E8E),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

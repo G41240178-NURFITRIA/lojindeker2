@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'live_chat_screen.dart';
 
@@ -36,6 +37,13 @@ class ConsultationListScreen extends StatefulWidget {
 class _ConsultationListScreenState extends State<ConsultationListScreen> {
   final int _selectedBottomNavIndex = 1; // 1 = Chat / Konsultasi
 
+  // Palette soft pink matching the screenshot design
+  static const Color _bgScreen = Color(0xFFF9EFEF);
+  static const Color _darkRose = Color(0xFF8B3A3A);
+  static const Color _softPinkCard = Color(0xFFFDECEE);
+  static const Color _softPinkBorder = Color(0xFFEAE0E0);
+  static const Color _iconInactive = Color(0xFFE5989B);
+
   final List<DoctorModel> _doctors = const [
     DoctorModel(
       id: 'kaka',
@@ -44,7 +52,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
       specialty: 'Spesialis Penyakit Dalam',
       rating: 4.9,
       reviewCount: 120,
-      availabilityLabel: 'Tersedia Hari Ini',
+      availabilityLabel: 'Tersedia hari ini',
       availabilityTime: '14:00 - 17:00',
       isOnline: true,
     ),
@@ -55,7 +63,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
       specialty: 'Spesialis Penyakit Dalam',
       rating: 4.9,
       reviewCount: 120,
-      availabilityLabel: 'Tersedia Besok',
+      availabilityLabel: 'Tersedia besok',
       availabilityTime: '9:00 - 14:00',
       isOnline: false,
     ),
@@ -79,16 +87,21 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F5),
+      backgroundColor: _bgScreen,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF06292),
+        backgroundColor: _bgScreen,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
         leading: IconButton(
           icon: const Icon(
             Icons.chevron_left_rounded,
-            color: Colors.white,
-            size: 30,
+            color: Color(0xFF1E1E1E),
+            size: 32,
           ),
           onPressed: () {
             if (Navigator.of(context).canPop()) {
@@ -102,12 +115,12 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: const Color(0xFF1E1E1E),
           ),
         ),
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         physics: const BouncingScrollPhysics(),
         itemCount: _doctors.length,
         itemBuilder: (context, index) {
@@ -119,14 +132,14 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
     );
   }
 
-  /// Card Dokter sesuai screenshot referensi
+  /// Card Dokter sesuai screenshot referensi soft pink
   Widget _buildDoctorCard(DoctorModel doctor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -142,12 +155,12 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar Inisial
+              // Avatar Inisial Soft Pink
               Container(
-                width: 58,
-                height: 58,
+                width: 54,
+                height: 54,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFFCE4EC),
+                  color: _softPinkCard,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -156,13 +169,13 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFFD81B60),
+                      color: _darkRose,
                     ),
                   ),
                 ),
               ),
 
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
 
               // Detail Info
               Expanded(
@@ -226,7 +239,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFFCF8F8),
+              color: const Color(0xFFFAF5F5),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -265,7 +278,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD4F8E8),
+                      color: const Color(0xFFE6F8F0),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -298,7 +311,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
+                      color: const Color(0xFFF2F2F2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -316,7 +329,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
 
           const SizedBox(height: 16),
 
-          // 3. Tombol Chat (Aktif jika Online, Disabled jika Offline)
+          // 3. Tombol Chat (Outline style sesuai screenshot)
           InkWell(
             onTap: doctor.isOnline ? () => _onChatPressed(doctor) : null,
             borderRadius: BorderRadius.circular(14),
@@ -327,9 +340,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: doctor.isOnline
-                      ? const Color(0xFFF8BBD0)
-                      : const Color(0xFFEBEBEB),
+                  color: _softPinkBorder,
                   width: 1.2,
                 ),
               ),
@@ -363,11 +374,13 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
     );
   }
 
-  /// Bottom Navigation Bar matching the app theme
+  /// Bottom Navigation Bar soft pink sesuai screenshot
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 64,
-      color: const Color(0xFFFFF0F5),
+      decoration: const BoxDecoration(
+        color: _bgScreen,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -376,9 +389,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
             index: 0,
             icon: Icons.home_outlined,
             onTap: () {
-              if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              }
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
           _buildNavItem(
@@ -389,12 +400,20 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
           _buildNavItem(
             index: 2,
             icon: Icons.person_outline_rounded,
-            onTap: () {},
+            onTap: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
+            },
           ),
           _buildNavItem(
             index: 3,
             icon: Icons.calendar_month_outlined,
-            onTap: () {},
+            onTap: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
+            },
           ),
         ],
       ),
@@ -407,8 +426,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
     required VoidCallback onTap,
   }) {
     final isSelected = _selectedBottomNavIndex == index;
-    final color =
-        isSelected ? const Color(0xFFD81B60) : const Color(0xFFF48FB1);
+    final color = isSelected ? _darkRose : _iconInactive;
 
     return InkWell(
       onTap: onTap,
