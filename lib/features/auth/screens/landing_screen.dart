@@ -41,7 +41,7 @@ class _LandingScreenState extends State<LandingScreen>
     ),
     _FeatureItem(
       icon: Icons.calendar_month_rounded,
-      color: const Color.fromARGB(255, 254, 254, 11),
+      color: const Color.fromARGB(255, 252, 252, 0),
       title: 'Kalender Kesehatan',
       description: 'Pantau jadwal kontrol, konsumsi obat, dan riwayat kesehatanmu dalam satu kalender.',
     ),
