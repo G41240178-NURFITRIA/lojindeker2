@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'riwayat_risiko_screen.dart';
+import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
 import 'glucose_history_screen.dart';
 import 'medical_records_screen.dart';
@@ -444,7 +444,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const RiwayatRisikoScreen(),
+                        builder: (_) => const RiskCheckScreen(),
                       ),
                     );
                   },

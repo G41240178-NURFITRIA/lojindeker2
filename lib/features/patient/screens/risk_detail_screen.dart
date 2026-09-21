@@ -2,16 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/risk_assessment_model.dart';
+import 'consultation_list_screen.dart';
 
-/// Halaman Detail Cek Risiko - Komponen Dinamis & Reusable
-/// Menerima objek [assessment] dan menyesuaikan seluruh data, warna,
-/// tabel, chip faktor dominan, serta box rekomendasi berdasarkan data tersebut.
-class RiskDetailScreen extends StatelessWidget {
-  final RiskAssessmentModel assessment;
+/// Halaman Detail Risiko Diabetes sesuai desain referensi (Image 2)
+/// Fokus murni ke hasil Cek Risiko tanpa tab Konsultasi dan Resep.
+class RiskDetailScreen extends StatefulWidget {
+  final double weight;
+  final double height;
+  final double imt;
+  final String imtCategory;
+  final int age;
+  final String gender;
+  final bool familyHistory;
+  final bool smokingHistory;
+  final bool hypertensionHistory;
+  final bool cardiovascularHistory;
+  final RiskAssessmentModel? assessment;
 
   const RiskDetailScreen({
     super.key,
-<<<<<<< HEAD
     this.weight = 65,
     this.height = 170,
     this.imt = 22.5,
@@ -22,6 +31,7 @@ class RiskDetailScreen extends StatelessWidget {
     this.smokingHistory = false,
     this.hypertensionHistory = false,
     this.cardiovascularHistory = false,
+    this.assessment,
   });
 
   @override
@@ -29,14 +39,20 @@ class RiskDetailScreen extends StatelessWidget {
 }
 
 class _RiskDetailScreenState extends State<RiskDetailScreen> {
-  int _selectedTabIndex = 0;
+  final int _selectedBottomNavIndex = 0; // 0 = Home / Dashboard
 
-  // Theme Constants
-  static const Color _primaryRed = Color(0xFFE53935); // Merah tema #E53935
-  static const Color _bgScreen = Color(0xFFFAF4F4); // Latar belakang halus modern
+  // Soft Pink Theme Palette
+  static const Color _primaryPink = Color(0xFFF06292); // Soft Pink
+  static const Color _darkRose = Color(0xFFD81B60);    // Deep Rose
+  static const Color _bgScreen = Color(0xFFFFF0F5);    // Soft Pink Blush
+  static const Color _cardBorder = Color(0xFFF8BBD0);  // Soft Pink Border
 
   /// Hitung total skor risiko diabetes (rentang 0 - 100)
   int get calculatedScore {
+    if (widget.assessment != null) {
+      return widget.assessment!.score;
+    }
+
     int score = 0;
 
     // 1. Riwayat Keluarga (max 20)
@@ -74,7 +90,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
   Widget build(BuildContext context) {
     final score = calculatedScore;
 
-    // Tentukan konfigurasi notifikasi berdasarkan level risiko
+    // Konfigurasi alert box berdasarkan level risiko
     final String riskTitle;
     final String riskDescription;
     final Color notifBgColor;
@@ -83,29 +99,26 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
     final Color notifTextColor;
 
     if (score < 30) {
-      // Risiko Rendah -> Box notifikasi hijau muda
-      riskTitle = 'Risiko Rendah: ';
+      riskTitle = 'Risiko Rendah : ';
       riskDescription =
           'Pertahankan gaya hidup sehat Anda. Lanjutkan olahraga rutin dan pola makan seimbang.';
-      notifBgColor = const Color(0xFFE8F5E9); // Hijau muda lembut
+      notifBgColor = const Color(0xFFF1F8E9);
       notifBorderColor = const Color(0xFFC8E6C9);
       notifIconColor = const Color(0xFF2E7D32);
       notifTextColor = const Color(0xFF1B5E20);
     } else if (score <= 60) {
-      // Risiko Sedang -> Box notifikasi oranye/kuning muda
-      riskTitle = 'Risiko Sedang: ';
+      riskTitle = 'Risiko Sedang : ';
       riskDescription =
           'Perhatikan asupan gula dan karbohidrat olahan. Tingkatkan aktivitas fisik dan pantau gula darah berkala.';
-      notifBgColor = const Color(0xFFFFF3E0); // Oranye muda lembut
+      notifBgColor = const Color(0xFFFFF3E0);
       notifBorderColor = const Color(0xFFFFE0B2);
       notifIconColor = const Color(0xFFE65100);
       notifTextColor = const Color(0xFFBF360C);
     } else {
-      // Risiko Tinggi -> Box notifikasi merah muda
-      riskTitle = 'Risiko Tinggi: ';
+      riskTitle = 'Risiko Tinggi : ';
       riskDescription =
           'Terdapat indikator risiko signifikan. Sangat disarankan berkonsultasi dengan dokter untuk cek gula darah (HbA1c).';
-      notifBgColor = const Color(0xFFFFEBEE); // Merah muda lembut
+      notifBgColor = const Color(0xFFFFEBEE);
       notifBorderColor = const Color(0xFFFFCDD2);
       notifIconColor = const Color(0xFFC62828);
       notifTextColor = const Color(0xFFB71C1C);
@@ -134,86 +147,23 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
 
               // 2. Card Putih: Prediksi Kontribusi Faktor
               _buildFactorsCard(),
-=======
-    required this.assessment,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: RiskColors.maroonPrimary,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Detail Cek Risiko',
-          style: GoogleFonts.poppins(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Header Tanggal & Status Badge
-              _buildDateAndStatusHeader(),
-
-              const SizedBox(height: 16),
-
-              // 2. Card Skor Risiko
-              _buildScoreCard(),
-
-              const SizedBox(height: 20),
-
-              // 3. Tabel Data yang Diinput
-              _buildInputDataTable(),
-
-              const SizedBox(height: 20),
-
-              // 4. Section Faktor Risiko Dominan
-              _buildDominantFactorsSection(),
-
-              const SizedBox(height: 20),
-
-              // 5. Box Rekomendasi
-              _buildRecommendationBox(context),
-
-              // 6. Tombol CTA Khusus Kategori Tinggi
-              if (assessment.level == RiskLevel.tinggi) ...[
-                const SizedBox(height: 20),
-                _buildConsultationCtaButton(context),
-              ],
-
->>>>>>> 22ff46862068b9a56aae931db57db9f0a592124a
               const SizedBox(height: 24),
             ],
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(context),
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-<<<<<<< HEAD
-  /// Header merah (#E53935) + tombol back, judul "Detail Risiko Diabetes"
+  /// Header Soft Pink + tombol back, judul "< Detail Risiko Diabetes"
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: _primaryRed,
+      backgroundColor: _primaryPink,
       elevation: 0,
       scrolledUnderElevation: 0,
       systemOverlayStyle: const SystemUiOverlayStyle(
-        statusBarColor: _primaryRed,
+        statusBarColor: _primaryPink,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
       ),
@@ -237,7 +187,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
     );
   }
 
-  /// Card putih: "Skor Risiko Saat Ini" dengan progress bar gradasi & indicator dot
+  /// Card Putih 1: "Skor Risiko Saat Ini" dengan Bar Gradasi & Box Alert
   Widget _buildScoreCard({
     required int score,
     required String riskTitle,
@@ -247,7 +197,6 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
     required Color notifIconColor,
     required Color notifTextColor,
   }) {
-    // Posisi dot indikator (0.0 sampai 1.0)
     final double markerPercent = (score / 100.0).clamp(0.0, 1.0);
 
     return Container(
@@ -256,7 +205,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF3E3E3)),
+        border: Border.all(color: _cardBorder),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -268,7 +217,6 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Judul card
           Text(
             'Skor Risiko Saat Ini',
             style: GoogleFonts.poppins(
@@ -279,7 +227,6 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           ),
           const SizedBox(height: 6),
 
-          // Teks skor besar "0 / 100" (atau skor aktual hasil kalkulasi)
           Text(
             '$score / 100',
             style: GoogleFonts.poppins(
@@ -291,25 +238,23 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Progress bar gradasi horizontal (hijau -> kuning -> merah)
-          // dengan indicator dot di posisi skor
+          // Horizontal gradient bar dengan pointer dot
           LayoutBuilder(
             builder: (context, constraints) {
               final barWidth = constraints.maxWidth;
               const barHeight = 10.0;
-              const dotSize = 20.0;
+              const dotSize = 18.0;
               final dotLeft = ((barWidth - dotSize) * markerPercent)
                   .clamp(0.0, barWidth - dotSize);
 
               return Column(
                 children: [
                   SizedBox(
-                    height: 22,
+                    height: 20,
                     child: Stack(
                       clipBehavior: Clip.none,
                       alignment: Alignment.centerLeft,
                       children: [
-                        // Bar gradasi horizontal
                         Container(
                           width: barWidth,
                           height: barHeight,
@@ -317,19 +262,14 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
                             borderRadius: BorderRadius.circular(5),
                             gradient: const LinearGradient(
                               colors: [
-                                Color(0xFF4CAF50), // Hijau
-                                Color(0xFF81C784),
-                                Color(0xFFFFEE58), // Kuning
-                                Color(0xFFFFA726), // Oranye
-                                Color(0xFFE53935), // Merah
-                                Color(0xFFB71C1C), // Merah gelap
+                                Color(0xFF81C784), // Hijau
+                                Color(0xFFFFB74D), // Oranye
+                                Color(0xFFE57373), // Merah
                               ],
-                              stops: [0.0, 0.2, 0.45, 0.7, 0.9, 1.0],
+                              stops: [0.0, 0.5, 1.0],
                             ),
                           ),
                         ),
-
-                        // Indicator dot di posisi skor
                         Positioned(
                           left: dotLeft,
                           child: Container(
@@ -340,29 +280,15 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
                               color: Colors.white,
                               border: Border.all(
                                 color: const Color(0xFF212121),
-                                width: 3.0,
+                                width: 2.5,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.25),
+                                  color: Colors.black.withValues(alpha: 0.2),
                                   blurRadius: 4,
-                                  offset: const Offset(0, 1.5),
+                                  offset: const Offset(0, 1),
                                 ),
                               ],
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: score < 30
-                                      ? const Color(0xFF2E7D32)
-                                      : (score <= 60
-                                          ? const Color(0xFFEF6C00)
-                                          : const Color(0xFFE53935)),
-                                ),
-                              ),
                             ),
                           ),
                         ),
@@ -371,7 +297,6 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
                   ),
                   const SizedBox(height: 6),
 
-                  // Label: "Rendah" (kiri), "Sedang" (tengah), "Tinggi" (kanan)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -407,7 +332,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Box notifikasi (menyesuaikan level risiko hasil perhitungan)
+          // Box Notifikasi Rekomendasi
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -415,40 +340,14 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
               color: notifBgColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: notifBorderColor, width: 1.0),
-=======
-  /// Header tanggal pemeriksaan & badge level risiko
-  Widget _buildDateAndStatusHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFDE8E8),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.calendar_today_rounded,
-                size: 16,
-                color: RiskColors.maroonPrimary,
-              ),
->>>>>>> 22ff46862068b9a56aae931db57db9f0a592124a
             ),
-            const SizedBox(width: 10),
-            Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-<<<<<<< HEAD
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Icon(
-                    Icons.info_outline_rounded,
-                    size: 20,
-                    color: notifIconColor,
-                  ),
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 20,
+                  color: notifIconColor,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -468,38 +367,24 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
                           text: riskDescription,
                           style: GoogleFonts.poppins(
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w400,
                             color: notifTextColor,
                             height: 1.45,
                           ),
                         ),
                       ],
                     ),
-=======
-                Text(
-                  assessment.date,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1F2937),
-                  ),
-                ),
-                Text(
-                  assessment.time,
-                  style: GoogleFonts.poppins(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF6B7280),
->>>>>>> 22ff46862068b9a56aae931db57db9f0a592124a
                   ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
 
-<<<<<<< HEAD
-  /// Card putih: "Prediksi Kontribusi Faktor"
+  /// Card Putih 2: "Prediksi Kontribusi Faktor" sesuai Screenshot 2
   Widget _buildFactorsCard() {
     return Container(
       width: double.infinity,
@@ -507,7 +392,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF3E3E3)),
+        border: Border.all(color: _cardBorder),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -529,23 +414,23 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 1. Riwayat (Riwayat Keluarga)
+          // 1. Riwayat
           _buildFactorRow(
             title: 'Riwayat',
             dotColor: widget.familyHistory
-                ? const Color(0xFFE53935) // Merah jika ada riwayat keluarga
-                : const Color(0xFF2E7D32), // Hijau jika tidak ada
+                ? const Color(0xFFE53935)
+                : const Color(0xFF2E7D32),
           ),
           const SizedBox(height: 14),
 
-          // 2. IMT (Indeks Massa Tubuh)
+          // 2. BMI
           _buildFactorRow(
-            title: 'IMT',
+            title: 'BMI',
             dotColor: widget.imt < 23.0
-                ? const Color(0xFF2E7D32) // Hijau jika normal/kurus
+                ? const Color(0xFF2E7D32)
                 : (widget.imt < 25.0
-                    ? const Color(0xFFFFA000) // Kuning jika kelebihan BB
-                    : const Color(0xFFE53935)), // Merah jika obesitas
+                    ? const Color(0xFFFFA000)
+                    : const Color(0xFFE53935)),
           ),
           const SizedBox(height: 14),
 
@@ -553,8 +438,8 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           _buildFactorRow(
             title: 'Riwayat Hipertensi',
             dotColor: widget.hypertensionHistory
-                ? const Color(0xFFE53935) // Merah
-                : const Color(0xFF2E7D32), // Hijau
+                ? const Color(0xFFE53935)
+                : const Color(0xFF2E7D32),
           ),
           const SizedBox(height: 14),
 
@@ -562,8 +447,8 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           _buildFactorRow(
             title: 'Riwayat Kardiovaskuler',
             dotColor: widget.cardiovascularHistory
-                ? const Color(0xFFE53935) // Merah
-                : const Color(0xFF2E7D32), // Hijau
+                ? const Color(0xFFE53935)
+                : const Color(0xFF2E7D32),
           ),
           const SizedBox(height: 14),
 
@@ -571,8 +456,8 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           _buildFactorRow(
             title: 'Merokok',
             dotColor: widget.smokingHistory
-                ? const Color(0xFFE53935) // Merah
-                : const Color(0xFF2E7D32), // Hijau
+                ? const Color(0xFFE53935)
+                : const Color(0xFF2E7D32),
           ),
           const SizedBox(height: 14),
 
@@ -580,17 +465,16 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           _buildFactorRow(
             title: 'Usia',
             dotColor: widget.age < 45
-                ? const Color(0xFF2E7D32) // Hijau jika usia < 45
+                ? const Color(0xFF2E7D32)
                 : (widget.age < 55
-                    ? const Color(0xFFFFA000) // Kuning jika 45 - 54
-                    : const Color(0xFFE53935)), // Merah jika >= 55
+                    ? const Color(0xFFFFA000)
+                    : const Color(0xFFE53935)),
           ),
         ],
       ),
     );
   }
 
-  /// Baris faktor: Nama faktor di kiri, dot indikator (hijau/kuning/merah) di kanan
   Widget _buildFactorRow({
     required String title,
     required Color dotColor,
@@ -619,393 +503,50 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
                 offset: const Offset(0, 1),
               ),
             ],
-=======
-        // Status Badge (Rendah / Sedang / Tinggi)
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          decoration: BoxDecoration(
-            color: assessment.level.badgeBgColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: assessment.level.badgeBorderColor,
-              width: 1,
-            ),
-          ),
-          child: Text(
-            assessment.level.label,
-            style: GoogleFonts.poppins(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: assessment.level.color,
-            ),
->>>>>>> 22ff46862068b9a56aae931db57db9f0a592124a
           ),
         ),
       ],
     );
   }
 
-<<<<<<< HEAD
-  /// Bottom Navigation Bar 4 ikon: Home, Chat, Profile, Calendar
+  /// Bottom Navigation Bar (4 ikon soft pink: Home, Chat, Profile, Calendar)
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 64,
       decoration: const BoxDecoration(
-        color: Color(0xFFFFF6F6),
+        color: Color(0xFFFFF0F5),
         border: Border(
-          top: BorderSide(color: Color(0xFFFBE8E8), width: 1.0),
+          top: BorderSide(color: Color(0xFFF8BBD0), width: 1.0),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-=======
-  /// Card Skor Risiko di tengah
-  Widget _buildScoreCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF3C7CB), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
->>>>>>> 22ff46862068b9a56aae931db57db9f0a592124a
         children: [
-          Text(
-            'Skor Risiko',
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF6B7280),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${assessment.score}',
-            style: GoogleFonts.poppins(
-              fontSize: 48,
-              fontWeight: FontWeight.w800,
-              color: assessment.level.color,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'dari skala 0-100',
-            style: GoogleFonts.poppins(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF9CA3AF),
-            ),
-          ),
+          _buildNavItem(0, Icons.home_outlined),
+          _buildNavItem(1, Icons.chat_bubble_outline_rounded),
+          _buildNavItem(2, Icons.person_outline_rounded),
+          _buildNavItem(3, Icons.calendar_month_outlined),
         ],
       ),
     );
   }
 
-<<<<<<< HEAD
   Widget _buildNavItem(int index, IconData icon) {
-    final isSelected = _selectedTabIndex == index;
-    final color = isSelected ? _primaryRed : const Color(0xFFD65C62);
+    final isSelected = _selectedBottomNavIndex == index;
+    final color = isSelected ? _darkRose : const Color(0xFFF48FB1);
 
     return InkWell(
       onTap: () {
-        setState(() => _selectedTabIndex = index);
         if (index == 0) {
-          // Kembali ke Dashboard utama jika menekan ikon Home
           Navigator.of(context).popUntil((route) => route.isFirst);
+        } else if (index == 1) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
+          );
         }
       },
-=======
-  /// Tabel Data yang Diinput
-  Widget _buildInputDataTable() {
-    final rows = [
-      {'label': 'Usia', 'value': assessment.age},
-      {'label': 'Pola Makan', 'value': assessment.diet},
-      {'label': 'Aktivitas Fisik', 'value': assessment.physicalActivity},
-      {'label': 'Riwayat Keluarga', 'value': assessment.familyHistory},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Data yang Diinput',
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF1F2937),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
-          ),
-          child: Column(
-            children: List.generate(rows.length, (index) {
-              final row = rows[index];
-              final isLast = index == rows.length - 1;
-
-              return Container(
-                decoration: BoxDecoration(
-                  border: isLast
-                      ? null
-                      : const Border(
-                          bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
-                        ),
-                ),
-                child: Row(
-                  children: [
-                    // Label Column
-                    Container(
-                      width: 130,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                      child: Text(
-                        row['label']!,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF4B5563),
-                        ),
-                      ),
-                    ),
-                    // Divider
-                    Container(
-                      width: 1,
-                      height: 40,
-                      color: const Color(0xFFE5E7EB),
-                    ),
-                    // Value Column
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                        child: Text(
-                          row['value']!,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF111827),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Section Faktor Risiko Dominan
-  Widget _buildDominantFactorsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Faktor Risiko Dominan',
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF1F2937),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: assessment.dominantFactors.map((factor) {
-            final isHighlighted = factor.isHighlighted;
-
-            Color bgColor;
-            Color borderColor;
-            Color textColor;
-
-            if (isHighlighted) {
-              if (assessment.level == RiskLevel.sedang) {
-                bgColor = const Color(0xFFFEF3C7);
-                borderColor = const Color(0xFFFDE68A);
-                textColor = const Color(0xFFB45309);
-              } else {
-                bgColor = const Color(0xFFFEE2E2);
-                borderColor = const Color(0xFFFECACA);
-                textColor = const Color(0xFFDC2626);
-              }
-            } else {
-              bgColor = const Color(0xFFF3F4F6);
-              borderColor = const Color(0xFFE5E7EB);
-              textColor = const Color(0xFF4B5563);
-            }
-
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: borderColor, width: 1),
-              ),
-              child: Text(
-                factor.name,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w500,
-                  color: textColor,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  /// Box Rekomendasi
-  Widget _buildRecommendationBox(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: assessment.level.recommendationBgColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: assessment.level.recommendationBorderColor,
-          width: 1.2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                assessment.level.recommendationIcon,
-                color: assessment.level.color,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Rekomendasi',
-                style: GoogleFonts.poppins(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: assessment.level.color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            assessment.level.recommendationText,
-            style: GoogleFonts.poppins(
-              fontSize: 12.5,
-              height: 1.5,
-              fontWeight: FontWeight.w400,
-              color: const Color(0xFF374151),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Tombol CTA "Konsultasi Dokter Sekarang" (Hanya untuk Kategori Tinggi)
-  Widget _buildConsultationCtaButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: RiskColors.maroonPrimary,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-        ),
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Mengarahkan ke layanan Konsultasi Dokter...',
-                style: GoogleFonts.poppins(fontSize: 13),
-              ),
-              backgroundColor: RiskColors.maroonPrimary,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        },
-        child: Text(
-          'Konsultasi Dokter Sekarang',
-          style: GoogleFonts.poppins(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Bottom Navigation Bar Persisten
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    return Container(
-      height: 64,
-      color: RiskColors.scaffoldBg,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(
-            icon: Icons.home_outlined,
-            isSelected: false,
-            onTap: () {
-              // Navigasi kembali ke Beranda (pop hingga dashboard)
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
-          ),
-          _buildNavItem(
-            icon: Icons.chat_bubble_outline_rounded,
-            isSelected: false,
-            onTap: () {},
-          ),
-          _buildNavItem(
-            icon: Icons.person_outline_rounded,
-            isSelected: false,
-            onTap: () {},
-          ),
-          _buildNavItem(
-            icon: Icons.calendar_month_outlined,
-            isSelected: true, // Tab Riwayat aktif
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final color = isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
-
-    return InkWell(
-      onTap: onTap,
->>>>>>> 22ff46862068b9a56aae931db57db9f0a592124a
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
