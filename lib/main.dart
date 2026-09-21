@@ -3,17 +3,17 @@ import 'package:flutter/services.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/widgets/device_preview_wrapper.dart';
-// Path import disesuaikan dengan struktur folder di VS Code
-import 'features/patient/screens/consultation_list_screen.dart';
+import 'features/auth/screens/landing_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Set system UI overlay style to match status bar
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      statusBarBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
     ),
   );
 
@@ -31,7 +31,7 @@ class DCareApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       builder: (context, child) =>
           DevicePreviewWrapper(child: child ?? const SizedBox.shrink()),
-      home: const ConsultationListScreen(),
+      home: const LandingScreen(),
     );
   }
 }
