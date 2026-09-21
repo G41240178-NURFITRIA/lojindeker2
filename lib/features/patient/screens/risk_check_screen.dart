@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/risk_assessment_model.dart';
 import 'risk_detail_screen.dart';
 
 class RiskCheckScreen extends StatefulWidget {
@@ -152,28 +153,102 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
       return;
     }
 
-    final weight =
-        double.tryParse(_weightController.text.trim().replaceAll(',', '.')) ?? 0;
-    final height =
-        double.tryParse(_heightController.text.trim().replaceAll(',', '.')) ?? 0;
+    // Hitung skor risiko berdasarkan faktor-faktor
+    int score = 0;
+    final List<String> usedFactors = [];
+    final List<RiskDominantFactor> dominantFactors = [];
+
+    // Usia
+    usedFactors.add('Usia');
+    if (age >= 45) {
+      score += 25;
+      dominantFactors.add(const RiskDominantFactor(name: 'Usia', isHighlighted: true));
+    } else if (age >= 35) {
+      score += 15;
+      dominantFactors.add(const RiskDominantFactor(name: 'Usia', isHighlighted: false));
+    } else {
+      score += 5;
+      dominantFactors.add(const RiskDominantFactor(name: 'Usia', isHighlighted: false));
+    }
+
+    // Riwayat keluarga
+    if (_familyHistory!) {
+      score += 20;
+      usedFactors.add('Riwayat Keluarga');
+      dominantFactors.add(const RiskDominantFactor(name: 'Riwayat Keluarga', isHighlighted: true));
+    }
+
+    // IMT
+    usedFactors.add('IMT');
+    if (_calculatedImt! >= 25) {
+      score += 20;
+      dominantFactors.add(const RiskDominantFactor(name: 'IMT', isHighlighted: true));
+    } else if (_calculatedImt! >= 23) {
+      score += 10;
+      dominantFactors.add(const RiskDominantFactor(name: 'IMT', isHighlighted: false));
+    }
+
+    // Rokok
+    if (_smokingHistory!) {
+      score += 15;
+      usedFactors.add('Merokok');
+      dominantFactors.add(const RiskDominantFactor(name: 'Merokok', isHighlighted: true));
+    }
+
+    // Hipertensi
+    if (_hypertensionHistory!) {
+      score += 10;
+      usedFactors.add('Hipertensi');
+      dominantFactors.add(const RiskDominantFactor(name: 'Hipertensi', isHighlighted: false));
+    }
+
+    // Kardiovaskular
+    if (_cardiovascularHistory!) {
+      score += 10;
+      usedFactors.add('Riwayat Kardiovaskular');
+      dominantFactors.add(const RiskDominantFactor(name: 'Riwayat Kardiovaskular', isHighlighted: false));
+    }
+
+    // Tentukan level risiko
+    final RiskLevel level;
+    if (score >= 60) {
+      level = RiskLevel.tinggi;
+    } else if (score >= 30) {
+      level = RiskLevel.sedang;
+    } else {
+      level = RiskLevel.rendah;
+    }
+
+    // Buat assessment model
+    final now = DateTime.now();
+    final assessment = RiskAssessmentModel(
+      id: 'risk_${now.millisecondsSinceEpoch}',
+      date: '${now.day} ${_monthName(now.month)} ${now.year}',
+      time: '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+      score: score.clamp(0, 100),
+      level: level,
+      factorsUsed: usedFactors,
+      age: '$age tahun',
+      diet: _imtCategory ?? 'Normal',
+      physicalActivity: _smokingHistory! ? 'Perokok Aktif' : 'Non-Perokok',
+      familyHistory: _familyHistory! ? 'Ada' : 'Tidak Ada',
+      dominantFactors: dominantFactors,
+    );
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => RiskDetailScreen(
-          weight: weight,
-          height: height,
-          imt: _calculatedImt!,
-          imtCategory: _imtCategory ?? 'Normal',
-          age: age,
-          gender: _gender!,
-          familyHistory: _familyHistory!,
-          smokingHistory: _smokingHistory!,
-          hypertensionHistory: _hypertensionHistory!,
-          cardiovascularHistory: _cardiovascularHistory!,
-        ),
+        builder: (_) => RiskDetailScreen(assessment: assessment),
       ),
     );
+  }
+
+  String _monthName(int month) {
+    const months = [
+      '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    return months[month];
   }
 
   @override
