@@ -38,11 +38,14 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isDoctorTyping = false;
 
-  // Palette soft pink matching the screenshot design
-  static const Color _darkRose = Color(0xFF8B3A3A);       // User bubble & primary accent
-  static const Color _doctorBubbleBg = Color(0xFFFCECEF); // Soft Pink bubble dokter
-  static const Color _inputBarBg = Color(0xFFFAF1F2);     // Bottom input area tint
-  static const Color _borderSoft = Color(0xFFF3E2E4);
+  // Palette soft pink matching the app's brand theme
+  static const Color _primaryPink = Color(0xFFF06292);       // Soft Pink Brand
+  static const Color _darkRose = Color(0xFFD81B60);          // Deep Soft Pink
+  static const Color _softPinkLight = Color(0xFFFF94B2);     // Light Soft Pink
+  static const Color _doctorBubbleBg = Color(0xFFFCE4EC);    // Soft Pink Bubble dokter
+  static const Color _doctorBubbleBorder = Color(0xFFF8BBD0);// Soft Pink Border dokter
+  static const Color _inputBarBg = Color(0xFFFFF0F5);        // Soft Pink bar background
+  static const Color _borderSoft = Color(0xFFF8BBD0);
 
   late List<ChatMessage> _messages;
 
@@ -161,7 +164,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF9FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
@@ -175,7 +178,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
           icon: const Icon(
             Icons.chevron_left_rounded,
             color: Color(0xFF1E1E1E),
-            size: 32,
+            size: 30,
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -191,7 +194,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: const Color(0xFFFDECEE),
+                      color: _doctorBubbleBorder,
                       width: 1.5,
                     ),
                   ),
@@ -201,7 +204,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          color: const Color(0xFFFDECEE),
+                          color: _doctorBubbleBg,
                           child: Center(
                             child: Text(
                               widget.initials,
@@ -281,14 +284,15 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFCE8EB),
+                      color: _doctorBubbleBg,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _doctorBubbleBorder, width: 1),
                     ),
                     child: Text(
                       'Hari ini',
                       style: GoogleFonts.poppins(
                         fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: _darkRose,
                       ),
                     ),
@@ -304,7 +308,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             ),
           ),
 
-          // Quick action chips (Pertanyaan Cepat)
+          // Quick action chips (Pertanyaan Cepat Soft Pink)
           Container(
             height: 36,
             margin: const EdgeInsets.only(bottom: 6),
@@ -316,8 +320,8 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               itemBuilder: (context, index) {
                 final prompt = _quickPrompts[index];
                 return ActionChip(
-                  backgroundColor: const Color(0xFFFFF7F8),
-                  side: const BorderSide(color: Color(0xFFF8BBD0)),
+                  backgroundColor: _inputBarBg,
+                  side: const BorderSide(color: _borderSoft),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -348,7 +352,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             child: SafeArea(
               child: Row(
                 children: [
-                  // Tombol Plus (+) Deep Rose
+                  // Tombol Plus (+) Soft Pink Gradient
                   InkWell(
                     onTap: () {},
                     borderRadius: BorderRadius.circular(20),
@@ -356,7 +360,11 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                       width: 38,
                       height: 38,
                       decoration: const BoxDecoration(
-                        color: _darkRose,
+                        gradient: LinearGradient(
+                          colors: [_softPinkLight, _primaryPink],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -376,7 +384,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: const Color(0xFFEFE4E6),
+                          color: _borderSoft,
                         ),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -405,7 +413,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
 
                   const SizedBox(width: 10),
 
-                  // Tombol Kirim Deep Rose
+                  // Tombol Kirim Soft Pink Gradient
                   InkWell(
                     onTap: () => _sendMessage(_controller.text),
                     borderRadius: BorderRadius.circular(20),
@@ -413,7 +421,11 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                       width: 38,
                       height: 38,
                       decoration: const BoxDecoration(
-                        color: _darkRose,
+                        gradient: LinearGradient(
+                          colors: [_softPinkLight, _primaryPink],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -432,12 +444,12 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     );
   }
 
-  /// Bubble Pesan sesuai screenshot (Soft Pink dokter, Deep Rose pasien)
+  /// Bubble Pesan: Dokter (Soft Pink Card), Pasien (Soft Pink Gradient)
   Widget _buildMessageBubble(ChatMessage msg) {
     final isUser = msg.isUser;
 
     if (isUser) {
-      // Bubble User / Pasien (Deep Rose Maroon)
+      // Bubble User / Pasien (Soft Pink Gradient)
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Column(
@@ -448,14 +460,25 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                 maxWidth: MediaQuery.of(context).size.width * 0.78,
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: _darkRose,
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [_softPinkLight, _primaryPink],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(18),
                   topRight: Radius.circular(6),
                   bottomLeft: Radius.circular(18),
                   bottomRight: Radius.circular(18),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryPink.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Text(
                 msg.text,
@@ -463,6 +486,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   fontSize: 13,
                   color: Colors.white,
                   height: 1.45,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -483,7 +507,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   const Icon(
                     Icons.done_all_rounded,
                     size: 14,
-                    color: Color(0xFF8E8E8E),
+                    color: _primaryPink,
                   ),
                 ],
               ),
@@ -492,7 +516,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         ),
       );
     } else {
-      // Bubble Dokter (Soft Pink)
+      // Bubble Dokter (Soft Pink Card)
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Row(
@@ -512,7 +536,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
-                      color: const Color(0xFFFDECEE),
+                      color: _doctorBubbleBg,
                       child: Center(
                         child: Text(
                           widget.initials,
@@ -541,9 +565,10 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     horizontal: 16,
                     vertical: 12,
                   ),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: _doctorBubbleBg,
-                    borderRadius: BorderRadius.only(
+                    border: Border.all(color: _doctorBubbleBorder, width: 1),
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(6),
                       topRight: Radius.circular(18),
                       bottomLeft: Radius.circular(18),
@@ -554,7 +579,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     msg.text,
                     style: GoogleFonts.poppins(
                       fontSize: 13,
-                      color: const Color(0xFF2E2222),
+                      color: const Color(0xFF1E1E1E),
                       height: 1.45,
                     ),
                   ),
@@ -578,7 +603,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     }
   }
 
-  /// Typing indicator dokter: bubble tiga titik (...)
+  /// Typing indicator dokter: bubble tiga titik soft pink
   Widget _buildTypingIndicator() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -607,8 +632,9 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF2ECEE),
+              color: _doctorBubbleBg,
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _doctorBubbleBorder, width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -617,7 +643,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   width: 6,
                   height: 6,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF8E8E8E),
+                    color: _primaryPink,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -626,7 +652,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   width: 6,
                   height: 6,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF8E8E8E),
+                    color: _primaryPink,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -635,7 +661,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   width: 6,
                   height: 6,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF8E8E8E),
+                    color: _primaryPink,
                     shape: BoxShape.circle,
                   ),
                 ),

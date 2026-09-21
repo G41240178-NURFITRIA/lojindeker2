@@ -38,10 +38,10 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   final int _selectedBottomNavIndex = 1; // 1 = Chat / Konsultasi
 
   // Palette soft pink matching the screenshot design
-  static const Color _bgScreen = Color(0xFFF9EFEF);
-  static const Color _darkRose = Color(0xFF8B3A3A);
+  static const Color _bgScreen = Color(0xFFF7EBE8);
+  static const Color _darkRose = Color(0xFFD81B60);
   static const Color _softPinkCard = Color(0xFFFDECEE);
-  static const Color _softPinkBorder = Color(0xFFEAE0E0);
+  static const Color _softPinkBorder = Color(0xFFF8BBD0);
   static const Color _iconInactive = Color(0xFFE5989B);
 
   final List<DoctorModel> _doctors = const [
@@ -52,7 +52,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
       specialty: 'Spesialis Penyakit Dalam',
       rating: 4.9,
       reviewCount: 120,
-      availabilityLabel: 'Tersedia hari ini',
+      availabilityLabel: 'Tersedia Hari Ini',
       availabilityTime: '14:00 - 17:00',
       isOnline: true,
     ),
@@ -63,7 +63,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
       specialty: 'Spesialis Penyakit Dalam',
       rating: 4.9,
       reviewCount: 120,
-      availabilityLabel: 'Tersedia besok',
+      availabilityLabel: 'Tersedia Besok',
       availabilityTime: '9:00 - 14:00',
       isOnline: false,
     ),
@@ -89,7 +89,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
     return Scaffold(
       backgroundColor: _bgScreen,
       appBar: AppBar(
-        backgroundColor: _bgScreen,
+        backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
@@ -101,7 +101,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
           icon: const Icon(
             Icons.chevron_left_rounded,
             color: Color(0xFF1E1E1E),
-            size: 32,
+            size: 30,
           ),
           onPressed: () {
             if (Navigator.of(context).canPop()) {
@@ -120,7 +120,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
         ),
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         physics: const BouncingScrollPhysics(),
         itemCount: _doctors.length,
         itemBuilder: (context, index) {
@@ -329,7 +329,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
 
           const SizedBox(height: 16),
 
-          // 3. Tombol Chat (Outline style sesuai screenshot)
+          // 3. Tombol Chat (Style sesuai gambar dengan aksen soft pink)
           InkWell(
             onTap: doctor.isOnline ? () => _onChatPressed(doctor) : null,
             borderRadius: BorderRadius.circular(14),
@@ -337,10 +337,12 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
               width: double.infinity,
               height: 46,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: doctor.isOnline ? const Color(0xFFFFF7F9) : Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: _softPinkBorder,
+                  color: doctor.isOnline
+                      ? _softPinkBorder
+                      : const Color(0xFFEBEBEB),
                   width: 1.2,
                 ),
               ),
@@ -351,7 +353,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                     Icons.chat_bubble_outline_rounded,
                     size: 18,
                     color: doctor.isOnline
-                        ? const Color(0xFF222222)
+                        ? _darkRose
                         : const Color(0xFFBDBDBD),
                   ),
                   const SizedBox(width: 8),
@@ -361,7 +363,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: doctor.isOnline
-                          ? const Color(0xFF222222)
+                          ? _darkRose
                           : const Color(0xFFBDBDBD),
                     ),
                   ),
