@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'live_chat_screen.dart';
-
+// Data Model diperbarui agar mendukung tampilan foto ke-1
 class DoctorModel {
   final String id;
   final String name;
   final String initials;
   final String specialty;
+  final String hospital;
   final double rating;
   final int reviewCount;
   final String availabilityLabel;
@@ -20,6 +20,7 @@ class DoctorModel {
     required this.name,
     required this.initials,
     required this.specialty,
+    required this.hospital,
     required this.rating,
     required this.reviewCount,
     required this.availabilityLabel,
@@ -36,29 +37,26 @@ class ConsultationListScreen extends StatefulWidget {
 }
 
 class _ConsultationListScreenState extends State<ConsultationListScreen> {
-  final int _selectedBottomNavIndex = 1; // 1 = Chat / Konsultasi
+  final int _selectedBottomNavIndex = 1;
 
-  // Color Palette disesuaikan dengan gambar UI 1 & 2
-  static const Color _bgScreen = Color(0xFFECE3DF); // Background krem/pink soft
-  static const Color _darkRose = Color(
-    0xFFC84B53,
-  ); // Merah/pink tua teks avatar & tombol
-  static const Color _avatarBg = Color(
-    0xFFF9EAEB,
-  ); // Background lingkaran avatar
-  static const Color _cardInnerBg = Color(
-    0xFFFAF5F5,
-  ); // Background box jam praktik
-  static const Color _iconInactive = Color(
-    0xFFEF9A9A,
-  ); // Pink soft icon bottom nav
+  // Warna sesuai sampel UI Foto ke-1 & ke-2
+  static const Color _bgScreen = Color(0xFFF7EEEC);
+  static const Color _avatarBg = Color(0xFFFCEAEA);
+  static const Color _avatarText = Color(0xFF9E4044);
+  static const Color _innerBoxBg = Color(0xFFFAF1F0);
+  static const Color _greenOnlineBg = Color(0xFFD4F7E7);
+  static const Color _greenText = Color(0xFF00B074);
+  static const Color _navIconActive = Color(0xFFE56A6F);
+  static const Color _navIconInactive = Color(0xFFEFB3B5);
 
+  // Data Dokter dari Foto ke-2 yang disesuaikan ke UI Foto ke-1
   final List<DoctorModel> _doctors = const [
     DoctorModel(
-      id: 'kaka',
-      name: 'Dr. Kaka',
-      initials: 'DK',
-      specialty: 'Spesialis Penyakit Dalam',
+      id: '1',
+      name: 'dr. Afieta Putri, Sp.PD',
+      initials: 'AP',
+      specialty: 'Spesialis Penyakit Dalam & Endokrin',
+      hospital: 'RS D-Care Sejahtera',
       rating: 4.9,
       reviewCount: 120,
       availabilityLabel: 'Tersedia Hari Ini',
@@ -66,42 +64,30 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
       isOnline: true,
     ),
     DoctorModel(
-      id: 'ika',
-      name: 'Dr. Ika',
-      initials: 'DI',
+      id: '2',
+      name: 'dr. Hendra Wijaya, Sp.PD',
+      initials: 'HW',
       specialty: 'Spesialis Penyakit Dalam',
-      rating: 4.9,
-      reviewCount: 120,
-      availabilityLabel: 'Tersedia Besok',
-      availabilityTime: '9:00 - 14:00',
+      hospital: 'RS D-Care Sejahtera',
+      rating: 4.8,
+      reviewCount: 95,
+      availabilityLabel: 'Praktik Hari Ini',
+      availabilityTime: '09:00 - 14:00',
       isOnline: false,
     ),
   ];
-
-  void _onChatPressed(DoctorModel doctor) {
-    if (!doctor.isOnline) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => LiveChatScreen(
-          doctorName: doctor.name,
-          specialty: doctor.specialty,
-          initials: doctor.initials,
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bgScreen,
+      // AppBar diubah mengikuti Foto Ke-1
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: _bgScreen,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: false,
+        leadingWidth: 40,
+        titleSpacing: 0,
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
@@ -109,7 +95,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
         leading: IconButton(
           icon: const Icon(
             Icons.chevron_left_rounded,
-            color: Color(0xFF2B2B2B),
+            color: Color(0xFF1E1E1E),
             size: 32,
           ),
           onPressed: () {
@@ -118,30 +104,28 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
             }
           },
         ),
-        titleSpacing: -4,
         title: Text(
           'Konsultasi',
           style: GoogleFonts.poppins(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF2B2B2B),
+            color: const Color(0xFF232323),
           ),
         ),
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         physics: const BouncingScrollPhysics(),
         itemCount: _doctors.length,
         itemBuilder: (context, index) {
-          final doctor = _doctors[index];
-          return _buildDoctorCard(doctor);
+          return _buildDoctorCard(_doctors[index]);
         },
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  /// Card Dokter persis sesuai screenshot 1
+  // Desain Kartu Dokter Sesuai Foto Ke-1
   Widget _buildDoctorCard(DoctorModel doctor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -153,11 +137,11 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Profil Dokter (Avatar, Nama, Spesialisasi, Rating)
+          // 1. Profil Dokter (Avatar Inisial, Nama, Spesialis, Rating)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar Inisial Soft Pink
+              // Avatar Circle dengan Inisial Nama (Misal: AP / HW)
               Container(
                 width: 58,
                 height: 58,
@@ -171,43 +155,43 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: _darkRose,
+                      color: _avatarText,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
 
-              // Detail Info
+              // Detail Teks Dokter
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 2),
                     Text(
                       doctor.name,
                       style: GoogleFonts.poppins(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF2D2D2D),
+                        color: const Color(0xFF262626),
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       doctor.specialty,
                       style: GoogleFonts.poppins(
-                        fontSize: 12.5,
+                        fontSize: 12,
                         fontWeight: FontWeight.w400,
-                        color: const Color(0xFF8C8C8C),
+                        color: const Color(0xFF8E8E8E),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
+                    // Rating & Ulasan (Foto 1)
                     Row(
                       children: [
                         const Icon(
                           Icons.star_rounded,
-                          size: 18,
-                          color: Color(0xFF00C48C),
+                          size: 17,
+                          color: _greenText,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -215,14 +199,14 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF2D2D2D),
+                            color: const Color(0xFF262626),
                           ),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '(${doctor.reviewCount} ulasan)',
                           style: GoogleFonts.poppins(
-                            fontSize: 12,
+                            fontSize: 11.5,
                             fontWeight: FontWeight.w400,
                             color: const Color(0xFF9E9E9E),
                           ),
@@ -235,14 +219,14 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
             ],
           ),
 
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
 
-          // 2. Info Ketersediaan & Badge Status (Online / Offline)
+          // 2. Box Jadwal Praktik & Status (Foto 1)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: _cardInnerBg,
-              borderRadius: BorderRadius.circular(16),
+              color: _innerBoxBg,
+              borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -255,7 +239,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 11,
                         fontWeight: FontWeight.w400,
-                        color: const Color(0xFF9E9E9E),
+                        color: const Color(0xFF989898),
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -264,13 +248,11 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF2D2D2D),
+                        color: const Color(0xFF262626),
                       ),
                     ),
                   ],
                 ),
-
-                // Status Badge
                 if (doctor.isOnline)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -278,17 +260,16 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD4F7E7),
+                      color: _greenOnlineBg,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           width: 6,
                           height: 6,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF00C48C),
+                            color: _greenText,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -298,7 +279,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF00B074),
+                            color: _greenText,
                           ),
                         ),
                       ],
@@ -319,7 +300,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFFBDBDBD),
+                        color: const Color(0xFFC4C4C4),
                       ),
                     ),
                   ),
@@ -327,21 +308,21 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // 3. Tombol Chat
+          // 3. Tombol Chat di Bagian Bawah Kartu (Foto 1)
           InkWell(
-            onTap: doctor.isOnline ? () => _onChatPressed(doctor) : null,
+            onTap: doctor.isOnline ? () {} : null,
             borderRadius: BorderRadius.circular(16),
             child: Container(
               width: double.infinity,
-              height: 48,
+              height: 46,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: doctor.isOnline
-                      ? const Color(0xFFF0E0E0)
+                      ? const Color(0xFFE8E8E8)
                       : const Color(0xFFF2F2F2),
                   width: 1.2,
                 ),
@@ -353,7 +334,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                     Icons.chat_bubble_outline_rounded,
                     size: 18,
                     color: doctor.isOnline
-                        ? const Color(0xFF4A4A4A)
+                        ? const Color(0xFF333333)
                         : const Color(0xFFCCCCCC),
                   ),
                   const SizedBox(width: 8),
@@ -376,56 +357,27 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
     );
   }
 
-  /// Bottom Navigation Bar soft pink
+  // Bottom Navigation Bar
   Widget _buildBottomNavigationBar() {
     return Container(
-      height: 68,
-      decoration: const BoxDecoration(color: _bgScreen),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      height: 64,
+      color: _bgScreen,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(
-            index: 0,
-            icon: Icons.home_outlined,
-            onTap: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
+          Icon(Icons.home_outlined, size: 28, color: _navIconInactive),
+          Icon(
+            Icons.chat_bubble_outline_rounded,
+            size: 26,
+            color: _navIconActive,
           ),
-          _buildNavItem(
-            index: 1,
-            icon: Icons.chat_bubble_outline_rounded,
-            onTap: () {},
-          ),
-          _buildNavItem(
-            index: 2,
-            icon: Icons.person_outline_rounded,
-            onTap: () {},
-          ),
-          _buildNavItem(
-            index: 3,
-            icon: Icons.calendar_month_outlined,
-            onTap: () {},
+          Icon(Icons.person_outline_rounded, size: 28, color: _navIconInactive),
+          Icon(
+            Icons.calendar_month_outlined,
+            size: 26,
+            color: _navIconInactive,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required int index,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    final isSelected = _selectedBottomNavIndex == index;
-    final color = isSelected ? _darkRose : _iconInactive;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Icon(icon, size: 26, color: color),
       ),
     );
   }
