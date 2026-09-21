@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 /// Primary brand colors for the risk assessment feature
 class RiskColors {
-  static const Color maroonPrimary = Color(0xFF7A1F2B);
-  static const Color maroonDark = Color(0xFF5A141E);
-  static const Color cardBorderPink = Color(0xFFF4B8BC);
-  static const Color scaffoldBg = Color(0xFFFAF1F1);
+  static const Color maroonPrimary = Color(0xFFF06292); // Soft pink
+  static const Color maroonDark = Color(0xFFD81B60);    // Deep rose
+  static const Color cardBorderPink = Color(0xFFF8BBD0); // Soft pink border
+  static const Color scaffoldBg = Color(0xFFFFF0F5);    // Soft pink blush bg
   static const Color textDark = Color(0xFF1E1E1E);
   static const Color textMuted = Color(0xFF757575);
-  static const Color infoBannerBg = Color(0xFFEBF5FE);
-  static const Color infoBannerBorder = Color(0xFFBAE0FD);
-  static const Color infoBannerText = Color(0xFF0369A1);
+  static const Color infoBannerBg = Color(0xFFFCE4EC);
+  static const Color infoBannerBorder = Color(0xFFF8BBD0);
+  static const Color infoBannerText = Color(0xFFC2185B);
 }
 
 /// Kategori tingkat risiko diabetes
@@ -78,7 +78,7 @@ extension RiskLevelExtension on RiskLevel {
         return const Color(0xFFFFFBEB);
       case RiskLevel.tinggi:
         return const Color(0xFFFEF2F2);
-    }
+    }  
   }
 
   /// Border kontainer rekomendasi

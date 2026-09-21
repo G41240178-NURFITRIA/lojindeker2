@@ -7,15 +7,15 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      primaryColor: AppColors.bgGradientTop,
-      scaffoldBackgroundColor: AppColors.bgGradientMid,
+      primaryColor: AppColors.primary,
+      scaffoldBackgroundColor: AppColors.softPinkBg,
       textTheme: GoogleFonts.poppinsTextTheme().apply(
-        bodyColor: Colors.white,
-        displayColor: Colors.white,
+        bodyColor: const Color(0xFF212121),
+        displayColor: const Color(0xFF212121),
       ),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.bgGradientTop,
-        primary: AppColors.bgGradientTop,
+        seedColor: AppColors.primary,
+        primary: AppColors.primary,
         secondary: AppColors.cyanGradientEnd,
       ),
     );

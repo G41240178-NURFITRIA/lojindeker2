@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-<<<<<<< HEAD
 import 'riwayat_risiko_screen.dart';
-import 'medical_records_screen.dart';
-import 'ai_risk_history_screen.dart';
-=======
 import 'consultation_list_screen.dart';
 import 'glucose_history_screen.dart';
 import 'medical_records_screen.dart';
-import 'ai_risk_history_screen.dart';
 import 'support_menu_screen.dart';
->>>>>>> e1d5e79ab8edc5b752e7fa5d392ce82537a8cdbc
+import 'live_chat_screen.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
@@ -30,7 +25,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF1F1), // Soft blush background
+      backgroundColor: const Color(0xFFFFF0F5), // Soft blush pink background
       body: Stack(
         children: [
           // Decorative soft curved organic shape at top right
@@ -42,7 +37,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFEED5D7).withValues(alpha: 0.8),
+                color: const Color(0xFFF8BBD0).withValues(alpha: 0.5),
               ),
             ),
           ),
@@ -94,11 +89,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Hi, WelcomeBack',
+                    'Halo, Selamat Pagi ✨',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF8B2326),
+                      color: const Color(0xFFD81B60),
                     ),
                   ),
                   Text(
@@ -135,7 +130,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
-                            color: const Color(0xFFB51419),
+                            color: const Color(0xFFF06292),
                             child: const Icon(Icons.person, color: Colors.white, size: 24),
                           );
                         },
@@ -162,7 +157,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       child: const Icon(
                         Icons.medical_services_rounded,
                         size: 9,
-                        color: Color(0xFFB51419),
+                        color: Color(0xFFF06292),
                       ),
                     ),
                   ),
@@ -182,7 +177,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFEADBDB), width: 1),
+        border: Border.all(color: const Color(0xFFF8BBD0), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -199,6 +194,222 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
+  /// Banner Interaktif & Komunikasi Hidup
+  Widget _buildLiveCommunicativeCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFFF0F5),
+            Color(0xFFFCE4EC),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF06292).withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF06292),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.favorite_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Asisten Sehat D-Care',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFD81B60),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F5E9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF2E7D32),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Live',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF2E7D32),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Siap berkomunikasi & mendampingi kesehatanmu',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.5,
+                        color: const Color(0xFF757575),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFFCE4EC)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.chat_bubble_rounded,
+                  size: 18,
+                  color: Color(0xFFF06292),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Halo ${widget.patientName}! 🌸 Kondisi gula darahmu terpantau stabil. Tetap jaga pola makan, minum cukup air, dan jangan ragu berkonsultasi jika ada keluhan.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: const Color(0xFF333333),
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Tombol aksi interaktif & komunikasi
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const LiveChatScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF8DA1), Color(0xFFF06292)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.chat_rounded, size: 15, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Tanya Dokter',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MedicalRecordsScreen(patientName: widget.patientName),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFF06292), width: 1.2),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.history_edu_rounded, size: 15, color: Color(0xFFD81B60)),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Lihat Riwayat',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFD81B60),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Dashboard Content 
   Widget _buildDashboardContent() {
     return SingleChildScrollView(
@@ -207,6 +418,10 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Banner Komunikasi Interaktif & Asisten Hidup
+          _buildLiveCommunicativeCard(),
+          const SizedBox(height: 18),
+
           // 1. Layanan Utama
           Text(
             'Layanan Utama',
@@ -255,20 +470,20 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 14),
 
-          // (Rekam Medis, Menu Penunjang)
+          // (Riwayat, Menu Penunjang)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
                 width: 125,
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.folder_shared_outlined, color: Colors.white, size: 28),
-                  title: 'Rekam\nMedis',
+                  icon: const Icon(Icons.history_edu_rounded, color: Colors.white, size: 28),
+                  title: 'Riwayat',
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const AiRiskHistoryScreen(),
+                        builder: (_) => MedicalRecordsScreen(patientName: widget.patientName),
                       ),
                     );
                   },
@@ -280,12 +495,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 28),
                   title: 'Menu\nPenunjang',
-<<<<<<< HEAD
-                  onTap: () => _showFeatureDialog(
-                    'Menu Penunjang',
-                    'Layanan terintegrasi apotek online, tes laboratorium rekanan, dan ambulans siaga 24 jam.',
-                  ),
-=======
                   onTap: () {
                     Navigator.push(
                       context,
@@ -294,7 +503,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       ),
                     );
                   },
->>>>>>> e1d5e79ab8edc5b752e7fa5d392ce82537a8cdbc
                 ),
               ),
             ],
@@ -452,14 +660,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFF8F0D12),
-                Color(0xFFBA171E),
+                Color(0xFFFF8DA1),
+                Color(0xFFF06292),
               ],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF8F0D12).withValues(alpha: 0.35),
+                color: const Color(0xFFF06292).withValues(alpha: 0.35),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -580,12 +788,9 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
   Widget _buildNavItem(int index, IconData icon) {
     final isSelected = _selectedTabIndex == index;
-    final color = isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
+    final color = isSelected ? const Color(0xFFD81B60) : const Color(0xFFF48FB1);
 
     return InkWell(
-<<<<<<< HEAD
-      onTap: () => setState(() => _selectedTabIndex = index),
-=======
       onTap: () {
         if (index == 1) {
           Navigator.push(
@@ -598,7 +803,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           setState(() => _selectedTabIndex = index);
         }
       },
->>>>>>> e1d5e79ab8edc5b752e7fa5d392ce82537a8cdbc
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -670,63 +874,77 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     required String status,
     required Color statusColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF1F1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.person_rounded, color: Color(0xFFBA171E), size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w700, color: const Color(0xFF141414)),
-                ),
-                Text(
-                  speciality,
-                  style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFFBA171E), fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  hospital,
-                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    status,
-                    style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: statusColor),
-                  ),
-                ),
-              ],
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LiveChatScreen(
+              doctorName: name,
+              specialty: speciality,
             ),
           ),
-        ],
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFCE4EC),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.person_rounded, color: Color(0xFFD81B60), size: 28),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w700, color: const Color(0xFF141414)),
+                  ),
+                  Text(
+                    speciality,
+                    style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFFD81B60), fontWeight: FontWeight.w500),
+                  ),
+                  Text(
+                    hospital,
+                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      status,
+                      style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: statusColor),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -795,14 +1013,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   ),
                 );
               },
-              icon: const Icon(Icons.folder_shared_outlined, color: Color(0xFFBA171E)),
+              icon: const Icon(Icons.history_edu_rounded, color: Color(0xFFD81B60)),
               label: Text(
-                'Buka Rekam Medis Lengkap',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFFBA171E)),
+                'Buka Riwayat Lengkap',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFFD81B60)),
               ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                side: const BorderSide(color: Color(0xFFBA171E)),
+                side: const BorderSide(color: Color(0xFFD81B60)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -857,8 +1075,8 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: const Color(0xFFFAF1F1), borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.event_available_rounded, color: Color(0xFFBA171E), size: 24),
+                      decoration: BoxDecoration(color: const Color(0xFFFCE4EC), borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.event_available_rounded, color: Color(0xFFD81B60), size: 24),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -866,7 +1084,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Kontrol Rutin Dokter', style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w700)),
-                          Text('20 Juni 2026 • 09:00 WIB', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFFBA171E), fontWeight: FontWeight.w600)),
+                          Text('20 Juni 2026 • 09:00 WIB', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFFD81B60), fontWeight: FontWeight.w600)),
                           Text('Poli Penyakit Dalam - dr. Afieta Putri, Sp.PD', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575))),
                         ],
                       ),
@@ -880,8 +1098,8 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: const Color(0xFFFAF1F1), borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.medication_rounded, color: Color(0xFFBA171E), size: 24),
+                      decoration: BoxDecoration(color: const Color(0xFFFCE4EC), borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.medication_rounded, color: Color(0xFFD81B60), size: 24),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -897,29 +1115,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showFeatureDialog(String title, String desc) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: Text(
-          title,
-          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF8F0D12)),
-        ),
-        content: Text(
-          desc,
-          style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF424242)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Tutup', style: GoogleFonts.poppins(color: const Color(0xFFBA171E), fontWeight: FontWeight.w600)),
           ),
         ],
       ),

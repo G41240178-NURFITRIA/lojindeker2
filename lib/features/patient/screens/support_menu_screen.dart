@@ -10,7 +10,7 @@ class SupportMenuScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFB81018),
+        backgroundColor: const Color(0xFFF06292),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
@@ -443,12 +443,12 @@ class SupportMenuScreen extends StatelessWidget {
                 child: Switch(
                   value: isActive,
                   onChanged: (val) {},
-                  activeColor: Colors.white,
-                  activeTrackColor: const Color(0xFF8F0D12),
-                  inactiveThumbColor: const Color(0xFF8F0D12),
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: const Color(0xFFF06292),
+                  inactiveThumbColor: const Color(0xFFD81B60),
                   inactiveTrackColor: Colors.transparent,
                   trackOutlineColor: WidgetStateProperty.resolveWith(
-                    (states) => const Color(0xFF8F0D12),
+                    (states) => const Color(0xFFF8BBD0),
                   ),
                 ),
               ),

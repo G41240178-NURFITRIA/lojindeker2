@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/device_preview_wrapper.dart';
-import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/landing_screen.dart';
 
 void main() {

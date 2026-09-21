@@ -50,7 +50,7 @@ class _LandingScreenState extends State<LandingScreen>
     _FeatureItem(
       icon: Icons.folder_shared_rounded,
       color: const Color(0xFF69FF97),
-      title: 'Rekam Medis',
+      title: 'Riwayat',
       description:
           'Akses riwayat pemeriksaan dan data medismu secara lengkap dan aman.',
     ),

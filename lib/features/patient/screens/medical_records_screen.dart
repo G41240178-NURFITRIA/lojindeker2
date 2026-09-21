@@ -17,7 +17,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
   int _selectedFilterIndex = 0;
   final List<String> _filters = ['Semua', 'Hasil Lab', 'Resep Obat', 'Catatan Dokter'];
 
-  // Data Rekam Medis Interaktif
+  // Data Riwayat Interaktif
   late List<_MedicalRecordItem> _records;
 
   @override
@@ -264,7 +264,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Data pemeriksaan berhasil ditambahkan ke Rekam Medis!',
+                              'Data pemeriksaan berhasil ditambahkan ke Riwayat!',
                               style: GoogleFonts.poppins(),
                             ),
                             backgroundColor: const Color(0xFF2E7D32),
@@ -274,11 +274,11 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFBA171E),
+                        backgroundColor: const Color(0xFFF06292),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                       child: Text(
-                        'Simpan ke Rekam Medis',
+                        'Simpan ke Riwayat',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -362,13 +362,13 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Resume Rekam Medis berhasil diunduh (Resume_Medis_${widget.patientName.replaceAll(' ', '_')}.pdf)',
+                            'Resume Riwayat berhasil diunduh (Resume_Riwayat_${widget.patientName.replaceAll(' ', '_')}.pdf)',
                             style: GoogleFonts.poppins(fontSize: 12),
                           ),
                         ),
                       ],
                     ),
-                    backgroundColor: const Color(0xFF8F0D12),
+                    backgroundColor: const Color(0xFFD81B60),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
@@ -377,7 +377,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
               icon: const Icon(Icons.download_rounded, color: Colors.white, size: 18),
               label: Text('Unduh PDF', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFBA171E),
+                backgroundColor: const Color(0xFFF06292),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -390,7 +390,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF1F1),
+      backgroundColor: const Color(0xFFFFF0F5),
       body: Stack(
         children: [
           // Background decorative circle at top right
@@ -402,7 +402,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
               height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFEED5D7).withValues(alpha: 0.8),
+                color: const Color(0xFFF8BBD0).withValues(alpha: 0.5),
               ),
             ),
           ),
@@ -444,7 +444,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFBA171E).withValues(alpha: 0.1),
+                                color: const Color(0xFFD81B60).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -452,7 +452,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFFBA171E),
+                                  color: const Color(0xFFD81B60),
                                 ),
                               ),
                             ),
@@ -502,7 +502,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFBA171E),
+                  backgroundColor: const Color(0xFFF06292),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 2,
@@ -550,7 +550,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
 
           // Title
           Text(
-            'Rekam Medis Pasien',
+            'Riwayat Pasien',
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -568,7 +568,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFEADBDB), width: 1),
+                border: Border.all(color: const Color(0xFFF8BBD0), width: 1),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -580,7 +580,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
               child: const Icon(
                 Icons.download_rounded,
                 size: 20,
-                color: Color(0xFF8F0D12),
+                color: Color(0xFFD81B60),
               ),
             ),
           ),
@@ -598,14 +598,14 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF8F0D12),
-            Color(0xFFBA171E),
+            Color(0xFFFF8DA1),
+            Color(0xFFF06292),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8F0D12).withValues(alpha: 0.35),
+            color: const Color(0xFFF06292).withValues(alpha: 0.35),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -726,16 +726,16 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFBA171E) : Colors.white,
+                  color: isSelected ? const Color(0xFFD81B60) : Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isSelected ? const Color(0xFFBA171E) : const Color(0xFFE0D0D0),
+                    color: isSelected ? const Color(0xFFD81B60) : const Color(0xFFF8BBD0),
                     width: 1,
                   ),
                   boxShadow: [
                     if (isSelected)
                       BoxShadow(
-                        color: const Color(0xFFBA171E).withValues(alpha: 0.25),
+                        color: const Color(0xFFD81B60).withValues(alpha: 0.25),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       )
@@ -871,7 +871,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
             ),
           ),
 
-          // Detail Isi Rekam Medis (Jika di-expand)
+          // Detail Isi Riwayat (Jika di-expand)
           if (item.isExpanded) ...[
             const Divider(height: 1, color: Color(0xFFF0F0F0)),
             Padding(

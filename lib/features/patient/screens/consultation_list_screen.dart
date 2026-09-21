@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'live_chat_screen.dart';
 
 class DoctorModel {
   final String id;
@@ -63,36 +64,24 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   void _onChatPressed(DoctorModel doctor) {
     if (!doctor.isOnline) return;
 
-    // Routing prepared to chat_detail_screen.dart as requested
-    try {
-      Navigator.pushNamed(
-        context,
-        '/chat_detail',
-        arguments: {
-          'doctorId': doctor.id,
-          'doctorName': doctor.name,
-          'specialty': doctor.specialty,
-          'initials': doctor.initials,
-          'isOnline': doctor.isOnline,
-        },
-      );
-    } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Membuka sesi konsultasi dengan ${doctor.name}...'),
-          backgroundColor: const Color(0xFFBA171E),
-          duration: const Duration(seconds: 2),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiveChatScreen(
+          doctorName: doctor.name,
+          specialty: doctor.specialty,
+          initials: doctor.initials,
         ),
-      );
-    }
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF1F1),
+      backgroundColor: const Color(0xFFFFF0F5),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFBA171E),
+        backgroundColor: const Color(0xFFF06292),
         elevation: 0,
         centerTitle: false,
         leading: IconButton(
@@ -158,7 +147,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                 width: 58,
                 height: 58,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFFDECEE),
+                  color: Color(0xFFFCE4EC),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -167,7 +156,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF8B2326),
+                      color: const Color(0xFFD81B60),
                     ),
                   ),
                 ),
@@ -339,7 +328,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: doctor.isOnline
-                      ? const Color(0xFFD6C8C8)
+                      ? const Color(0xFFF8BBD0)
                       : const Color(0xFFEBEBEB),
                   width: 1.2,
                 ),
@@ -378,7 +367,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 64,
-      color: const Color(0xFFF6ECEB),
+      color: const Color(0xFFFFF0F5),
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -419,7 +408,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   }) {
     final isSelected = _selectedBottomNavIndex == index;
     final color =
-        isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
+        isSelected ? const Color(0xFFD81B60) : const Color(0xFFF48FB1);
 
     return InkWell(
       onTap: onTap,

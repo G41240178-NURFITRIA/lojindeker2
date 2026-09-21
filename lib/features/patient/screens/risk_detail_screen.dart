@@ -461,7 +461,7 @@ class RiskDetailScreen extends StatelessWidget {
           ),
           _buildNavItem(
             icon: Icons.calendar_month_outlined,
-            isSelected: true, // Tab Rekam Medis / Riwayat aktif
+            isSelected: true, // Tab Riwayat aktif
             onTap: () {},
           ),
         ],
