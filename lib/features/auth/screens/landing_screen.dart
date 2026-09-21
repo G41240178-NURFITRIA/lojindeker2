@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../widgets/app_logo_badge.dart';
 import '../widgets/stethoscope_watermark.dart';
@@ -30,22 +31,19 @@ class _LandingScreenState extends State<LandingScreen>
       icon: Icons.monitor_heart_rounded,
       color: const Color(0xFF45D1FA),
       title: 'Cek Risiko Diabetes',
-      description:
-          'Deteksi dini risiko diabetes dengan analisis berbasis AI yang akurat dan terpercaya.',
+      description: 'Deteksi dini risiko diabetes dengan analisis berbasis AI yang akurat dan terpercaya.',
     ),
     _FeatureItem(
       icon: Icons.chat_bubble_outline_rounded,
       color: const Color(0xFFFFA39E),
       title: 'Konsultasi',
-      description:
-          'Konsultasikan kondisi kesehatanmu langsung dengan tenaga medis kapan saja.',
+      description: 'Konsultasikan kondisi kesehatanmu langsung dengan tenaga medis kapan saja.',
     ),
     _FeatureItem(
       icon: Icons.calendar_month_rounded,
-      color: const Color(0xFFFFD700),
+      color: const Color.fromARGB(255, 49, 8, 230),
       title: 'Kalender Kesehatan',
-      description:
-          'Pantau jadwal kontrol, konsumsi obat, dan riwayat kesehatanmu dalam satu kalender.',
+      description: 'Pantau jadwal kontrol, konsumsi obat, dan riwayat kesehatanmu dalam satu kalender.',
     ),
     _FeatureItem(
       icon: Icons.folder_shared_rounded,
@@ -58,8 +56,7 @@ class _LandingScreenState extends State<LandingScreen>
       icon: Icons.medical_services_rounded,
       color: const Color(0xFFD965FF),
       title: 'Menu Penunjang',
-      description:
-          'Layanan terintegrasi apotek online, lab rekanan, dan panduan medis untuk diabetesi.',
+      description: 'Layanan terintegrasi apotek online, lab rekanan, dan panduan medis untuk diabetesi.',
     ),
   ];
 
@@ -324,13 +321,17 @@ class _LandingScreenState extends State<LandingScreen>
                                       child: Container(
                                         height: 27,
                                         decoration: BoxDecoration(
-                                          borderRadius: const BorderRadius.vertical(
-                                              top: Radius.circular(30)),
+                                          borderRadius:
+                                              const BorderRadius.vertical(
+                                                top: Radius.circular(30),
+                                              ),
                                           gradient: LinearGradient(
                                             begin: Alignment.topCenter,
                                             end: Alignment.bottomCenter,
                                             colors: [
-                                              Colors.white.withValues(alpha: 0.35),
+                                              Colors.white.withValues(
+                                                alpha: 0.35,
+                                              ),
                                               Colors.transparent,
                                             ],
                                           ),
@@ -356,8 +357,6 @@ class _LandingScreenState extends State<LandingScreen>
                                 ),
                               ),
                             ),
-
-
                           ],
                         ),
                       ),
@@ -394,8 +393,10 @@ class _LandingScreenState extends State<LandingScreen>
               decoration: BoxDecoration(
                 color: item.color.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(16),
-                border:
-                    Border.all(color: item.color.withValues(alpha: 0.4), width: 1),
+                border: Border.all(
+                  color: item.color.withValues(alpha: 0.4),
+                  width: 1,
+                ),
               ),
               child: Icon(item.icon, color: item.color, size: 30),
             ),
