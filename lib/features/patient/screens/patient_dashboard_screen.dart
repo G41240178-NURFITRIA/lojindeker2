@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+<<<<<<< HEAD
+import 'riwayat_risiko_screen.dart';
+import 'medical_records_screen.dart';
+import 'ai_risk_history_screen.dart';
+=======
 import 'consultation_list_screen.dart';
+import 'glucose_history_screen.dart';
 import 'medical_records_screen.dart';
 import 'ai_risk_history_screen.dart';
 import 'support_menu_screen.dart';
+>>>>>>> e1d5e79ab8edc5b752e7fa5d392ce82537a8cdbc
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
@@ -218,10 +225,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
                   title: 'Cek Risiko',
-                  onTap: () => _showFeatureDialog(
-                    'Cek Risiko Diabetes',
-                    'Fitur skrining dan kalkulator risiko diabetes melitus untuk mendeteksi dini komplikasi dan memantau gaya hidup sehat.',
-                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RiwayatRisikoScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 10),
@@ -269,6 +280,12 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 28),
                   title: 'Menu\nPenunjang',
+<<<<<<< HEAD
+                  onTap: () => _showFeatureDialog(
+                    'Menu Penunjang',
+                    'Layanan terintegrasi apotek online, tes laboratorium rekanan, dan ambulans siaga 24 jam.',
+                  ),
+=======
                   onTap: () {
                     Navigator.push(
                       context,
@@ -277,6 +294,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       ),
                     );
                   },
+>>>>>>> e1d5e79ab8edc5b752e7fa5d392ce82537a8cdbc
                 ),
               ),
             ],
@@ -370,11 +388,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             icon: Icons.trending_up_rounded,
             iconColor: const Color(0xFFD32F2F),
             label: 'Highest Glucose',
-<<<<<<< HEAD
-            value: 'AFIETA',
-=======
             value: '165',
->>>>>>> 34c68eb7c602b00ce37c6fbbb2e3425bcfce2210
             valueColor: const Color(0xFFD32F2F),
             onTap: () {
               Navigator.push(
@@ -570,21 +584,21 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
     return InkWell(
 <<<<<<< HEAD
+      onTap: () => setState(() => _selectedTabIndex = index),
+=======
       onTap: () {
         if (index == 1) {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const ConsultationScreen(),
+              builder: (_) => const ConsultationListScreen(),
             ),
           );
         } else {
           setState(() => _selectedTabIndex = index);
         }
       },
-=======
-      onTap: () => setState(() => _selectedTabIndex = index),
->>>>>>> 34c68eb7c602b00ce37c6fbbb2e3425bcfce2210
+>>>>>>> e1d5e79ab8edc5b752e7fa5d392ce82537a8cdbc
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
@@ -593,8 +607,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           size: 26,
           color: color,
         ),
-<<<<<<< HEAD
-=======
       ),
     );
   }
@@ -910,7 +922,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             child: Text('Tutup', style: GoogleFonts.poppins(color: const Color(0xFFBA171E), fontWeight: FontWeight.w600)),
           ),
         ],
->>>>>>> 34c68eb7c602b00ce37c6fbbb2e3425bcfce2210
       ),
     );
   }

@@ -13,12 +13,26 @@ class DetailResepScreen extends StatefulWidget {
 
   const DetailResepScreen({
     super.key,
-    required this.date,
-    required this.status,
-    required this.doctorName,
+    this.date = '18 Mei 2024',
+    this.status = 'Aktif',
+    this.doctorName = 'dr. Andini Putri',
     this.doctorSpecialty = 'Sp. Penyakit Dalam',
-    required this.medicines,
-    required this.doctorNotes,
+    this.medicines = const [
+      MedicineModel(
+        name: 'Metformin',
+        dosage: '500 mg',
+        instruction: '2x sehari sesudah makan',
+        quantity: '30 tablet',
+      ),
+      MedicineModel(
+        name: 'Glimepiride',
+        dosage: '1 mg',
+        instruction: '1x sehari sebelum makan pagi',
+        quantity: '30 tablet',
+      ),
+    ],
+    this.doctorNotes =
+        'Kontrol gula darah rutin, kurangi konsumsi gula dan karbohidrat sederhana. Kontrol ulang 2 minggu lagi.',
     this.isReminderActive = true,
   });
 
@@ -431,37 +445,39 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     );
   }
 
-  /// Custom supplement bottle icon matching screenshot 2 (Vitamin D3)
+  /// Custom supplement bottle icon matching screenshot (Vitamin D3)
   Widget _buildCustomBottleIcon() {
-    return Container(
+    return SizedBox(
       width: 18,
       height: 24,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: const Color(0xFFBA171E),
-          width: 1.5,
-        ),
-      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Cap
           Container(
-            height: 4,
-            decoration: const BoxDecoration(
-              color: Color(0xFFBA171E),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(2),
-              ),
+            width: 8,
+            height: 3,
+            decoration: BoxDecoration(
+              color: const Color(0xFFBA171E),
+              borderRadius: BorderRadius.circular(1),
             ),
           ),
-          Expanded(
+          const SizedBox(height: 1),
+          // Bottle Body
+          Container(
+            width: 16,
+            height: 19,
+            decoration: BoxDecoration(
+              color: const Color(0xFFBA171E),
+              borderRadius: BorderRadius.circular(4),
+            ),
             child: Center(
               child: Container(
                 width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFBA171E),
-                  shape: BoxShape.circle,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
             ),
@@ -486,6 +502,7 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
       ),
       child: Text(
         widget.doctorNotes,
+        textAlign: TextAlign.center,
         style: GoogleFonts.poppins(
           fontSize: 12,
           height: 1.45,
