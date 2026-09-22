@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'live_chat_screen.dart';
 
-// Data Model diperbarui agar mendukung tampilan foto ke-1
+// Data Model Dokter
 class DoctorModel {
   final String id;
   final String name;
@@ -37,9 +38,8 @@ class ConsultationListScreen extends StatefulWidget {
 }
 
 class _ConsultationListScreenState extends State<ConsultationListScreen> {
-  final int _selectedBottomNavIndex = 1;
-
-  // Warna sesuai sampel UI Foto ke-1 & ke-2
+  // Warna sesuai tema Soft Pink (Cek Risiko) & Desain Kartu
+  static const Color _primaryPink = Color(0xFFF06292); // Soft pink utama (sama dengan Cek Risiko)
   static const Color _bgScreen = Color(0xFFF7EEEC);
   static const Color _avatarBg = Color(0xFFFCEAEA);
   static const Color _avatarText = Color(0xFF9E4044);
@@ -49,30 +49,30 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   static const Color _navIconActive = Color(0xFFE56A6F);
   static const Color _navIconInactive = Color(0xFFEFB3B5);
 
-  // Data Dokter dari Foto ke-2 yang disesuaikan ke UI Foto ke-1
+  // Data Dokter sesuai foto kanan (Dr. Kaka & Dr. Ika)
   final List<DoctorModel> _doctors = const [
     DoctorModel(
       id: '1',
-      name: 'dr. Afieta Putri, Sp.PD',
-      initials: 'AP',
-      specialty: 'Spesialis Penyakit Dalam & Endokrin',
+      name: 'Dr. Kaka',
+      initials: 'DK',
+      specialty: 'Spesialis Penyakit Dalam',
       hospital: 'RS D-Care Sejahtera',
       rating: 4.9,
       reviewCount: 120,
-      availabilityLabel: 'Tersedia Hari Ini',
+      availabilityLabel: 'Tersedia hari ini',
       availabilityTime: '14:00 - 17:00',
       isOnline: true,
     ),
     DoctorModel(
       id: '2',
-      name: 'dr. Hendra Wijaya, Sp.PD',
-      initials: 'HW',
+      name: 'Dr. Ika',
+      initials: 'DI',
       specialty: 'Spesialis Penyakit Dalam',
       hospital: 'RS D-Care Sejahtera',
-      rating: 4.8,
-      reviewCount: 95,
-      availabilityLabel: 'Praktik Hari Ini',
-      availabilityTime: '09:00 - 14:00',
+      rating: 4.9,
+      reviewCount: 120,
+      availabilityLabel: 'Tersedia besok',
+      availabilityTime: '9:00 - 14:00',
       isOnline: false,
     ),
   ];
@@ -81,22 +81,21 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bgScreen,
-      // AppBar diubah mengikuti Foto Ke-1
+      // AppBar disamakan dengan Cek Risiko: Background Soft Pink (#F06292) dengan panah kembali & teks putih
       appBar: AppBar(
-        backgroundColor: _bgScreen,
+        backgroundColor: _primaryPink,
         elevation: 0,
         scrolledUnderElevation: 0,
-        leadingWidth: 40,
-        titleSpacing: 0,
         systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
+          statusBarColor: _primaryPink,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
         ),
         leading: IconButton(
           icon: const Icon(
-            Icons.chevron_left_rounded,
-            color: Color(0xFF1E1E1E),
-            size: 32,
+            Icons.arrow_back_ios_new_rounded,
+            size: 19,
+            color: Colors.white,
           ),
           onPressed: () {
             if (Navigator.of(context).canPop()) {
@@ -107,14 +106,15 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
         title: Text(
           'Konsultasi',
           style: GoogleFonts.poppins(
-            fontSize: 18,
+            fontSize: 17,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF232323),
+            color: Colors.white,
           ),
         ),
+        centerTitle: false,
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         physics: const BouncingScrollPhysics(),
         itemCount: _doctors.length,
         itemBuilder: (context, index) {
@@ -310,9 +310,22 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
 
           const SizedBox(height: 14),
 
-          // 3. Tombol Chat di Bagian Bawah Kartu (Foto 1)
+          // 3. Tombol Chat di Bagian Bawah Kartu
           InkWell(
-            onTap: doctor.isOnline ? () {} : null,
+            onTap: doctor.isOnline
+                ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LiveChatScreen(
+                          doctorName: doctor.name,
+                          specialty: doctor.specialty,
+                          initials: doctor.initials,
+                        ),
+                      ),
+                    );
+                  }
+                : null,
             borderRadius: BorderRadius.circular(16),
             child: Container(
               width: double.infinity,
@@ -344,8 +357,8 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       fontSize: 13.5,
                       fontWeight: FontWeight.w600,
                       color: doctor.isOnline
-                          ? const Color(0xFF333333)
-                          : const Color(0xFFCCCCCC),
+                        ? const Color(0xFF333333)
+                        : const Color(0xFFCCCCCC),
                     ),
                   ),
                 ],
@@ -365,17 +378,32 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Icon(Icons.home_outlined, size: 28, color: _navIconInactive),
-          Icon(
-            Icons.chat_bubble_outline_rounded,
-            size: 26,
-            color: _navIconActive,
-          ),
-          Icon(Icons.person_outline_rounded, size: 28, color: _navIconInactive),
-          Icon(
-            Icons.calendar_month_outlined,
-            size: 26,
+          IconButton(
+            icon: const Icon(Icons.home_outlined, size: 28),
             color: _navIconInactive,
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.chat_bubble_outline_rounded,
+              size: 26,
+            ),
+            color: _navIconActive,
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_outline_rounded, size: 28),
+            color: _navIconInactive,
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.calendar_month_outlined, size: 26),
+            color: _navIconInactive,
+            onPressed: () {},
           ),
         ],
       ),

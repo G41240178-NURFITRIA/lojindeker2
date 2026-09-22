@@ -455,7 +455,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: _buildServiceCard(
                   icon: const _DoctorOutlineIcon(color: Colors.white, size: 28),
                   title: 'Konsultasi',
-                  onTap: () => setState(() => _selectedTabIndex = 1),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ConsultationListScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 10),
@@ -848,19 +855,19 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 16),
           _buildDoctorCard(
-            name: 'dr. Afieta Putri, Sp.PD',
-            speciality: 'Spesialis Penyakit Dalam & Endokrin',
+            name: 'Dr. Kaka',
+            speciality: 'Spesialis Penyakit Dalam',
             hospital: 'RS D-Care Sejahtera',
             status: 'Online',
             statusColor: const Color(0xFF2E7D32),
           ),
           const SizedBox(height: 12),
           _buildDoctorCard(
-            name: 'dr. Hendra Wijaya, Sp.PD',
+            name: 'Dr. Ika',
             speciality: 'Spesialis Penyakit Dalam',
             hospital: 'RS D-Care Sejahtera',
-            status: 'Praktik Hari Ini',
-            statusColor: const Color(0xFF1976D2),
+            status: 'Offline',
+            statusColor: const Color(0xFF757575),
           ),
         ],
       ),
