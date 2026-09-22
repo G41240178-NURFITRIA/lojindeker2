@@ -6,6 +6,8 @@ import 'glucose_history_screen.dart';
 import 'medical_records_screen.dart';
 import 'support_menu_screen.dart';
 import 'live_chat_screen.dart';
+import 'patient_profile_screen.dart';
+import 'account_settings_screen.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
@@ -21,6 +23,13 @@ class PatientDashboardScreen extends StatefulWidget {
 
 class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   int _selectedTabIndex = 0;
+  late String _currentPatientName;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPatientName = widget.patientName;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,25 +37,26 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       backgroundColor: const Color(0xFFFFF0F5), // Soft blush pink background
       body: Stack(
         children: [
-          // Decorative soft curved organic shape at top right
-          Positioned(
-            top: -70,
-            right: -70,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFF8BBD0).withValues(alpha: 0.5),
+          // Decorative soft curved organic shape at top right (only on dashboard home)
+          if (_selectedTabIndex == 0)
+            Positioned(
+              top: -70,
+              right: -70,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFF8BBD0).withValues(alpha: 0.5),
+                ),
               ),
             ),
-          ),
 
           SafeArea(
             child: Column(
               children: [
-                // Top Header (Static view, tidak bisa ditekan)
-                _buildHeader(),
+                // Top Header hanya tampil di tab Home utama (Dashboard)
+                if (_selectedTabIndex == 0) _buildHeader(),
 
                 // Scrollable Content
                 Expanded(
@@ -70,126 +80,147 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left: 3 circular action icons (Tampilan saja)
+          // Left: 3 circular action icons
           Row(
             children: [
               _buildCircleIcon(Icons.notifications_none_rounded),
               const SizedBox(width: 8),
-              _buildCircleIcon(Icons.settings_outlined),
+              _buildCircleIcon(
+                Icons.settings_outlined,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AccountSettingsScreen(),
+                    ),
+                  );
+                },
+              ),
               const SizedBox(width: 8),
               _buildCircleIcon(Icons.search_rounded),
             ],
           ),
 
-          // Right: "Hi, WelcomeBack", Patient Name, and Avatar (Tampilan saja)
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
+          // Right: "Halo, Selamat Pagi", Patient Name, and Avatar (Bisa ditekan untuk membuka Profil)
+          InkWell(
+            onTap: () => setState(() => _selectedTabIndex = 2),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              child: Row(
                 children: [
-                  Text(
-                    'Halo, Selamat Pagi ✨',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFD81B60),
-                    ),
-                  ),
-                  Text(
-                    widget.patientName,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF141414),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Halo, Selamat Pagi ✨',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFD81B60),
                         ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/doctor_avatar.jpg',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: const Color(0xFFF06292),
-                            child: const Icon(Icons.person, color: Colors.white, size: 24),
-                          );
-                        },
                       ),
-                    ),
+                      Text(
+                        _currentPatientName,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF141414),
+                        ),
+                      ),
+                    ],
                   ),
-                  Positioned(
-                    bottom: -2,
-                    right: -2,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 3,
+                  const SizedBox(width: 8),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/doctor_avatar.jpg',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: const Color(0xFFF06292),
+                                child: const Icon(Icons.person, color: Colors.white, size: 24),
+                              );
+                            },
                           ),
-                        ],
+                        ),
                       ),
-                      padding: const EdgeInsets.all(2),
-                      child: const Icon(
-                        Icons.medical_services_rounded,
-                        size: 9,
-                        color: Color(0xFFF06292),
+                      Positioned(
+                        bottom: -2,
+                        right: -2,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 3,
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(2),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            size: 9,
+                            color: Color(0xFFF06292),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCircleIcon(IconData icon) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFF8BBD0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 1.5),
-          ),
-        ],
-      ),
-      child: Icon(
-        icon,
-        size: 18,
-        color: const Color(0xFF333333),
+  Widget _buildCircleIcon(IconData icon, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFF8BBD0), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 1.5),
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: const Color(0xFF333333),
+        ),
       ),
     );
   }
@@ -314,7 +345,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Halo ${widget.patientName}! 🌸 Kondisi gula darahmu terpantau stabil. Tetap jaga pola makan, minum cukup air, dan jangan ragu berkonsultasi jika ada keluhan.',
+                    'Halo $_currentPatientName! 🌸 Kondisi gula darahmu terpantau stabil. Tetap jaga pola makan, minum cukup air, dan jangan ragu berkonsultasi jika ada keluhan.',
                     style: GoogleFonts.poppins(
                       fontSize: 11.5,
                       color: const Color(0xFF333333),
@@ -957,96 +988,10 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   }
 
   Widget _buildProfileTab() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Profil Pasien',
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF141414)),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: 65,
-                  height: 65,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFBA171E),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.person, color: Colors.white, size: 36),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.patientName,
-                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF141414)),
-                ),
-                Text(
-                  'No. RM: RM-2026-0812',
-                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575)),
-                ),
-                const SizedBox(height: 16),
-                const Divider(height: 1),
-                const SizedBox(height: 14),
-                _buildProfileRow('Jenis Kelamin', 'Laki-laki'),
-                _buildProfileRow('Usia', '28 Tahun'),
-                _buildProfileRow('Golongan Darah', 'O+'),
-                _buildProfileRow('Diagnosis', 'Diabetes Melitus Tipe 2'),
-                _buildProfileRow('Fasilitas Kesehatan', 'RS D-Care Sejahtera'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => MedicalRecordsScreen(patientName: widget.patientName),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.history_edu_rounded, color: Color(0xFFD81B60)),
-              label: Text(
-                'Buka Riwayat Lengkap',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFFD81B60)),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                side: const BorderSide(color: Color(0xFFD81B60)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF666666))),
-          Text(value, style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600, color: const Color(0xFF141414))),
-        ],
-      ),
+    return PatientProfileScreen(
+      patientName: _currentPatientName,
+      onBackToHome: () => setState(() => _selectedTabIndex = 0),
+      isTab: true,
     );
   }
 
