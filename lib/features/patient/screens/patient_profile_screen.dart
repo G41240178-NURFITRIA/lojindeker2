@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import 'edit_profile_screen.dart';
 import 'account_settings_screen.dart';
 import 'consultation_list_screen.dart';
@@ -85,7 +86,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                         onPressed: () => Navigator.pop(ctx),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: const BorderSide(color: Color(0xFFE0E0E0), width: 1.2),
+                          side: const BorderSide(
+                            color: Color(0xFFE0E0E0),
+                            width: 1.2,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
@@ -106,7 +110,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                         onPressed: () {
                           Navigator.pop(ctx);
                           Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const LandingScreen()),
+                            MaterialPageRoute(
+                              builder: (_) => const LandingScreen(),
+                            ),
                             (route) => false,
                           );
                         },
@@ -165,19 +171,57 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
               const SizedBox(height: 12),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.support_agent_rounded, color: _primaryPink, size: 28),
-                title: Text('Customer Care D-Care', style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600)),
-                subtitle: Text('Hubungi tim layanan 24/7 melalui WhatsApp atau Call Center', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF666666))),
-                trailing: const Icon(Icons.chevron_right_rounded, color: _darkRose),
+                leading: const Icon(
+                  Icons.support_agent_rounded,
+                  color: _primaryPink,
+                  size: 28,
+                ),
+                title: Text(
+                  'Customer Care D-Care',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  'Hubungi tim layanan 24/7 melalui WhatsApp atau Call Center',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF666666),
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: _darkRose,
+                ),
                 onTap: () => Navigator.pop(ctx),
               ),
               const Divider(),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.menu_book_rounded, color: _primaryPink, size: 28),
-                title: Text('Panduan & FAQ Aplikasi', style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600)),
-                subtitle: Text('Pelajari cara menggunakan fitur monitoring, konsultasi, dan cek risiko', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF666666))),
-                trailing: const Icon(Icons.chevron_right_rounded, color: _darkRose),
+                leading: const Icon(
+                  Icons.menu_book_rounded,
+                  color: _primaryPink,
+                  size: 28,
+                ),
+                title: Text(
+                  'Panduan & FAQ Aplikasi',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  'Pelajari cara menggunakan fitur monitoring, konsultasi, dan cek risiko',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF666666),
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: _darkRose,
+                ),
                 onTap: () => Navigator.pop(ctx),
               ),
             ],
@@ -251,7 +295,11 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
                           color: _primaryPink,
-                          child: const Icon(Icons.person, color: Colors.white, size: 52),
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 52,
+                          ),
                         );
                       },
                     ),
@@ -355,10 +403,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
 
     if (widget.isTab) {
-      return Container(
-        color: _bgScreen,
-        child: content,
-      );
+      return Container(color: _bgScreen, child: content);
     }
 
     return Scaffold(
@@ -383,7 +428,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _cardBorder.withValues(alpha: 0.7), width: 1),
+            border: Border.all(
+              color: _cardBorder.withValues(alpha: 0.7),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
                 color: _primaryPink.withValues(alpha: 0.05),
@@ -450,7 +498,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const ConsultationListScreen(),
+                ),
               );
             },
           ),

@@ -1,44 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'when_to_see_doctor_screen.dart';
-<<<<<<< HEAD
 import 'article_detail_screen.dart';
 import 'consultation_list_screen.dart';
 import 'medical_records_screen.dart';
 import 'riwayat_resep_screen.dart';
 
 class MedicationReminder {
-=======
-import 'consultation_list_screen.dart';
-
-class ReminderItem {
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
   final String id;
   String medicineName;
   String dosage;
   String schedule;
   String time;
   bool isActive;
-<<<<<<< HEAD
   bool isTakenToday;
   IconData iconData;
 
   MedicationReminder({
-=======
-  IconData iconData;
-
-  ReminderItem({
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
     required this.id,
     required this.medicineName,
     required this.dosage,
     required this.schedule,
     required this.time,
     this.isActive = true,
-<<<<<<< HEAD
     this.isTakenToday = false,
-=======
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
     this.iconData = Icons.medication_rounded,
   });
 }
@@ -51,7 +36,10 @@ class SupportMenuScreen extends StatefulWidget {
 }
 
 class _SupportMenuScreenState extends State<SupportMenuScreen> {
-<<<<<<< HEAD
+  static const Color _primaryPink = Color(0xFFF06292);
+  static const Color _darkRose = Color(0xFFD81B60);
+  static const Color _maroon = Color(0xFFB81018);
+
   // Daftar pengingat interaktif
   late List<MedicationReminder> _reminders;
 
@@ -89,71 +77,10 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
     ];
   }
 
-  // Buka Modal Tambah Pengingat
-  void _showAddReminderSheet() {
-    final nameController = TextEditingController();
-    String selectedDosage = '1 tablet - Setelah makan';
-    String selectedSchedule = 'Setiap 12 jam';
-    TimeOfDay selectedTime = const TimeOfDay(hour: 8, minute: 0);
-
-    final dosageOptions = [
-      '1 tablet - Setelah makan',
-      '1 tablet - Sebelum makan',
-      '1 tablet - Bersama makanan',
-      '2 tablet - Setelah makan',
-      '1 sendok takar (5ml)',
-      '10 Unit - Sebelum tidur (Insulin)',
-    ];
-
-    final scheduleOptions = [
-      'Setiap 8 jam (3x sehari)',
-      'Setiap 12 jam (2x sehari)',
-      'Setiap 24 jam (1x sehari)',
-      'Sesuai kebutuhan (PRN)',
-    ];
-
-    final presetChips = ['Metformin 500mg', 'Glimepiride 2mg', 'Acarbose 50mg', 'Insulin Lantus'];
-=======
-  static const Color _primaryPink = Color(0xFFF06292);
-  static const Color _darkRose = Color(0xFFD81B60);
-  static const Color _maroon = Color(0xFFB81018);
-  static const Color _darkMaroon = Color(0xFF8F0D12);
-
-  // Daftar pengingat minum obat
-  final List<ReminderItem> _reminders = [
-    ReminderItem(
-      id: '1',
-      medicineName: 'Metformin 500 Mg',
-      dosage: '1 tablet - Setelah makan',
-      schedule: 'Setiap 12 jam',
-      time: '08:00',
-      isActive: true,
-      iconData: Icons.medication_rounded,
-    ),
-    ReminderItem(
-      id: '2',
-      medicineName: 'Glimepiride 2mg',
-      dosage: '1 tablet - Sebelum makan',
-      schedule: 'Setiap 24 jam',
-      time: '20:00',
-      isActive: false,
-      iconData: Icons.medication_liquid_rounded,
-    ),
-    ReminderItem(
-      id: '3',
-      medicineName: 'Glimepiride 2mg',
-      dosage: '1 tablet - Sebelum makan',
-      schedule: 'Setiap 24 jam',
-      time: '08:00',
-      isActive: true,
-      iconData: Icons.medication_liquid_rounded,
-    ),
-  ];
-
   /// Toggle aktif/nonaktifkan notifikasi pengingat
-  void _toggleReminder(ReminderItem item, bool value) {
+  void _toggleReminder(MedicationReminder rem, bool value) {
     setState(() {
-      item.isActive = value;
+      rem.isActive = value;
     });
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -170,8 +97,8 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
             Expanded(
               child: Text(
                 value
-                    ? 'Notifikasi aktif: ${item.medicineName} pukul ${item.time}'
-                    : 'Notifikasi dimatikan untuk ${item.medicineName}',
+                    ? 'Pengingat "${rem.medicineName}" diaktifkan (Pukul ${rem.time}).'
+                    : 'Pengingat "${rem.medicineName}" dinonaktifkan.',
                 style: GoogleFonts.poppins(fontSize: 12, color: Colors.white),
               ),
             ),
@@ -186,7 +113,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
   }
 
   /// Simulasi notifikasi pengingat berbunyi
-  void _triggerSimulatedAlarm(ReminderItem item) {
+  void _triggerSimulatedAlarm(MedicationReminder item) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -293,6 +220,9 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
           ),
           ElevatedButton(
             onPressed: () {
+              setState(() {
+                item.isTakenToday = true;
+              });
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -320,19 +250,35 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
     );
   }
 
-  /// Bottom sheet untuk menambah pengingat baru
-  void _showAddReminderBottomSheet() {
+  // Buka Modal Tambah Pengingat
+  void _showAddReminderSheet() {
     final nameController = TextEditingController();
-    final dosageController = TextEditingController(text: '1 tablet - Setelah makan');
-    final timeController = TextEditingController(text: '07:00');
-    String selectedSchedule = 'Setiap 12 jam';
+    String selectedDosage = '1 tablet - Setelah makan';
+    String selectedSchedule = 'Setiap 12 jam (2x sehari)';
+    TimeOfDay selectedTime = const TimeOfDay(hour: 8, minute: 0);
     IconData selectedIcon = Icons.medication_rounded;
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
+
+    final dosageOptions = [
+      '1 tablet - Setelah makan',
+      '1 tablet - Sebelum makan',
+      '1 tablet - Bersama makanan',
+      '2 tablet - Setelah makan',
+      '1 sendok takar (5ml)',
+      '10 Unit - Sebelum tidur (Insulin)',
+    ];
+
+    final scheduleOptions = [
+      'Setiap 8 jam (3x sehari)',
+      'Setiap 12 jam (2x sehari)',
+      'Setiap 24 jam (1x sehari)',
+      'Sesuai kebutuhan (PRN)',
+    ];
+
+    final presetChips = ['Metformin 500mg', 'Glimepiride 2mg', 'Acarbose 50mg', 'Insulin Lantus'];
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-<<<<<<< HEAD
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return StatefulBuilder(
@@ -350,21 +296,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-=======
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 22,
-                right: 22,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -382,7 +313,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-<<<<<<< HEAD
                     Row(
                       children: [
                         Container(
@@ -432,6 +362,12 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                               onPressed: () {
                                 setModalState(() {
                                   nameController.text = chip;
+                                  if (chip.toLowerCase().contains('insulin')) {
+                                    selectedIcon = Icons.vaccines_rounded;
+                                    selectedDosage = '10 Unit - Sebelum tidur (Insulin)';
+                                  } else {
+                                    selectedIcon = Icons.medication_rounded;
+                                  }
                                 });
                               },
                             ),
@@ -471,47 +407,47 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: const BorderSide(color: Color(0xFFB81018), width: 1.5),
-=======
-                    Text(
-                      'Tambah Pengingat Obat',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: _darkMaroon,
-                      ),
-                    ),
-                    Text(
-                      'Atur jadwal dan waktu notifikasi alarm obat Anda',
-                      style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Nama Obat
-                    _buildModalLabel('Nama Obat'),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: nameController,
-                      style: GoogleFonts.poppins(fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: 'Contoh: Metformin 500 Mg',
-                        hintStyle: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF9E9E9E)),
-                        filled: true,
-                        fillColor: const Color(0xFFFDF8F8),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFFEADBDB)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFFEADBDB)),
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                         ),
                       ),
                     ),
                     const SizedBox(height: 14),
 
-<<<<<<< HEAD
+                    // Bentuk Obat (Icon Choice)
+                    Text(
+                      'Bentuk Obat',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF424242),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _buildIconChoice(
+                          icon: Icons.medication_rounded,
+                          label: 'Tablet / Kapsul',
+                          isSelected: selectedIcon == Icons.medication_rounded,
+                          onTap: () => setModalState(() => selectedIcon = Icons.medication_rounded),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildIconChoice(
+                          icon: Icons.medication_liquid_rounded,
+                          label: 'Sirup / Cair',
+                          isSelected: selectedIcon == Icons.medication_liquid_rounded,
+                          onTap: () => setModalState(() => selectedIcon = Icons.medication_liquid_rounded),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildIconChoice(
+                          icon: Icons.vaccines_rounded,
+                          label: 'Injeksi / Insulin',
+                          isSelected: selectedIcon == Icons.vaccines_rounded,
+                          onTap: () => setModalState(() => selectedIcon = Icons.vaccines_rounded),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
                     // Dosis & Aturan
                     Text(
                       'Dosis & Aturan Minum',
@@ -532,7 +468,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           isExpanded: true,
-                          value: selectedDosage,
+                          value: dosageOptions.contains(selectedDosage) ? selectedDosage : dosageOptions.first,
                           icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF757575)),
                           items: dosageOptions.map((opt) {
                             return DropdownMenuItem(
@@ -545,88 +481,11 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                               setModalState(() => selectedDosage = val);
                             }
                           },
-=======
-                    // Dosis & Aturan Minum
-                    _buildModalLabel('Dosis & Aturan Minum'),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: dosageController,
-                      style: GoogleFonts.poppins(fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: 'Contoh: 1 tablet - Setelah makan',
-                        hintStyle: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF9E9E9E)),
-                        filled: true,
-                        fillColor: const Color(0xFFFDF8F8),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFFEADBDB)),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: Color(0xFFEADBDB)),
                         ),
                       ),
                     ),
                     const SizedBox(height: 14),
 
-                    // Waktu Pengingat (dengan TimePicker)
-                    _buildModalLabel('Waktu Minum (Notifikasi)'),
-                    const SizedBox(height: 6),
-                    InkWell(
-                      onTap: () async {
-                        final now = TimeOfDay.now();
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: now,
-                          builder: (context, child) {
-                            return Theme(
-                              data: Theme.of(context).copyWith(
-                                colorScheme: const ColorScheme.light(
-                                  primary: _primaryPink,
-                                  onPrimary: Colors.white,
-                                  onSurface: Color(0xFF141414),
-                                ),
-                              ),
-                              child: child!,
-                            );
-                          },
-                        );
-                        if (picked != null) {
-                          final h = picked.hour.toString().padLeft(2, '0');
-                          final m = picked.minute.toString().padLeft(2, '0');
-                          setModalState(() {
-                            timeController.text = '$h:$m';
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFDF8F8),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFEADBDB)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              timeController.text.isEmpty ? 'Pilih Waktu' : timeController.text,
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF141414),
-                              ),
-                            ),
-                            const Icon(Icons.access_time_rounded, color: _primaryPink, size: 20),
-                          ],
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-<<<<<<< HEAD
                     // Jadwal / Frekuensi
                     Text(
                       'Jadwal Frekuensi',
@@ -647,7 +506,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           isExpanded: true,
-                          value: selectedSchedule,
+                          value: scheduleOptions.contains(selectedSchedule) ? selectedSchedule : scheduleOptions.first,
                           icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF757575)),
                           items: scheduleOptions.map((opt) {
                             return DropdownMenuItem(
@@ -655,28 +514,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                               child: Text(opt, style: GoogleFonts.poppins(fontSize: 12)),
                             );
                           }).toList(),
-=======
-                    // Frekuensi / Jadwal
-                    _buildModalLabel('Frekuensi / Jadwal'),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFDF8F8),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFEADBDB)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedSchedule,
-                          isExpanded: true,
-                          style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF141414)),
-                          items: const [
-                            DropdownMenuItem(value: 'Setiap 8 jam', child: Text('Setiap 8 jam (3x sehari)')),
-                            DropdownMenuItem(value: 'Setiap 12 jam', child: Text('Setiap 12 jam (2x sehari)')),
-                            DropdownMenuItem(value: 'Setiap 24 jam', child: Text('Setiap 24 jam (1x sehari)')),
-                          ],
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                           onChanged: (val) {
                             if (val != null) {
                               setModalState(() => selectedSchedule = val);
@@ -687,7 +524,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                     ),
                     const SizedBox(height: 14),
 
-<<<<<<< HEAD
                     // Waktu Pengingat
                     Text(
                       'Waktu Alarm Minum Obat',
@@ -809,11 +645,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                                 schedule: selectedSchedule.replaceAll(RegExp(r'\s*\(.*?\)'), ''),
                                 time: formattedTime,
                                 isActive: true,
-                                iconData: text.toLowerCase().contains('insulin')
-                                    ? Icons.vaccines_rounded
-                                    : (text.toLowerCase().contains('sirup')
-                                        ? Icons.medication_liquid_rounded
-                                        : Icons.medication_rounded),
+                                iconData: selectedIcon,
                               );
 
                               setState(() {
@@ -850,97 +682,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                           ),
                         ),
                       ],
-=======
-                    // Jenis Obat (Icon)
-                    _buildModalLabel('Bentuk Obat'),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        _buildIconChoice(
-                          icon: Icons.medication_rounded,
-                          label: 'Tablet / Kapsul',
-                          isSelected: selectedIcon == Icons.medication_rounded,
-                          onTap: () => setModalState(() => selectedIcon = Icons.medication_rounded),
-                        ),
-                        const SizedBox(width: 10),
-                        _buildIconChoice(
-                          icon: Icons.medication_liquid_rounded,
-                          label: 'Sirup / Cair',
-                          isSelected: selectedIcon == Icons.medication_liquid_rounded,
-                          onTap: () => setModalState(() => selectedIcon = Icons.medication_liquid_rounded),
-                        ),
-                        const SizedBox(width: 10),
-                        _buildIconChoice(
-                          icon: Icons.vaccines_rounded,
-                          label: 'Injeksi / Insulin',
-                          isSelected: selectedIcon == Icons.vaccines_rounded,
-                          onTap: () => setModalState(() => selectedIcon = Icons.vaccines_rounded),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Tombol Simpan
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final name = nameController.text.trim();
-                          final dosage = dosageController.text.trim();
-                          final time = timeController.text.trim();
-
-                          if (name.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Nama obat tidak boleh kosong', style: GoogleFonts.poppins(fontSize: 12)),
-                                backgroundColor: _darkMaroon,
-                              ),
-                            );
-                            return;
-                          }
-
-                          final newReminder = ReminderItem(
-                            id: DateTime.now().millisecondsSinceEpoch.toString(),
-                            medicineName: name,
-                            dosage: dosage.isEmpty ? '1 tablet' : dosage,
-                            schedule: selectedSchedule,
-                            time: time.isEmpty ? '08:00' : time,
-                            isActive: true,
-                            iconData: selectedIcon,
-                          );
-
-                          setState(() {
-                            _reminders.add(newReminder);
-                          });
-
-                          Navigator.pop(ctx);
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Pengingat ${newReminder.medicineName} berhasil ditambahkan!',
-                                style: GoogleFonts.poppins(fontSize: 12, color: Colors.white),
-                              ),
-                              backgroundColor: const Color(0xFF2E7D32),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _darkMaroon,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: Text(
-                          'Simpan Pengingat',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                            fontSize: 13.5,
-                          ),
-                        ),
-                      ),
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                     ),
                   ],
                 ),
@@ -949,34 +690,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
           },
         );
       },
-    );
-  }
-
-<<<<<<< HEAD
-  // Modal Opsi Pengingat (Tandai Diminum, Ubah Waktu, Hapus)
-  void _showReminderOptions(MedicationReminder rem) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-=======
-  Widget _buildModalLabel(String label) {
-    return Text(
-      label,
-      style: GoogleFonts.poppins(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFF333333),
-      ),
     );
   }
 
@@ -993,10 +706,10 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFF9EAEB) : Colors.white,
+            color: isSelected ? const Color(0xFFF9EAEB) : const Color(0xFFFAFAFA),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isSelected ? _maroon : const Color(0xFFEADBDB),
+              color: isSelected ? _maroon : const Color(0xFFE0E0E0),
               width: isSelected ? 1.5 : 1,
             ),
           ),
@@ -1020,25 +733,21 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
     );
   }
 
-  /// Detail Artikel Edukasi Diabetes
-  void _showArticleDetail({required String title, required String content, required String category}) {
+  // Modal Opsi Pengingat (Tandai Diminum, Tes Alarm, Ubah Waktu, Hapus)
+  void _showReminderOptions(MedicationReminder rem) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.65,
-        maxChildSize: 0.9,
-        minChildSize: 0.4,
-        expand: false,
-        builder: (_, scrollController) => Padding(
-          padding: const EdgeInsets.all(22),
-          child: ListView(
-            controller: scrollController,
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Center(
                 child: Container(
@@ -1051,7 +760,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-<<<<<<< HEAD
               Row(
                 children: [
                   Container(
@@ -1134,7 +842,36 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                 },
               ),
 
-              // Opsi 2: Ubah Waktu
+              // Opsi 2: Tes Simulasi Alarm
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFCE4EC),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.alarm_on_rounded, color: _darkRose, size: 22),
+                ),
+                title: Text(
+                  'Tes Simulasi Alarm Notifikasi',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF212121),
+                  ),
+                ),
+                subtitle: Text(
+                  'Coba tampilan bunyi alarm notifikasi obat',
+                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _triggerSimulatedAlarm(rem);
+                },
+              ),
+
+              // Opsi 3: Ubah Waktu
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -1200,7 +937,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                 },
               ),
 
-              // Opsi 3: Hapus Pengingat
+              // Opsi 4: Hapus Pengingat
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
@@ -1253,35 +990,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
           ),
         );
       },
-=======
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9EAEB),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  category.toUpperCase(),
-                  style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w700, color: _maroon),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF141414)),
-              ),
-              const SizedBox(height: 14),
-              const Divider(),
-              const SizedBox(height: 12),
-              Text(
-                content,
-                style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF444444), height: 1.6),
-              ),
-            ],
-          ),
-        ),
-      ),
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
     );
   }
 
@@ -1290,31 +998,30 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: _primaryPink,
+        backgroundColor: const Color(0xFFF06292),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 19),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Menu Penunjang',
           style: GoogleFonts.poppins(
             color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
           ),
         ),
-        centerTitle: false,
+        centerTitle: true,
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Fitur pendukung untuk membantu mengelola diabetes Anda setiap hari',
+                'Fitur pendukung untuk membantu mengelola diabetes anda setiap hari',
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: const Color(0xFF616161),
@@ -1322,11 +1029,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
               ),
               const SizedBox(height: 20),
 
-<<<<<<< HEAD
               // Edukasi Diabetes Header
-=======
-              // 1. Edukasi Diabetes Header
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
               Row(
                 children: [
                   Container(
@@ -1338,7 +1041,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                     child: const Icon(Icons.menu_book_rounded, color: Color(0xFFD35400)),
                   ),
                   const SizedBox(width: 12),
-<<<<<<< HEAD
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1350,17 +1052,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                             fontSize: 14,
                             color: const Color(0xFFB81018),
                           ),
-=======
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Edukasi Diabetes',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: _maroon,
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                         ),
                         Text(
                           'Artikel pilihan untuk hidup sehat dengan diabetes',
@@ -1379,7 +1070,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '3 Artikel',
+                      '${educationalArticles.length} Artikel',
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -1394,78 +1085,21 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
               // Horizontal list of articles (Clickable!)
               SizedBox(
                 height: 240,
-                child: ListView(
+                child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
-                  children: [
-                    _buildArticleCard(
-<<<<<<< HEAD
-                      article: educationalArticles[0],
-                    ),
-                    const SizedBox(width: 12),
-                    _buildArticleCard(
-                      article: educationalArticles[1],
-                    ),
-                    const SizedBox(width: 12),
-                    _buildArticleCard(
-                      article: educationalArticles[2],
-=======
-                      imageBgColor: const Color(0xFFFBE9E7),
-                      category: 'Pola Makan',
-                      title: 'Pola Makan Sehat Untuk Diabetes',
-                      subtitle: 'Tips Memilih Makanan Sehari-Hari Yang Aman Untuk Gula Darah',
-                      iconData: Icons.restaurant_menu_rounded,
-                      onTap: () => _showArticleDetail(
-                        category: 'Pola Makan',
-                        title: 'Pola Makan Sehat Untuk Diabetes',
-                        content:
-                            '1. Prioritaskan makanan dengan indeks glikemik rendah seperti beras merah, oat, dan kacang-kacangan.\n\n'
-                            '2. Batasi konsumsi gula sederhana, minuman kemasan, dan tepung olahan.\n\n'
-                            '3. Perbanyak sayuran hijau berdaun dan serat pangan yang membantu memperlambat penyerapan glukosa.\n\n'
-                            '4. Terapkan metode piring sehat: 1/2 piring sayur, 1/4 karbohidrat kompleks, 1/4 protein tanpa lemak.',
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildArticleCard(
-                      imageBgColor: const Color(0xFFF3E5F5),
-                      category: 'Aktivitas Fisik',
-                      title: 'Olahraga Yang Aman Untuk Penderita Diabetes',
-                      subtitle: 'Jenis Olahraga Yang Aman Dan Bermanfaat Menjaga Gula Darah',
-                      iconData: Icons.directions_run_rounded,
-                      onTap: () => _showArticleDetail(
-                        category: 'Aktivitas Fisik',
-                        title: 'Olahraga Yang Aman Untuk Penderita Diabetes',
-                        content:
-                            '1. Jalan santai atau jalan cepat minimal 30 menit sehari (150 menit per minggu).\n\n'
-                            '2. Bersepeda statis atau berenang untuk mengurangi beban pada persendian kaki.\n\n'
-                            '3. Selalu periksa gula darah sebelum dan sesudah berolahraga untuk mencegah hipoglikemia.\n\n'
-                            '4. Gunakan alas kaki yang nyaman dan pas untuk menghindari luka lecet pada kaki.',
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildArticleCard(
-                      imageBgColor: const Color(0xFFEFEBE9),
-                      category: 'Monitoring',
-                      title: 'Cara Memantau Gula Darah Di Rumah',
-                      subtitle: 'Panduan Mudah Memantau Gula Darah Secara Mandiri',
-                      iconData: Icons.monitor_heart_rounded,
-                      onTap: () => _showArticleDetail(
-                        category: 'Monitoring',
-                        title: 'Cara Memantau Gula Darah Di Rumah',
-                        content:
-                            '1. Cuci tangan dengan air mengalir dan sabun sebelum melakukan penusukan jari.\n\n'
-                            '2. Waktu terbaik tes: Gula darah puasa (pagi hari setelah puasa 8 jam) dan 2 jam setelah makan.\n\n'
-                            '3. Catat hasil pemeriksaan pada fitur Monitoring Gula Darah di aplikasi D-Care.\n\n'
-                            '4. Target umum: GDP 80-130 mg/dL dan GD 2 jam PP < 180 mg/dL (disesuaikan target dokter Anda).',
-                      ),
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
-                    ),
-                  ],
+                  itemCount: educationalArticles.length,
+                  itemBuilder: (context, index) {
+                    final article = educationalArticles[index];
+                    return Padding(
+                      padding: EdgeInsets.only(right: index == educationalArticles.length - 1 ? 0 : 12),
+                      child: _buildArticleCard(article: article),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 24),
 
-<<<<<<< HEAD
               // Kapan Harus Ke Dokter? — navigasi ke WhenToSeeDoctorScreen (Clickable!)
               Material(
                 color: Colors.transparent,
@@ -1485,15 +1119,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       color: const Color(0xFFF9EAEB),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFFF0D5D8)),
-=======
-              // 2. Kapan Harus Ke Dokter? — navigasi ke WhenToSeeDoctorScreen
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const WhenToSeeDoctorScreen(),
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                     ),
                     child: Row(
                       children: [
@@ -1505,7 +1130,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                           ),
                           child: const Icon(Icons.volunteer_activism_rounded, color: Color(0xFFB81018), size: 24),
                         ),
-<<<<<<< HEAD
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -1518,21 +1142,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                                   fontSize: 13,
                                   color: const Color(0xFFB81018),
                                 ),
-=======
-                        child: const Icon(Icons.volunteer_activism_rounded, color: _maroon, size: 24),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Kapan Harus Ke Dokter?',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: _maroon,
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                               ),
                               Text(
                                 'Kenali gejala yang perlu penanganan medis segera',
@@ -1541,26 +1150,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                                   color: const Color(0xFF424242),
                                 ),
                               ),
-<<<<<<< HEAD
                             ],
-=======
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'Pelajari selengkapnya >',
-                          style: GoogleFonts.poppins(
-                            fontSize: 9,
-                            color: _maroon,
-                            fontWeight: FontWeight.w500,
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                           ),
                         ),
                         Container(
@@ -1598,11 +1188,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
               ),
               const SizedBox(height: 24),
 
-<<<<<<< HEAD
               // Pengingat Section Header
-=======
-              // 3. Pengingat Section
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
               Row(
                 children: [
                   Container(
@@ -1611,7 +1197,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       color: const Color(0xFFF9EAEB),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.notifications_active_rounded, color: _maroon),
+                    child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFB81018)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1619,23 +1205,15 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-<<<<<<< HEAD
                           'Pengingat Minum Obat',
-=======
-                          'Pengingat Notifikasi',
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
-                            color: _maroon,
+                            color: const Color(0xFFB81018),
                           ),
                         ),
                         Text(
-<<<<<<< HEAD
                           'Kelola jadwal rutin obat Anda',
-=======
-                          'Kelola jadwal alarm dan notifikasi minum obat',
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                           style: GoogleFonts.poppins(
                             fontSize: 11,
                             color: const Color(0xFF616161),
@@ -1644,16 +1222,11 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       ],
                     ),
                   ),
-<<<<<<< HEAD
                   ElevatedButton.icon(
                     onPressed: _showAddReminderSheet,
                     icon: const Icon(Icons.add_rounded, color: Colors.white, size: 16),
-=======
-                  ElevatedButton(
-                    onPressed: _showAddReminderBottomSheet,
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _darkMaroon,
+                      backgroundColor: const Color(0xFF8F0D12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -1675,7 +1248,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
               ),
               const SizedBox(height: 16),
 
-<<<<<<< HEAD
               // Daftar Pengingat Interaktif
               if (_reminders.isEmpty)
                 Container(
@@ -1707,36 +1279,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _buildReminderCard(rem),
                     )),
-=======
-              // Daftar Kartu Pengingat Obat
-              if (_reminders.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.alarm_off_rounded, size: 40, color: Color(0xFFBDBDBD)),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Belum ada jadwal pengingat obat.',
-                          style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575)),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _reminders.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = _reminders[index];
-                    return _buildReminderCard(item: item);
-                  },
-                ),
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
 
               const SizedBox(height: 24),
             ],
@@ -1748,7 +1290,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
   }
 
   Widget _buildArticleCard({
-<<<<<<< HEAD
     required EducationArticle article,
   }) {
     return Material(
@@ -2002,22 +1543,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                     width: 44,
                     child: Switch(
                       value: rem.isActive,
-                      onChanged: (val) {
-                        setState(() {
-                          rem.isActive = val;
-                        });
-                        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Pengingat "${rem.medicineName}" ${val ? "diaktifkan" : "dinonaktifkan"}.',
-                              style: GoogleFonts.poppins(fontSize: 12),
-                            ),
-                            duration: const Duration(seconds: 2),
-                            backgroundColor: val ? const Color(0xFFB81018) : const Color(0xFF616161),
-                          ),
-                        );
-                      },
+                      onChanged: (val) => _toggleReminder(rem, val),
                       activeThumbColor: Colors.white,
                       activeTrackColor: const Color(0xFFF06292),
                       inactiveThumbColor: const Color(0xFFD81B60),
@@ -2031,237 +1557,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
               ),
             ],
           ),
-=======
-    required Color imageBgColor,
-    required String category,
-    required String title,
-    required String subtitle,
-    required IconData iconData,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 165,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF9EAEB), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 100,
-              decoration: BoxDecoration(
-                color: imageBgColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-              ),
-              child: Center(
-                child: Icon(iconData, color: Colors.black26, size: 48),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    category,
-                    style: GoogleFonts.poppins(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: _maroon,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF141414),
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 9.5,
-                      color: const Color(0xFF757575),
-                      height: 1.2,
-                    ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReminderCard({required ReminderItem item}) {
-    return InkWell(
-      onTap: () => _triggerSimulatedAlarm(item),
-      onLongPress: () {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text('Hapus Pengingat', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700)),
-            content: Text('Hapus pengingat ${item.medicineName}?', style: GoogleFonts.poppins(fontSize: 13)),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text('Batal', style: GoogleFonts.poppins()),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _reminders.removeWhere((r) => r.id == item.id);
-                  });
-                  Navigator.pop(ctx);
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: _maroon),
-                child: Text('Hapus', style: GoogleFonts.poppins(color: Colors.white)),
-              ),
-            ],
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: item.isActive ? const Color(0xFFFDFBFB) : const Color(0xFFF5F5F5),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: item.isActive ? const Color(0xFFEADBDB) : const Color(0xFFE0E0E0),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: item.isActive ? const Color(0xFFF9EAEB) : const Color(0xFFEEEEEE),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                item.iconData,
-                color: item.isActive ? _darkMaroon : const Color(0xFF9E9E9E),
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.medicineName,
-                          style: GoogleFonts.poppins(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: item.isActive ? _darkMaroon : const Color(0xFF757575),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.dosage,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      color: item.isActive ? const Color(0xFF616161) : const Color(0xFF9E9E9E),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        item.isActive ? Icons.notifications_active_rounded : Icons.notifications_off_rounded,
-                        size: 13,
-                        color: item.isActive ? _maroon : const Color(0xFF9E9E9E),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        item.schedule,
-                        style: GoogleFonts.poppins(
-                          fontSize: 10,
-                          color: const Color(0xFF757575),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '• Ketuk untuk tes alarm',
-                        style: GoogleFonts.poppins(
-                          fontSize: 9.5,
-                          color: _primaryPink,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  item.time,
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: item.isActive ? _maroon : const Color(0xFF9E9E9E),
-                  ),
-                ),
-                Text(
-                  'Hari ini',
-                  style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    color: const Color(0xFF757575),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  height: 24,
-                  width: 44,
-                  child: Switch(
-                    value: item.isActive,
-                    onChanged: (val) => _toggleReminder(item, val),
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: _primaryPink,
-                    inactiveThumbColor: const Color(0xFF9E9E9E),
-                    inactiveTrackColor: const Color(0xFFE0E0E0),
-                    trackOutlineColor: WidgetStateProperty.resolveWith(
-                      (states) => Colors.transparent,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
         ),
       ),
     );
@@ -2275,7 +1570,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-<<<<<<< HEAD
           _buildNavItem(
             icon: Icons.home_outlined,
             tooltip: 'Dashboard Utama',
@@ -2321,23 +1615,11 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
               );
             },
           ),
-=======
-          _buildNavItem(Icons.home_outlined, onTap: () => Navigator.pop(context)),
-          _buildNavItem(Icons.chat_bubble_outline_rounded, onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
-            );
-          }),
-          _buildNavItem(Icons.person_outline_rounded, onTap: () => Navigator.pop(context)),
-          _buildNavItem(Icons.calendar_month_outlined, onTap: () => Navigator.pop(context)),
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
         ],
       ),
     );
   }
 
-<<<<<<< HEAD
   Widget _buildNavItem({
     required IconData icon,
     required String tooltip,
@@ -2355,18 +1637,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
             size: 26,
             color: const Color(0xFFD65C62),
           ),
-=======
-  Widget _buildNavItem(IconData icon, {VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Icon(
-          icon,
-          size: 26,
-          color: const Color(0xFFD65C62),
->>>>>>> 7412ad8b0931cb01c7dfa825d0d1bc1f7b9f4c3a
         ),
       ),
     );
