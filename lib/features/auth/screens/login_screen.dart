@@ -191,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 'Lupa password?',
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
-                                  color: const Color(0xFFFCEAEA),
+                                  color: const Color(0xFFF06292),
                                   fontWeight: FontWeight.w400,
                                 ),
                               ),
