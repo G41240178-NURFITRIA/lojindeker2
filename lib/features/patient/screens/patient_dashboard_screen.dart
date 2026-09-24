@@ -15,6 +15,7 @@ import 'article_detail_screen.dart';
 import 'when_to_see_doctor_screen.dart';
 import 'health_calendar_screen.dart';
 import 'medication_reminder_screen.dart';
+import 'riwayat_risiko_screen.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
@@ -828,9 +829,9 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
           const SizedBox(height: 24),
 
-          // 3. History
+          // 3. Aktivitas Terbaru
           Text(
-            'History',
+            'Aktivitas Terbaru',
             style: GoogleFonts.poppins(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -839,46 +840,164 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          _buildHistoryTile(
-            icon: Icons.trending_up_rounded,
-            iconColor: const Color(0xFFD32F2F),
-            label: 'Highest Glucose',
-            value: '165',
-            valueColor: const Color(0xFFD32F2F),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GlucoseHistoryScreen()),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          _buildHistoryTile(
-            icon: Icons.show_chart_rounded,
-            iconColor: const Color(0xFF616161),
-            label: 'Average Glucose',
-            value: '128',
-            valueColor: const Color(0xFF141414),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GlucoseHistoryScreen()),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          _buildHistoryTile(
-            icon: Icons.trending_down_rounded,
-            iconColor: const Color(0xFF2E7D32),
-            label: 'Lowest Glucose',
-            value: '78',
-            valueColor: const Color(0xFF2E7D32),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GlucoseHistoryScreen()),
-              );
-            },
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // 1. Cek Risiko Diabetes
+                _buildAktivitasItem(
+                  iconWidget: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.health_and_safety_outlined,
+                      color: Color(0xFFE56A6F),
+                      size: 21,
+                    ),
+                  ),
+                  title: 'Cek Risiko Diabetes',
+                  subtitleWidget: RichText(
+                    text: TextSpan(
+                      text: 'Hasil terakhir: ',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: const Color(0xFF757575),
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Risiko Rendah',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF2E7D32),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  trailingIcon: Icons.calendar_today_outlined,
+                  trailingText: '20 Mei 2026',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RiwayatRisikoScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(
+                  height: 1,
+                  thickness: 0.8,
+                  color: Color(0xFFF2F2F2),
+                  indent: 16,
+                  endIndent: 16,
+                ),
+
+                // 2. Konsultasi Dokter
+                _buildAktivitasItem(
+                  iconWidget: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: _DoctorOutlineIcon(
+                        color: Color(0xFFE56A6F),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  title: 'Konsultasi Dokter',
+                  subtitleWidget: Text(
+                    'Konsultasi terakhir dengan dr. Koko',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: const Color(0xFF757575),
+                    ),
+                  ),
+                  trailingIcon: Icons.calendar_today_outlined,
+                  trailingText: '18 Mei 2026',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ConsultationListScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(
+                  height: 1,
+                  thickness: 0.8,
+                  color: Color(0xFFF2F2F2),
+                  indent: 16,
+                  endIndent: 16,
+                ),
+
+                // 3. Pengingat Obat
+                _buildAktivitasItem(
+                  iconWidget: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(
+                      child: _buildPillCapsuleIcon(),
+                    ),
+                  ),
+                  title: 'Pengingat Obat',
+                  subtitleWidget: RichText(
+                    text: TextSpan(
+                      text: 'Pengingat obat berikutnya: ',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: const Color(0xFF757575),
+                      ),
+                      children: [
+                        TextSpan(
+                          text: '19.00',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF141414),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  trailingIcon: Icons.access_time_rounded,
+                  trailingText: 'Hari ini, 19.00',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MedicationReminderScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 26),
@@ -1232,6 +1351,114 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Aktivitas Terbaru Item
+  Widget _buildAktivitasItem({
+    required Widget iconWidget,
+    required String title,
+    required Widget subtitleWidget,
+    required IconData trailingIcon,
+    required String trailingText,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              iconWidget,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF141414),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    subtitleWidget,
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    trailingIcon,
+                    size: 13,
+                    color: const Color(0xFF757575),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    trailingText,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: const Color(0xFF757575),
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: Color(0xFF141414),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Custom Pill / Capsule Icon (matching reference screenshot)
+  Widget _buildPillCapsuleIcon() {
+    return Transform.rotate(
+      angle: -0.7,
+      child: Container(
+        width: 11,
+        height: 20,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: const Color(0xFFE56A6F),
+            width: 1.3,
+          ),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE56A6F),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(5)),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
