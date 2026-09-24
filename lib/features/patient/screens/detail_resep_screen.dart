@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'riwayat_resep_screen.dart';
+import 'consultation_list_screen.dart';
 
 class DetailResepScreen extends StatefulWidget {
   final String date;
@@ -635,25 +636,26 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
             index: 0,
             icon: Icons.home_outlined,
             onTap: () {
-              if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              }
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
           _buildNavItem(
             index: 1,
             icon: Icons.chat_bubble_outline_rounded,
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
+              );
+            },
           ),
           _buildNavItem(
             index: 2,
             icon: Icons.person_outline_rounded,
-            onTap: () {},
-          ),
-          _buildNavItem(
-            index: 3,
-            icon: Icons.calendar_month_outlined,
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
           ),
         ],
       ),

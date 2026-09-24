@@ -478,6 +478,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
             icon: Icons.chat_bubble_outline_rounded,
             tooltip: 'Konsultasi Dokter',
             onTap: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -488,14 +489,9 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
           ),
           _buildNavItem(
             icon: Icons.person_outline_rounded,
-            tooltip: 'Rekam Medis Pasien',
+            tooltip: 'Profil Pasien',
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const MedicalRecordsScreen(),
-                ),
-              );
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
         ],

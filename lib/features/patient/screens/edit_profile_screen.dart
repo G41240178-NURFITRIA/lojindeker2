@@ -485,7 +485,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             icon: const Icon(Icons.home_outlined, size: 28),
             color: _navIconInactive,
             tooltip: 'Beranda',
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline_rounded, size: 26),

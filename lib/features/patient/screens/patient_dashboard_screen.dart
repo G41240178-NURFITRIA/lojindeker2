@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/services/profile_image_service.dart';
+import '../models/risk_assessment_model.dart';
 import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
 import 'glucose_history_screen.dart';
@@ -783,48 +784,57 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    text: 'Resiko Diabetes : ',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF141414),
-                    ),
-                    children: [
-                      TextSpan(
-                        text: 'Rendah',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF2E7D32), // Green
-                        ),
+            child: Builder(builder: (context) {
+              // Ambil data risiko terbaru secara otomatis
+              final latestRisk = dummyRiskAssessments.isNotEmpty
+                  ? dummyRiskAssessments.first
+                  : null;
+              final riskLabel = latestRisk?.level.label ?? 'Belum ada data';
+              final riskColor = latestRisk?.level.color ?? const Color(0xFF757575);
+              final riskDate = latestRisk?.date ?? '-';
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RichText(
+                    text: TextSpan(
+                      text: 'Resiko Diabetes : ',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF141414),
                       ),
-                    ],
+                      children: [
+                        TextSpan(
+                          text: riskLabel,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: riskColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Berdasarkan pemeriksaan terakhir',
-                  style: GoogleFonts.poppins(
-                    fontSize: 11.5,
-                    color: const Color(0xFF757575),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Berdasarkan hasil pengecekan terakhir',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: const Color(0xFF757575),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '20 Mei 2026',
-                  style: GoogleFonts.poppins(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF424242),
+                  const SizedBox(height: 2),
+                  Text(
+                    riskDate,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF424242),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+            }),
           ),
 
           const SizedBox(height: 24),
@@ -1514,14 +1524,15 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     color: valueColor,
                   ),
                   children: [
-                    TextSpan(
-                      text: ' mg/dL',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF757575),
+                    if (value != '-')
+                      TextSpan(
+                        text: ' mg/dL',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF757575),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -1571,10 +1582,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             }
           });
         } else if (index == 1) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
-          );
+          setState(() => _selectedTabIndex = 1);
         } else {
           setState(() => _selectedTabIndex = index);
         }
