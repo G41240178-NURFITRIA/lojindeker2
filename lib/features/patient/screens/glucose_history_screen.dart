@@ -14,8 +14,10 @@ class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
   int _selectedTabIndex = 0;
   int _activePillIndex = 2; // Default: 'Monitoring' aktif
 
-  static const Color _primaryRed = Color(0xFFC62828);
-  static const Color _darkRed = Color(0xFF8F0D12);
+  static const Color _primaryPink = Color(0xFFF06292);
+  static const Color _darkRose = Color(0xFFD81B60);
+  static const Color _primaryRed = Color(0xFFF06292);
+  static const Color _darkRed = Color(0xFFD81B60);
   static const Color _greenDot = Color(0xFF1B5E20);
   static const Color _orangeDot = Color(0xFFE65100);
 
@@ -113,10 +115,10 @@ class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
     );
   }
 
-  /// Header Merah dengan tombol back dan judul "Riwayat Monitoring Gula Darah"
+  /// Header Soft Pink dengan tombol back dan judul "Riwayat Monitoring Gula Darah"
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: _primaryRed,
+      backgroundColor: _primaryPink,
       elevation: 0,
       scrolledUnderElevation: 0,
       toolbarHeight: 70,
@@ -169,10 +171,10 @@ class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isSelected ? _darkRed : Colors.white,
+                    color: isSelected ? _darkRose : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? _darkRed : _primaryRed,
+                      color: isSelected ? _darkRose : _primaryPink,
                       width: 1,
                     ),
                   ),
@@ -448,7 +450,7 @@ class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
 
   Widget _buildNavItem(int index, IconData icon) {
     final isSelected = _selectedTabIndex == index;
-    final color = isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
+    final color = isSelected ? _darkRose : const Color(0xFFF48FB1);
 
     return InkWell(
       onTap: () {

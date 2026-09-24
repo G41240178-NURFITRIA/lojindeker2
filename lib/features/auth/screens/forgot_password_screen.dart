@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/auth_service.dart';
 import '../widgets/figma_auth_field.dart';
 import '../widgets/figma_red_button.dart';
 import 'set_password_screen.dart';
@@ -12,7 +13,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final TextEditingController _contactController = TextEditingController(text: 'admin@dcare.com');
+  final TextEditingController _contactController = TextEditingController();
   bool _isLoading = false;
 
   @override
@@ -27,7 +28,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Silakan masukkan email atau no handphone Anda.',
+            'Silakan masukkan email Anda.',
             style: GoogleFonts.poppins(),
           ),
           backgroundColor: const Color(0xFFF06292),
@@ -37,24 +38,41 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Tautan pemulihan kata sandi berhasil dikirimkan ke $contact',
-          style: GoogleFonts.poppins(),
+    try {
+      await AuthService.instance.sendPasswordResetEmail(contact);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Tautan pemulihan kata sandi berhasil dikirimkan ke $contact. Silakan periksa kotak masuk atau spam email Anda.',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: const Color(0xFF2E7D32),
         ),
-        backgroundColor: const Color(0xFF2E7D32),
-      ),
-    );
+      );
 
-    // Navigate to Set Password screen (04 - D)
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SetPasswordScreen()),
-    );
+      // Navigate to Set Password screen (04 - D)
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const SetPasswordScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll('Exception: ', ''),
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: const Color(0xFFB51419),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override

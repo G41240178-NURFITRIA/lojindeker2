@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/auth_service.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/app_logo_badge.dart';
@@ -39,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Silakan masukkan username dan password Anda.',
+            'Silakan masukkan email / username dan password Anda.',
             style: GoogleFonts.poppins(color: Colors.white),
           ),
           backgroundColor: Colors.black87,
@@ -51,24 +52,48 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 650));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
 
-    if (_selectedRole == UserRole.pasien) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => PatientDashboardScreen(
-            patientName: username.isNotEmpty ? username : 'Pasien',
+    try {
+      final user = await AuthService.instance.login(
+        identifier: username,
+        password: password,
+        expectedRole: _selectedRole,
+      );
+
+      if (!mounted) return;
+
+      if (_selectedRole == UserRole.pasien) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => PatientDashboardScreen(
+              patientName: user.fullName.isNotEmpty ? user.fullName : 'Pasien',
+            ),
           ),
+          (route) => false,
+        );
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll('Exception: ', ''),
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFFD32F2F),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        (route) => false,
       );
-    } else {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-        (route) => false,
-      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -191,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 'Lupa password?',
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
-                                  color: const Colors.white,
+                                  color: Colors.white,
                                   fontWeight: FontWeight.w400,
                                 ),
                               ),

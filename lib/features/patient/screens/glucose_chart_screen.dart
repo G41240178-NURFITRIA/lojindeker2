@@ -12,8 +12,10 @@ class _GlucoseChartScreenState extends State<GlucoseChartScreen> {
   int _selectedFilterIndex = 0; // 0: 7 Hari, 1: 30 Hari
   int _selectedTabIndex = 0;
 
-  static const Color _primaryRed = Color(0xFFC62828);
-  static const Color _darkRed = Color(0xFF8F0D12);
+  static const Color _primaryPink = Color(0xFFF06292);
+  static const Color _darkRose = Color(0xFFD81B60);
+  static const Color _primaryRed = Color(0xFFF06292);
+  static const Color _darkRed = Color(0xFFD81B60);
   static const Color _greenLine = Color(0xFF2E7D32);
   static const Color _yellowLine = Color(0xFFD4A017);
 
@@ -82,10 +84,10 @@ class _GlucoseChartScreenState extends State<GlucoseChartScreen> {
     );
   }
 
-  /// Header Merah dengan tombol kembali `<` dan judul "Grafik Monitoring GDA"
+  /// Header Soft Pink dengan tombol kembali `<` dan judul "Grafik Monitoring GDA"
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: _primaryRed,
+      backgroundColor: _primaryPink,
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
@@ -140,10 +142,10 @@ class _GlucoseChartScreenState extends State<GlucoseChartScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? _darkRed : Colors.white,
+            color: isSelected ? _darkRose : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? _darkRed : _primaryRed,
+              color: isSelected ? _darkRose : _primaryPink,
               width: 1,
             ),
           ),
@@ -344,7 +346,7 @@ class _GlucoseChartScreenState extends State<GlucoseChartScreen> {
 
   Widget _buildNavItem(int index, IconData icon) {
     final isSelected = _selectedTabIndex == index;
-    final color = isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
+    final color = isSelected ? _darkRose : const Color(0xFFF48FB1);
 
     return InkWell(
       onTap: () {

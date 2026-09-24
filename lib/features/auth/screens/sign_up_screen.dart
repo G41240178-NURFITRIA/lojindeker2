@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/auth_service.dart';
 import '../widgets/figma_auth_field.dart';
 import '../widgets/figma_red_button.dart';
 
@@ -29,10 +30,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _handleSignUp() async {
-    if (_fullNameController.text.isEmpty || _emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    final fullName = _fullNameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final mobile = _mobileController.text.trim();
+    final dob = _dobController.text.trim();
+
+    if (fullName.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Silakan lengkapi data pendaftaran Anda.', style: GoogleFonts.poppins()),
+          content: Text('Silakan lengkapi nama, email, dan password Anda.', style: GoogleFonts.poppins()),
+          backgroundColor: const Color(0xFFB51419),
+        ),
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password minimal harus 6 karakter.', style: GoogleFonts.poppins()),
           backgroundColor: const Color(0xFFB51419),
         ),
       );
@@ -40,18 +57,42 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Pendaftaran akun berhasil! Silakan login.', style: GoogleFonts.poppins()),
-        backgroundColor: const Color(0xFF2E7D32),
-      ),
-    );
+    try {
+      await AuthService.instance.signUp(
+        email: email,
+        password: password,
+        fullName: fullName,
+        phoneNumber: mobile,
+        dob: dob,
+      );
 
-    Navigator.of(context).pop();
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pendaftaran akun berhasil! Silakan login.', style: GoogleFonts.poppins()),
+          backgroundColor: const Color(0xFF2E7D32),
+        ),
+      );
+
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll('Exception: ', ''),
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: const Color(0xFFB51419),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override

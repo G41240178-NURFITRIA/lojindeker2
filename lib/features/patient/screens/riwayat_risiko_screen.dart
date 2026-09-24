@@ -42,8 +42,6 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
 
   final List<String> _categories = const [
     'Cek Risiko AI',
-    'Konsultasi',
-    'Resep',
   ];
 
   final List<RiskAssessmentRecord> _records = const [
@@ -108,7 +106,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
       case 'sedang':
         return const Color(0xFFB45309);
       case 'tinggi':
-        return const Color(0xFFBA171E);
+        return const Color(0xFFD81B60);
       default:
         return const Color(0xFF757575);
     }
@@ -145,7 +143,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFBA171E),
+        backgroundColor: const Color(0xFFF06292),
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -216,10 +214,10 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF7D0E12) : Colors.white,
+                    color: isSelected ? const Color(0xFFD81B60) : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: const Color(0xFF7D0E12),
+                      color: const Color(0xFFF06292),
                       width: 1.3,
                     ),
                   ),
@@ -229,7 +227,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
                       fontSize: 12,
                       fontWeight:
                           isSelected ? FontWeight.w600 : FontWeight.w500,
-                      color: isSelected ? Colors.white : const Color(0xFF7D0E12),
+                      color: isSelected ? Colors.white : const Color(0xFFD81B60),
                     ),
                   ),
                 ),
@@ -268,7 +266,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
                   const Icon(
                     Icons.calendar_month_outlined,
                     size: 20,
-                    color: Color(0xFFBA171E),
+                    color: Color(0xFFD81B60),
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -337,7 +335,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
                         ),
                         child: const Icon(
                           Icons.water_drop_rounded,
-                          color: Color(0xFFBA171E),
+                          color: Color(0xFFD81B60),
                           size: 20,
                         ),
                       ),
@@ -423,7 +421,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFFBA171E),
+                  color: const Color(0xFFD81B60),
                   width: 1.2,
                 ),
               ),
@@ -570,7 +568,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(ctx),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFBA171E),
+                      backgroundColor: const Color(0xFFF06292),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -679,7 +677,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
   }) {
     final isSelected = _selectedBottomNavIndex == index;
     final color =
-        isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
+        isSelected ? const Color(0xFFD81B60) : const Color(0xFFF48FB1);
 
     return InkWell(
       onTap: onTap,

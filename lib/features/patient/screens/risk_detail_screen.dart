@@ -42,7 +42,6 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
   final int _selectedBottomNavIndex = 0; // 0 = Home / Dashboard
 
   // Soft Pink Theme Palette
-  static const Color _primaryPink = Color(0xFFF06292); // Soft Pink
   static const Color _darkRose = Color(0xFFD81B60);    // Deep Rose
   static const Color _bgScreen = Color(0xFFFFF0F5);    // Soft Pink Blush
   static const Color _cardBorder = Color(0xFFF8BBD0);  // Soft Pink Border
@@ -156,31 +155,31 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
     );
   }
 
-  /// Header Soft Pink + tombol back, judul "< Detail Risiko Diabetes"
+  /// Header Bersih Putih dengan "< Detail Risiko Diabetes" (Persis Image 2)
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: _primaryPink,
+      backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
       systemOverlayStyle: const SystemUiOverlayStyle(
-        statusBarColor: _primaryPink,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarColor: Colors.white,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
       leading: IconButton(
         icon: const Icon(
           Icons.arrow_back_ios_new_rounded,
-          size: 19,
-          color: Colors.white,
+          size: 18,
+          color: Color(0xFF212121),
         ),
         onPressed: () => Navigator.pop(context),
       ),
       title: Text(
         'Detail Risiko Diabetes',
         style: GoogleFonts.poppins(
-          fontSize: 17,
+          fontSize: 16.5,
           fontWeight: FontWeight.w700,
-          color: Colors.white,
+          color: const Color(0xFF212121),
         ),
       ),
       centerTitle: false,
