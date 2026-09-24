@@ -39,11 +39,17 @@ class AppColors {
   static const Color inputHint = Color(0xFF9E9E9E);
   static const Color inputText = Color(0xFF212121);
 
-  // Glossy Cyan Log In button
-  static const Color cyanGlossTop = Color(0xFF8EE8FF);
-  static const Color cyanGradientStart = Color(0xFF45D1FA);
-  static const Color cyanGradientEnd = Color(0xFF02A2D9);
-  static const Color cyanShadow = Color(0x6600A2D9);
+  // Glossy CTA & Log In button (Rich Rose / Crimson)
+  static const Color ctaGlossTop = Color(0xFFFF7597);
+  static const Color ctaGradientStart = Color(0xFFE91E63);
+  static const Color ctaGradientEnd = Color(0xFFC2185B);
+  static const Color ctaShadow = Color(0x66C2185B);
+
+  // Backward-compatible aliases
+  static const Color cyanGlossTop = ctaGlossTop;
+  static const Color cyanGradientStart = ctaGradientStart;
+  static const Color cyanGradientEnd = ctaGradientEnd;
+  static const Color cyanShadow = ctaShadow;
 
   // Forgot password
   static const Color forgotPasswordText = Color(0xFFF0F0F0);

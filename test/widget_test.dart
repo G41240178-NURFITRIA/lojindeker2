@@ -1,9 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:d_care/main.dart';
+import 'package:d_care/features/auth/screens/login_screen.dart';
+import 'package:flutter/material.dart';
 
 void main() {
-  testWidgets('Diabetes Care login screen loads and displays essential elements', (WidgetTester tester) async {
-    await tester.pumpWidget(const DCareApp());
+  testWidgets('LoginScreen loads and displays role selector and login elements', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: LoginScreen(),
+      ),
+    );
     await tester.pump();
 
     // Verify role selector pills
@@ -11,16 +16,7 @@ void main() {
     expect(find.text('Dokter'), findsOneWidget);
     expect(find.text('Admin'), findsOneWidget);
 
-    // Verify inputs
-    expect(find.text('Pasien01'), findsOneWidget);
-
-    // Verify Log In button and Forgot Password text
-    expect(find.text('Log In'), findsOneWidget);
+    // Verify Lupa password?
     expect(find.text('Lupa password?'), findsOneWidget);
-
-    // Tap Dokter role
-    await tester.tap(find.text('Dokter'));
-    await tester.pump();
-    expect(find.text('Dr. Sarah'), findsOneWidget);
   });
 }

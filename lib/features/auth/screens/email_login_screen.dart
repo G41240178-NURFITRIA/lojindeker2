@@ -52,10 +52,11 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
 
     // Navigate to respective dashboard based on selected role
     if (_selectedRole == UserRole.pasien) {
+      final displayName = email.contains('@') ? email.split('@')[0] : email;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => PatientDashboardScreen(
-            patientName: email.contains('@') ? 'Muhammad Nizam' : email,
+            patientName: displayName.isNotEmpty ? displayName : 'Pasien',
           ),
         ),
       );

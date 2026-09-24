@@ -116,8 +116,8 @@ class _LandingScreenState extends State<LandingScreen>
   void _goToLogin() {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const LoginScreen(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 500),
@@ -296,14 +296,14 @@ class _LandingScreenState extends State<LandingScreen>
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
                                     colors: [
-                                      Color(0xFF45D1FA),
-                                      Color(0xFF02A2D9),
+                                      Color(0xFFFF6584),
+                                      Color(0xFFC2185B),
                                     ],
                                   ),
                                   borderRadius: BorderRadius.circular(30),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF02A2D9)
+                                      color: const Color(0xFFC2185B)
                                           .withValues(alpha: 0.45),
                                       blurRadius: 16,
                                       offset: const Offset(0, 6),

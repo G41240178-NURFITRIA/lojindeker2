@@ -56,16 +56,18 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (_selectedRole == UserRole.pasien) {
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => PatientDashboardScreen(
-            patientName: username.isNotEmpty ? username : 'Muhammad Nizam',
+            patientName: username.isNotEmpty ? username : 'Pasien',
           ),
         ),
+        (route) => false,
       );
     } else {
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        (route) => false,
       );
     }
   }

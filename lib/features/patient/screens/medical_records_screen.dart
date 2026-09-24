@@ -6,7 +6,7 @@ class MedicalRecordsScreen extends StatefulWidget {
 
   const MedicalRecordsScreen({
     super.key,
-    this.patientName = 'Muhammad Nizam',
+    this.patientName = 'Pasien',
   });
 
   @override

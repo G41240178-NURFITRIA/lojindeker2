@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/profile_image_service.dart';
 import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
 import 'glucose_history_screen.dart';
@@ -7,14 +9,17 @@ import 'medical_records_screen.dart';
 import 'support_menu_screen.dart';
 import 'live_chat_screen.dart';
 import 'patient_profile_screen.dart';
-import 'account_settings_screen.dart';
+import 'article_detail_screen.dart';
+import 'when_to_see_doctor_screen.dart';
+import 'health_calendar_screen.dart';
+import 'medication_reminder_screen.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
 
   const PatientDashboardScreen({
     super.key,
-    this.patientName = 'Muhammad Nizam',
+    this.patientName = 'Pasien',
   });
 
   @override
@@ -24,11 +29,18 @@ class PatientDashboardScreen extends StatefulWidget {
 class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   int _selectedTabIndex = 0;
   late String _currentPatientName;
+  final ScrollController _homeScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _currentPatientName = widget.patientName;
+  }
+
+  @override
+  void dispose() {
+    _homeScrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -73,38 +85,179 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// Top Header Bar (Hanya tampilan / Static view)
+  /// Sapaan menyesuaikan waktu secara real-time
+  String _getTimeBasedGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 11) {
+      return 'Selamat pagi ✨';
+    } else if (hour >= 11 && hour < 15) {
+      return 'Selamat siang ☀️';
+    } else if (hour >= 15 && hour < 18) {
+      return 'Selamat sore 🌅';
+    } else {
+      return 'Selamat malam 🌙';
+    }
+  }
+
+  /// Dialog notifikasi pasien
+  void _showNotificationDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFCE4EC),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFD81B60), size: 22),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Notifikasi Pasien',
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF141414),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildNotificationItem(
+              icon: Icons.check_circle_outline_rounded,
+              title: 'Selamat Datang di D-Care',
+              desc: 'Gunakan aplikasi untuk memantau kesehatan dan kadar gula darah Anda.',
+              time: 'Baru saja',
+            ),
+            const SizedBox(height: 12),
+            _buildNotificationItem(
+              icon: Icons.article_outlined,
+              title: 'Artikel Edukasi Tersedia',
+              desc: 'Tips dan panduan hidup sehat bagi penyandang diabetes.',
+              time: 'Tersedia',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Tutup',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFFD81B60),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationItem({
+    required IconData icon,
+    required String title,
+    required String desc,
+    required String time,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF0F5),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: const Color(0xFFD81B60)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600, color: const Color(0xFF141414)),
+              ),
+              Text(
+                desc,
+                style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF666666)),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                time,
+                style: GoogleFonts.poppins(fontSize: 9.5, color: const Color(0xFF9E9E9E)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Top Header Bar (Notifikasi diperbesar, pencarian dihapus, profil & sapaan diperbesar)
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left: 3 circular action icons
-          Row(
-            children: [
-              _buildCircleIcon(Icons.notifications_none_rounded),
-              const SizedBox(width: 8),
-              _buildCircleIcon(
-                Icons.settings_outlined,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AccountSettingsScreen(),
-                    ),
-                  );
-                },
+          // Kiri: Hanya Notifikasi (sedikit diperbesar, setara header)
+          InkWell(
+            onTap: _showNotificationDialog,
+            borderRadius: BorderRadius.circular(23),
+            child: Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF8BBD0), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              _buildCircleIcon(Icons.search_rounded),
-            ],
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Icon(
+                    Icons.notifications_none_rounded,
+                    size: 24,
+                    color: Color(0xFF333333),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 11,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFD81B60),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
 
-          // Right: "Halo, Selamat Pagi", Patient Name, and Avatar (Bisa ditekan untuk membuka Profil)
+          // Kanan: Sapaan Waktu Real Time, Nama Pasien, & Avatar Profil (Diperbesar setara header)
           InkWell(
             onTap: () => setState(() => _selectedTabIndex = 2),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               child: Row(
@@ -114,9 +267,9 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Halo, Selamat Pagi ✨',
+                        _getTimeBasedGreeting(),
                         style: GoogleFonts.poppins(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFFD81B60),
                         ),
@@ -124,64 +277,76 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       Text(
                         _currentPatientName,
                         style: GoogleFonts.poppins(
-                          fontSize: 13.5,
+                          fontSize: 15.5,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFF141414),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(color: Colors.white, width: 2.2),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2.5),
                             ),
                           ],
                         ),
                         child: ClipOval(
-                          child: Image.asset(
-                            'assets/images/doctor_avatar.jpg',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: const Color(0xFFF06292),
-                                child: const Icon(Icons.person, color: Colors.white, size: 24),
-                              );
+                          child: ValueListenableBuilder<String?>(
+                            valueListenable: ProfileImageService().profileImagePath,
+                            builder: (context, imagePath, _) {
+                              final hasCustom =
+                                  imagePath != null && File(imagePath).existsSync();
+                              return hasCustom
+                                  ? Image.file(
+                                      File(imagePath),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.asset(
+                                      'assets/images/doctor_avatar.jpg',
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Container(
+                                          color: const Color(0xFFF06292),
+                                          child: const Icon(Icons.person, color: Colors.white, size: 28),
+                                        );
+                                      },
+                                    );
                             },
                           ),
                         ),
                       ),
                       Positioned(
-                        bottom: -2,
-                        right: -2,
+                        bottom: -1,
+                        right: -1,
                         child: Container(
-                          width: 16,
-                          height: 16,
+                          width: 18,
+                          height: 18,
                           decoration: BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 3,
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 4,
                               ),
                             ],
                           ),
                           padding: const EdgeInsets.all(2),
                           child: const Icon(
                             Icons.camera_alt_rounded,
-                            size: 9,
+                            size: 10,
                             color: Color(0xFFF06292),
                           ),
                         ),
@@ -193,34 +358,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCircleIcon(IconData icon, {VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFF8BBD0), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 1.5),
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: const Color(0xFF333333),
-        ),
       ),
     );
   }
@@ -404,7 +541,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MedicalRecordsScreen(patientName: widget.patientName),
+                        builder: (_) => MedicalRecordsScreen(patientName: _currentPatientName),
                       ),
                     );
                   },
@@ -444,6 +581,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   /// Dashboard Content 
   Widget _buildDashboardContent() {
     return SingleChildScrollView(
+      controller: _homeScrollController,
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Column(
@@ -464,7 +602,8 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 14),
 
-          // (Cek Risiko, Konsultasi, Kalender Kesehatan)
+          // 6 Layanan Utama Beranda Pasien (Grid 3x2)
+          // Baris 1: Cek Risiko, Konsultasi, Kalender Kesehatan
           Row(
             children: [
               Expanded(
@@ -499,21 +638,41 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.calendar_month_outlined, color: Colors.white, size: 28),
+                  icon: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 28),
                   title: 'Kalender\nKesehatan',
-                  onTap: () => setState(() => _selectedTabIndex = 3),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HealthCalendarScreen(),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
-          // (Riwayat, Menu Penunjang)
+          // Baris 2: Pengingat Obat, Riwayat, Menu Penunjang
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 125,
+              Expanded(
+                child: _buildServiceCard(
+                  icon: const Icon(Icons.alarm_on_rounded, color: Colors.white, size: 28),
+                  title: 'Pengingat\nObat',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MedicationReminderScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
                 child: _buildServiceCard(
                   icon: const Icon(Icons.history_edu_rounded, color: Colors.white, size: 28),
                   title: 'Riwayat',
@@ -521,15 +680,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MedicalRecordsScreen(patientName: widget.patientName),
+                        builder: (_) => MedicalRecordsScreen(patientName: _currentPatientName),
                       ),
                     );
                   },
                 ),
               ),
-              const SizedBox(width: 16),
-              SizedBox(
-                width: 125,
+              const SizedBox(width: 10),
+              Expanded(
                 child: _buildServiceCard(
                   icon: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 28),
                   title: 'Menu\nPenunjang',
@@ -672,8 +830,272 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             },
           ),
 
+          const SizedBox(height: 26),
+
+          // Artikel (langsung ke artikel tanpa judul edukasi)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Artikel',
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF141414),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF0F2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFF8BBD0)),
+                ),
+                child: Text(
+                  '${educationalArticles.length} Artikel',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFD81B60),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Horizontal List of Educational Articles (Clickable)
+          SizedBox(
+            height: 245,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: educationalArticles.length,
+              itemBuilder: (context, index) {
+                final article = educationalArticles[index];
+                return Padding(
+                  padding: EdgeInsets.only(right: index == educationalArticles.length - 1 ? 0 : 12),
+                  child: _buildHomeArticleCard(article),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Kapan Harus Ke Dokter? Card
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const WhenToSeeDoctorScreen(),
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF06292).withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFCE4EC),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.volunteer_activism_rounded, color: Color(0xFFD81B60), size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Kapan Harus Ke Dokter?',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: const Color(0xFFD81B60),
+                            ),
+                          ),
+                          Text(
+                            'Kenali gejala yang perlu penanganan medis segera',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              color: const Color(0xFF616161),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFCE4EC),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Pelajari',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              color: const Color(0xFFD81B60),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFFD81B60)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
           const SizedBox(height: 28),
         ],
+      ),
+    );
+  }
+
+  /// Article Card di bagian bawah Beranda
+  Widget _buildHomeArticleCard(EducationArticle article) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ArticleDetailScreen(article: article),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 175,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 98,
+                decoration: BoxDecoration(
+                  color: article.imageBgColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                ),
+                child: Stack(
+                  children: [
+                    Center(
+                      child: Icon(article.iconData, color: article.categoryColor.withValues(alpha: 0.5), size: 46),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          article.readTime,
+                          style: GoogleFonts.poppins(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF424242),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      article.category,
+                      style: GoogleFonts.poppins(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: article.categoryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      article.title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF141414),
+                        height: 1.25,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      article.subtitle,
+                      style: GoogleFonts.poppins(
+                        fontSize: 9.5,
+                        color: const Color(0xFF757575),
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          'Baca artikel',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFD81B60),
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFD81B60)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -818,7 +1240,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           _buildNavItem(0, Icons.home_outlined),
           _buildNavItem(1, Icons.chat_bubble_outline_rounded),
           _buildNavItem(2, Icons.person_outline_rounded),
-          _buildNavItem(3, Icons.calendar_month_outlined),
         ],
       ),
     );
@@ -830,7 +1251,20 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
     return InkWell(
       onTap: () {
-        if (index == 1) {
+        if (index == 0) {
+          if (_selectedTabIndex != 0) {
+            setState(() => _selectedTabIndex = 0);
+          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_homeScrollController.hasClients) {
+              _homeScrollController.animateTo(
+                0,
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOutCubic,
+              );
+            }
+          });
+        } else if (index == 1) {
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -861,8 +1295,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
         return _buildConsultationTab();
       case 2:
         return _buildProfileTab();
-      case 3:
-        return _buildCalendarTab();
       default:
         return _buildDashboardContent();
     }
@@ -992,84 +1424,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       patientName: _currentPatientName,
       onBackToHome: () => setState(() => _selectedTabIndex = 0),
       isTab: true,
-    );
-  }
-
-  Widget _buildCalendarTab() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Kalender Kesehatan',
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF141414)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Jadwal kontrol rutin dan pengingat konsumsi obat harian.',
-            style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF666666)),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: const Color(0xFFFCE4EC), borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.event_available_rounded, color: Color(0xFFD81B60), size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Kontrol Rutin Dokter', style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w700)),
-                          Text('20 Juni 2026 • 09:00 WIB', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFFD81B60), fontWeight: FontWeight.w600)),
-                          Text('Poli Penyakit Dalam - dr. Afieta Putri, Sp.PD', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: const Color(0xFFFCE4EC), borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.medication_rounded, color: Color(0xFFD81B60), size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Minum Metformin HCl 500 mg', style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w700)),
-                          Text('Setiap Hari (07:00 & 19:00) • Sesudah Makan', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF666666))),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

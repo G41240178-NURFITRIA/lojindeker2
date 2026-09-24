@@ -5,8 +5,11 @@ import 'core/theme/app_theme.dart';
 import 'core/widgets/device_preview_wrapper.dart';
 import 'features/auth/screens/landing_screen.dart';
 
-void main() {
+import 'core/services/notification_service.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
 
   // Set system UI overlay style to match status bar
   SystemChrome.setSystemUIOverlayStyle(
