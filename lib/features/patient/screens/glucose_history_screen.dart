@@ -220,21 +220,21 @@ class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
               Expanded(
                 child: _buildInnerSummaryPill(
                   label: 'Rata rata',
-                  value: '128',
+                  value: '',
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _buildInnerSummaryPill(
                   label: 'Tertinggi',
-                  value: '185',
+                  value: '',
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _buildInnerSummaryPill(
                   label: 'Terendah',
-                  value: '78',
+                  value: '',
                 ),
               ),
             ],
