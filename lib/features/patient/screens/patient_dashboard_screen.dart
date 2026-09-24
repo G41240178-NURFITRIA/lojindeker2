@@ -1,6 +1,8 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../core/services/profile_image_service.dart';
 import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
@@ -17,10 +19,7 @@ import 'medication_reminder_screen.dart';
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
 
-  const PatientDashboardScreen({
-    super.key,
-    this.patientName = 'Pasien',
-  });
+  const PatientDashboardScreen({super.key, this.patientName = 'Pasien'});
 
   @override
   State<PatientDashboardScreen> createState() => _PatientDashboardScreenState();
@@ -71,9 +70,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 if (_selectedTabIndex == 0) _buildHeader(),
 
                 // Scrollable Content
-                Expanded(
-                  child: _buildSelectedTabContent(),
-                ),
+                Expanded(child: _buildSelectedTabContent()),
               ],
             ),
           ),
@@ -89,13 +86,13 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   String _getTimeBasedGreeting() {
     final hour = DateTime.now().hour;
     if (hour >= 5 && hour < 11) {
-      return 'Selamat pagi ✨';
+      return 'Selamat Pagi ✨';
     } else if (hour >= 11 && hour < 15) {
-      return 'Selamat siang ☀️';
+      return 'Selamat Siang ☀️';
     } else if (hour >= 15 && hour < 18) {
-      return 'Selamat sore 🌅';
+      return 'Selamat Sore 🌅';
     } else {
-      return 'Selamat malam 🌙';
+      return 'Selamat Malam 🌙';
     }
   }
 
@@ -114,7 +111,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 color: const Color(0xFFFCE4EC),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.notifications_active_rounded, color: Color(0xFFD81B60), size: 22),
+              child: const Icon(
+                Icons.notifications_active_rounded,
+                color: Color(0xFFD81B60),
+                size: 22,
+              ),
             ),
             const SizedBox(width: 10),
             Text(
@@ -185,16 +186,26 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             children: [
               Text(
                 title,
-                style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600, color: const Color(0xFF141414)),
+                style: GoogleFonts.poppins(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF141414),
+                ),
               ),
               Text(
                 desc,
-                style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF666666)),
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: const Color(0xFF666666),
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 time,
-                style: GoogleFonts.poppins(fontSize: 9.5, color: const Color(0xFF9E9E9E)),
+                style: GoogleFonts.poppins(
+                  fontSize: 9.5,
+                  color: const Color(0xFF9E9E9E),
+                ),
               ),
             ],
           ),
@@ -304,10 +315,12 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                         ),
                         child: ClipOval(
                           child: ValueListenableBuilder<String?>(
-                            valueListenable: ProfileImageService().profileImagePath,
+                            valueListenable:
+                                ProfileImageService().profileImagePath,
                             builder: (context, imagePath, _) {
                               final hasCustom =
-                                  imagePath != null && File(imagePath).existsSync();
+                                  imagePath != null &&
+                                  File(imagePath).existsSync();
                               return hasCustom
                                   ? Image.file(
                                       File(imagePath),
@@ -316,12 +329,17 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                                   : Image.asset(
                                       'assets/images/doctor_avatar.jpg',
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Container(
-                                          color: const Color(0xFFF06292),
-                                          child: const Icon(Icons.person, color: Colors.white, size: 28),
-                                        );
-                                      },
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            return Container(
+                                              color: const Color(0xFFF06292),
+                                              child: const Icon(
+                                                Icons.person,
+                                                color: Colors.white,
+                                                size: 28,
+                                              ),
+                                            );
+                                          },
                                     );
                             },
                           ),
@@ -371,10 +389,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFF0F5),
-            Color(0xFFFCE4EC),
-          ],
+          colors: [Color(0xFFFFF0F5), Color(0xFFFCE4EC)],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
@@ -421,7 +436,10 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                         ),
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFE8F5E9),
                             borderRadius: BorderRadius.circular(10),
@@ -502,9 +520,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const LiveChatScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const LiveChatScreen()),
                     );
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -519,7 +535,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.chat_rounded, size: 15, color: Colors.white),
+                        const Icon(
+                          Icons.chat_rounded,
+                          size: 15,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Tanya Dokter',
@@ -541,7 +561,9 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MedicalRecordsScreen(patientName: _currentPatientName),
+                        builder: (_) => MedicalRecordsScreen(
+                          patientName: _currentPatientName,
+                        ),
                       ),
                     );
                   },
@@ -551,12 +573,19 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFF06292), width: 1.2),
+                      border: Border.all(
+                        color: const Color(0xFFF06292),
+                        width: 1.2,
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.history_edu_rounded, size: 15, color: Color(0xFFD81B60)),
+                        const Icon(
+                          Icons.history_edu_rounded,
+                          size: 15,
+                          color: Color(0xFFD81B60),
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Lihat Riwayat',
@@ -578,7 +607,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// Dashboard Content 
+  /// Dashboard Content
   Widget _buildDashboardContent() {
     return SingleChildScrollView(
       controller: _homeScrollController,
@@ -608,7 +637,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             children: [
               Expanded(
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.health_and_safety_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   title: 'Cek Risiko',
                   onTap: () {
                     Navigator.push(
@@ -638,7 +671,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   title: 'Kalender\nKesehatan',
                   onTap: () {
                     Navigator.push(
@@ -659,7 +696,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             children: [
               Expanded(
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.alarm_on_rounded, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.alarm_on_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   title: 'Pengingat\nObat',
                   onTap: () {
                     Navigator.push(
@@ -674,13 +715,19 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.history_edu_rounded, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.history_edu_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   title: 'Riwayat',
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MedicalRecordsScreen(patientName: _currentPatientName),
+                        builder: (_) => MedicalRecordsScreen(
+                          patientName: _currentPatientName,
+                        ),
                       ),
                     );
                   },
@@ -689,7 +736,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildServiceCard(
-                  icon: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 28),
+                  icon: const Icon(
+                    Icons.medical_services_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   title: 'Menu\nPenunjang',
                   onTap: () {
                     Navigator.push(
@@ -874,7 +925,9 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               itemBuilder: (context, index) {
                 final article = educationalArticles[index];
                 return Padding(
-                  padding: EdgeInsets.only(right: index == educationalArticles.length - 1 ? 0 : 12),
+                  padding: EdgeInsets.only(
+                    right: index == educationalArticles.length - 1 ? 0 : 12,
+                  ),
                   child: _buildHomeArticleCard(article),
                 );
               },
@@ -896,11 +949,17 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 );
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
+                  border: Border.all(
+                    color: const Color(0xFFF8BBD0),
+                    width: 1.2,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFFF06292).withValues(alpha: 0.08),
@@ -917,7 +976,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                         color: Color(0xFFFCE4EC),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.volunteer_activism_rounded, color: Color(0xFFD81B60), size: 22),
+                      child: const Icon(
+                        Icons.volunteer_activism_rounded,
+                        color: Color(0xFFD81B60),
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -943,7 +1006,10 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFCE4EC),
                         borderRadius: BorderRadius.circular(8),
@@ -959,7 +1025,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                             ),
                           ),
                           const SizedBox(width: 2),
-                          const Icon(Icons.chevron_right_rounded, size: 16, color: Color(0xFFD81B60)),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 16,
+                            color: Color(0xFFD81B60),
+                          ),
                         ],
                       ),
                     ),
@@ -1010,18 +1080,27 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 height: 98,
                 decoration: BoxDecoration(
                   color: article.imageBgColor,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(15),
+                  ),
                 ),
                 child: Stack(
                   children: [
                     Center(
-                      child: Icon(article.iconData, color: article.categoryColor.withValues(alpha: 0.5), size: 46),
+                      child: Icon(
+                        article.iconData,
+                        color: article.categoryColor.withValues(alpha: 0.5),
+                        size: 46,
+                      ),
                     ),
                     Positioned(
                       top: 8,
                       right: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(6),
@@ -1087,7 +1166,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 3),
-                        const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFD81B60)),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 12,
+                          color: Color(0xFFD81B60),
+                        ),
                       ],
                     ),
                   ],
@@ -1100,7 +1183,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// Service Card 
+  /// Service Card
   Widget _buildServiceCard({
     required Widget icon,
     required String title,
@@ -1119,10 +1202,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             gradient: const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFFF8DA1),
-                Color(0xFFF06292),
-              ],
+              colors: [Color(0xFFFF8DA1), Color(0xFFF06292)],
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
@@ -1136,10 +1216,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                height: 32,
-                child: Center(child: icon),
-              ),
+              SizedBox(height: 32, child: Center(child: icon)),
               const SizedBox(height: 6),
               Text(
                 title,
@@ -1160,7 +1237,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// History Tile 
+  /// History Tile
   Widget _buildHistoryTile({
     required IconData icon,
     required Color iconColor,
@@ -1228,7 +1305,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// Bottom Navigation Bar 
+  /// Bottom Navigation Bar
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 64,
@@ -1247,7 +1324,9 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
   Widget _buildNavItem(int index, IconData icon) {
     final isSelected = _selectedTabIndex == index;
-    final color = isSelected ? const Color(0xFFD81B60) : const Color(0xFFF48FB1);
+    final color = isSelected
+        ? const Color(0xFFD81B60)
+        : const Color(0xFFF48FB1);
 
     return InkWell(
       onTap: () {
@@ -1267,9 +1346,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
         } else if (index == 1) {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const ConsultationListScreen(),
-            ),
+            MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
           );
         } else {
           setState(() => _selectedTabIndex = index);
@@ -1278,11 +1355,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Icon(
-          icon,
-          size: 26,
-          color: color,
-        ),
+        child: Icon(icon, size: 26, color: color),
       ),
     );
   }
@@ -1309,12 +1382,19 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
         children: [
           Text(
             'Konsultasi Dokter',
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF141414)),
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF141414),
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             'Hubungi dokter spesialis untuk evaluasi kondisi diabetes Anda.',
-            style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF666666)),
+            style: GoogleFonts.poppins(
+              fontSize: 12.5,
+              color: const Color(0xFF666666),
+            ),
           ),
           const SizedBox(height: 16),
           _buildDoctorCard(
@@ -1349,10 +1429,8 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => LiveChatScreen(
-              doctorName: name,
-              specialty: speciality,
-            ),
+            builder: (_) =>
+                LiveChatScreen(doctorName: name, specialty: speciality),
           ),
         );
       },
@@ -1379,7 +1457,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 color: const Color(0xFFFCE4EC),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.person_rounded, color: Color(0xFFD81B60), size: 28),
+              child: const Icon(
+                Icons.person_rounded,
+                color: Color(0xFFD81B60),
+                size: 28,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1388,26 +1470,44 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 children: [
                   Text(
                     name,
-                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w700, color: const Color(0xFF141414)),
+                    style: GoogleFonts.poppins(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF141414),
+                    ),
                   ),
                   Text(
                     speciality,
-                    style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFFD81B60), fontWeight: FontWeight.w500),
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: const Color(0xFFD81B60),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   Text(
                     hospital,
-                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: const Color(0xFF757575),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       status,
-                      style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: statusColor),
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: statusColor,
+                      ),
                     ),
                   ),
                 ],
@@ -1467,20 +1567,47 @@ class _DoctorOutlinePainter extends CustomPainter {
     // Doctor shoulders/torso
     final bodyPath = Path();
     bodyPath.moveTo(w * 0.15, h * 0.90);
-    bodyPath.cubicTo(w * 0.15, h * 0.60, w * 0.35, h * 0.55, w * 0.50, h * 0.55);
-    bodyPath.cubicTo(w * 0.65, h * 0.55, w * 0.85, h * 0.60, w * 0.85, h * 0.90);
+    bodyPath.cubicTo(
+      w * 0.15,
+      h * 0.60,
+      w * 0.35,
+      h * 0.55,
+      w * 0.50,
+      h * 0.55,
+    );
+    bodyPath.cubicTo(
+      w * 0.65,
+      h * 0.55,
+      w * 0.85,
+      h * 0.60,
+      w * 0.85,
+      h * 0.90,
+    );
     canvas.drawPath(bodyPath, paint);
 
     // Stethoscope loop around neck
     final stethPath = Path();
     stethPath.moveTo(w * 0.38, h * 0.55);
-    stethPath.cubicTo(w * 0.38, h * 0.72, w * 0.62, h * 0.72, w * 0.62, h * 0.55);
+    stethPath.cubicTo(
+      w * 0.38,
+      h * 0.72,
+      w * 0.62,
+      h * 0.72,
+      w * 0.62,
+      h * 0.55,
+    );
     stethPath.moveTo(w * 0.50, h * 0.68);
     stethPath.lineTo(w * 0.50, h * 0.80);
     canvas.drawPath(stethPath, paint..strokeWidth = 1.4);
 
     // Stethoscope bell
-    canvas.drawCircle(Offset(w * 0.50, h * 0.82), 1.8, Paint()..color = color..style = PaintingStyle.fill);
+    canvas.drawCircle(
+      Offset(w * 0.50, h * 0.82),
+      1.8,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
   }
 
   @override
