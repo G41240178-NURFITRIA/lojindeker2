@@ -125,6 +125,7 @@ class _LandingScreenState extends State<LandingScreen>
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -185,17 +186,19 @@ class _LandingScreenState extends State<LandingScreen>
                 opacity: _fadeAnim,
                 child: SlideTransition(
                   position: _slideAnim,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 32),
+                  child: SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
 
-                      // Logo + Brand
-                      ScaleTransition(
-                        scale: _pulseAnim,
-                        child: const AppLogoBadge(size: 120),
-                      ),
+                        // Logo + Brand
+                        ScaleTransition(
+                          scale: _pulseAnim,
+                          child: const AppLogoBadge(size: 100),
+                        ),
 
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 10),
 
                       // Tagline
                       Text(
@@ -226,142 +229,143 @@ class _LandingScreenState extends State<LandingScreen>
                         ),
                       ),
 
-                      const SizedBox(height: 28),
+                        const SizedBox(height: 20),
 
-                      // Feature Carousel
-                      SizedBox(
-                        height: 160,
-                        child: PageView.builder(
-                          controller: _pageController,
-                          itemCount: _features.length,
-                          onPageChanged: (i) =>
-                              setState(() => _currentPage = i),
-                          itemBuilder: (_, i) =>
-                              _buildFeatureCard(_features[i]),
+                        // Feature Carousel
+                        SizedBox(
+                          height: 140,
+                          child: PageView.builder(
+                            controller: _pageController,
+                            itemCount: _features.length,
+                            onPageChanged: (i) =>
+                                setState(() => _currentPage = i),
+                            itemBuilder: (_, i) =>
+                                _buildFeatureCard(_features[i]),
+                          ),
                         ),
-                      ),
 
-                      const SizedBox(height: 14),
+                        const SizedBox(height: 10),
 
-                      // Dot indicators
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          _features.length,
-                          (i) => AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            width: _currentPage == i ? 24 : 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: _currentPage == i
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.35),
-                              borderRadius: BorderRadius.circular(4),
+                        // Dot indicators
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            _features.length,
+                            (i) => AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              width: _currentPage == i ? 24 : 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: _currentPage == i
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.35),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                             ),
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 32),
+                        const SizedBox(height: 18),
 
-                      // Stats row
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildStat('500+', 'Pengguna Aktif'),
-                            _buildStatDivider(),
-                            _buildStat('4.9★', 'Rating Pengguna'),
-                            _buildStatDivider(),
-                            _buildStat('24/7', 'Akses Kapanpun'),
-                          ],
+                        // Stats row
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 28),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildStat('500+', 'Pengguna Aktif'),
+                              _buildStatDivider(),
+                              _buildStat('4.9★', 'Rating Pengguna'),
+                              _buildStatDivider(),
+                              _buildStat('24/7', 'Akses Kapanpun'),
+                            ],
+                          ),
                         ),
-                      ),
 
-                      const Spacer(),
+                        const SizedBox(height: 20),
 
-                      // CTA Buttons
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 28),
-                        child: Column(
-                          children: [
-                            // Primary button — Mulai Sekarang
-                            GestureDetector(
-                              onTap: _goToLogin,
-                              child: Container(
-                                width: double.infinity,
-                                height: 54,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFFF6584),
-                                      Color(0xFFC2185B),
+                        // CTA Buttons
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 28),
+                          child: Column(
+                            children: [
+                              // Primary button — Mulai Sekarang
+                              GestureDetector(
+                                onTap: _goToLogin,
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFFFF6584),
+                                        Color(0xFFC2185B),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(30),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFFC2185B)
+                                            .withValues(alpha: 0.45),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 6),
+                                      ),
                                     ],
                                   ),
-                                  borderRadius: BorderRadius.circular(30),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFC2185B)
-                                          .withValues(alpha: 0.45),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ],
-                                ),
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    // Gloss highlight
-                                    Positioned(
-                                      top: 0,
-                                      left: 0,
-                                      right: 0,
-                                      child: Container(
-                                        height: 27,
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              const BorderRadius.vertical(
-                                                top: Radius.circular(30),
-                                              ),
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                            colors: [
-                                              Colors.white.withValues(
-                                                alpha: 0.35,
-                                              ),
-                                              Colors.transparent,
-                                            ],
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      // Gloss highlight
+                                      Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        child: Container(
+                                          height: 27,
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                const BorderRadius.vertical(
+                                                  top: Radius.circular(30),
+                                                ),
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                              colors: [
+                                                Colors.white.withValues(
+                                                  alpha: 0.35,
+                                                ),
+                                                Colors.transparent,
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Mulai Sekarang',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                            letterSpacing: 0.5,
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'Mulai Sekarang',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                              letterSpacing: 0.5,
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 32),
-                    ],
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
               ),
