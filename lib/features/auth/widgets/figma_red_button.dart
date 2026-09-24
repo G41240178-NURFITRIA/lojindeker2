@@ -20,10 +20,10 @@ class FigmaRedButton extends StatelessWidget {
       height: 48,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFB51419),
+          backgroundColor: const Color(0xFFF06292),
           foregroundColor: Colors.white,
           elevation: 2,
-          shadowColor: const Color(0xFFB51419).withValues(alpha: 0.4),
+          shadowColor: const Color(0xFFF06292).withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(25),
           ),
