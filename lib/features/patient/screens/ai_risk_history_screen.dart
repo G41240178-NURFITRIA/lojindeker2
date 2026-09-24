@@ -16,29 +16,31 @@ class _AiRiskHistoryScreenState extends State<AiRiskHistoryScreen> {
   int _selectedTabIndex = 0;
   final List<String> _tabs = [
     'Cek Risiko AI',
-    'Konsultasi',
     'Monitoring',
-    'Resep',
   ];
+
+  static const Color _primaryPink = Color(0xFFF06292);
+  static const Color _darkRose = Color(0xFFD81B60);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: RiskColors.maroonPrimary,
+        backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF212121), size: 18),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Riwayat Cek Risiko AI',
           style: GoogleFonts.poppins(
-            fontSize: 17,
+            fontSize: 16.5,
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: const Color(0xFF212121),
           ),
         ),
       ),
@@ -81,10 +83,10 @@ class _AiRiskHistoryScreenState extends State<AiRiskHistoryScreen> {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
                   decoration: BoxDecoration(
-                    color: isSelected ? RiskColors.maroonPrimary : Colors.white,
+                    color: isSelected ? _primaryPink : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: RiskColors.maroonPrimary,
+                      color: _primaryPink,
                       width: 1.2,
                     ),
                   ),
@@ -93,7 +95,7 @@ class _AiRiskHistoryScreenState extends State<AiRiskHistoryScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      color: isSelected ? Colors.white : RiskColors.maroonPrimary,
+                      color: isSelected ? Colors.white : _primaryPink,
                     ),
                   ),
                 ),
@@ -442,7 +444,7 @@ class _AiRiskHistoryScreenState extends State<AiRiskHistoryScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    final color = isSelected ? const Color(0xFFBA171E) : const Color(0xFFD65C62);
+    final color = isSelected ? _darkRose : const Color(0xFFF48FB1);
 
     return InkWell(
       onTap: onTap,
