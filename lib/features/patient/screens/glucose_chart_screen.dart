@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'consultation_list_screen.dart';
 
 class GlucoseChartScreen extends StatefulWidget {
   const GlucoseChartScreen({super.key});
@@ -336,7 +337,6 @@ class _GlucoseChartScreenState extends State<GlucoseChartScreen> {
           _buildNavItem(0, Icons.home_outlined),
           _buildNavItem(1, Icons.chat_bubble_outline_rounded),
           _buildNavItem(2, Icons.person_outline_rounded),
-          _buildNavItem(3, Icons.calendar_month_outlined),
         ],
       ),
     );
@@ -348,8 +348,15 @@ class _GlucoseChartScreenState extends State<GlucoseChartScreen> {
 
     return InkWell(
       onTap: () {
-        setState(() => _selectedTabIndex = index);
         if (index == 0) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        } else if (index == 1) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
+          );
+        } else if (index == 2) {
           Navigator.of(context).popUntil((route) => route.isFirst);
         }
       },

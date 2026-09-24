@@ -385,14 +385,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
             color: _navIconInactive,
             tooltip: 'Beranda',
             onPressed: () {
-              if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
-              } else {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PatientDashboardScreen()),
-                );
-              }
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
           IconButton(
@@ -411,10 +404,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
             color: _navIconInactive,
             tooltip: 'Profil Pasien',
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PatientProfileScreen()),
-              );
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
         ],

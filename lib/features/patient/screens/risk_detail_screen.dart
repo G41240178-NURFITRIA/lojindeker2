@@ -526,7 +526,6 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           _buildNavItem(0, Icons.home_outlined),
           _buildNavItem(1, Icons.chat_bubble_outline_rounded),
           _buildNavItem(2, Icons.person_outline_rounded),
-          _buildNavItem(3, Icons.calendar_month_outlined),
         ],
       ),
     );
@@ -541,10 +540,13 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
         if (index == 0) {
           Navigator.of(context).popUntil((route) => route.isFirst);
         } else if (index == 1) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
           );
+        } else if (index == 2) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
         }
       },
       borderRadius: BorderRadius.circular(12),
