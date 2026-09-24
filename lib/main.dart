@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'core/config/firebase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/device_preview_wrapper.dart';
 import 'features/auth/screens/landing_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inisialisasi Firebase & dotenv
+  await FirebaseConfig.initialize();
 
   // Set system UI overlay style to match status bar
   SystemChrome.setSystemUIOverlayStyle(

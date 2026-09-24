@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/auth_service.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/figma_auth_field.dart';
@@ -36,7 +37,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Silakan lengkapi email dan password.',
+            'Silakan lengkapi email / no HP dan password.',
             style: GoogleFonts.poppins(),
           ),
           backgroundColor: const Color(0xFFB51419),
@@ -46,24 +47,44 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
 
-    // Navigate to respective dashboard based on selected role
-    if (_selectedRole == UserRole.pasien) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => PatientDashboardScreen(
-            patientName: email.contains('@') ? 'Muhammad Nizam' : email,
+    try {
+      final user = await AuthService.instance.login(
+        identifier: email,
+        password: password,
+        expectedRole: _selectedRole,
+      );
+
+      if (!mounted) return;
+
+      if (_selectedRole == UserRole.pasien) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => PatientDashboardScreen(
+              patientName: user.fullName.isNotEmpty ? user.fullName : 'Pasien',
+            ),
           ),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceAll('Exception: ', ''),
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: const Color(0xFFB51419),
         ),
       );
-    } else {
-      // Admin or Dokter Dashboard
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
