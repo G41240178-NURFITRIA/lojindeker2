@@ -30,7 +30,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             'Silakan masukkan email atau no handphone Anda.',
             style: GoogleFonts.poppins(),
           ),
-          backgroundColor: const Color(0xFFB51419),
+          backgroundColor: const Color(0xFFF06292),
         ),
       );
       return;
