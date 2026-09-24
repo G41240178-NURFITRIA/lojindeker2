@@ -42,15 +42,15 @@ class _GlossyLoginButtonState extends State<GlossyLoginButton> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFF7CE7FF), // Glossy top highlight
-                Color(0xFF45D1FA), // Main bright cyan
-                Color(0xFF03A2D8), // Rich cyan bottom
+                Color(0xFFFF7597), // Glossy top highlight
+                Color(0xFFE91E63), // Vibrant rich rose
+                Color(0xFFC2185B), // Deep elegant crimson rose
               ],
               stops: [0.0, 0.45, 1.0],
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.cyanShadow,
+                color: AppColors.ctaShadow,
                 blurRadius: 16,
                 spreadRadius: 1,
                 offset: const Offset(0, 6),

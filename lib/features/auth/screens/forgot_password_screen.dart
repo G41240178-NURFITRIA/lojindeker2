@@ -31,7 +31,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             'Silakan masukkan email Anda.',
             style: GoogleFonts.poppins(),
           ),
-          backgroundColor: const Color(0xFFB51419),
+          backgroundColor: const Color(0xFFF06292),
         ),
       );
       return;
@@ -80,7 +80,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFB51419),
+        backgroundColor: const Color(0xFFF06292),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),

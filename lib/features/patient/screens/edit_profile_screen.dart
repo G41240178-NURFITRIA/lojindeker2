@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/profile_image_service.dart';
+import 'consultation_list_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String patientName;
@@ -7,7 +10,7 @@ class EditProfileScreen extends StatefulWidget {
 
   const EditProfileScreen({
     super.key,
-    this.patientName = 'Muhammad Nizam',
+    this.patientName = 'Pasien',
     this.onProfileUpdated,
   });
 
@@ -21,6 +24,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _emailController;
   late final TextEditingController _dobController;
 
+  String? _selectedImagePath;
+
   static const Color _bgScreen = Color(0xFFFFF0F5);
   static const Color _primaryPink = Color(0xFFF06292);
   static const Color _darkRose = Color(0xFFD81B60);
@@ -33,9 +38,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.patientName);
-    _phoneController = TextEditingController(text: '+123 567 89000');
-    _emailController = TextEditingController(text: 'johndoe@example.com');
-    _dobController = TextEditingController(text: '15 / 08 / 1995');
+    _phoneController = TextEditingController();
+    _emailController = TextEditingController();
+    _dobController = TextEditingController();
+    _selectedImagePath = ProfileImageService().profileImagePath.value;
   }
 
   @override
@@ -45,6 +51,146 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emailController.dispose();
     _dobController.dispose();
     super.dispose();
+  }
+
+  void _showPhotoPickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Ganti Foto Profil',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _darkRose,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.photo_library_rounded, color: _darkRose),
+                  ),
+                  title: Text(
+                    'Pilih dari Galeri HP',
+                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Gunakan foto dari galeri perangkat Anda',
+                    style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF757575)),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final path = await ProfileImageService().pickImageFromGallery();
+                    if (path != null) {
+                      setState(() {
+                        _selectedImagePath = path;
+                      });
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Foto berhasil dipilih dari galeri!',
+                              style: GoogleFonts.poppins(fontSize: 12),
+                            ),
+                            backgroundColor: const Color(0xFF2E7D32),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded, color: _darkRose),
+                  ),
+                  title: Text(
+                    'Ambil Foto dengan Kamera',
+                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Ambil potret langsung dari kamera ponsel',
+                    style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF757575)),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final path = await ProfileImageService().pickImageFromCamera();
+                    if (path != null) {
+                      setState(() {
+                        _selectedImagePath = path;
+                      });
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Foto berhasil diambil dari kamera!',
+                              style: GoogleFonts.poppins(fontSize: 12),
+                            ),
+                            backgroundColor: const Color(0xFF2E7D32),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                if (_selectedImagePath != null) ...[
+                  const Divider(),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFEBEE),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                    ),
+                    title: Text(
+                      'Hapus Foto Kustom',
+                      style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.red),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      ProfileImageService().clearImage();
+                      setState(() {
+                        _selectedImagePath = null;
+                      });
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _handleUpdateProfile() {
@@ -62,6 +208,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       );
       return;
+    }
+
+    if (_selectedImagePath != null) {
+      ProfileImageService().profileImagePath.value = _selectedImagePath;
     }
 
     widget.onProfileUpdated?.call(updatedName);
@@ -120,66 +270,97 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar with camera badge
+              // Avatar with camera badge (Clickable to pick from gallery)
               Center(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _darkRose.withValues(alpha: 0.15),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/images/doctor_avatar.jpg',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: _primaryPink,
-                              child: const Icon(Icons.person, color: Colors.white, size: 48),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: 28,
-                        height: 28,
+                child: InkWell(
+                  onTap: _showPhotoPickerOptions,
+                  borderRadius: BorderRadius.circular(50),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 96,
+                        height: 96,
                         decoration: BoxDecoration(
-                          color: _darkRose,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(color: Colors.white, width: 3.5),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 4,
+                              color: _darkRose.withValues(alpha: 0.15),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: const Icon(
-                          Icons.camera_alt_rounded,
-                          size: 14,
-                          color: Colors.white,
+                        child: ClipOval(
+                          child: _selectedImagePath != null &&
+                                  File(_selectedImagePath!).existsSync()
+                              ? Image.file(
+                                  File(_selectedImagePath!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: _primaryPink,
+                                      child: const Icon(Icons.person, color: Colors.white, size: 48),
+                                    );
+                                  },
+                                )
+                              : Image.asset(
+                                  'assets/images/doctor_avatar.jpg',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: _primaryPink,
+                                      child: const Icon(Icons.person, color: Colors.white, size: 48),
+                                    );
+                                  },
+                                ),
                         ),
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: _darkRose,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            size: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton.icon(
+                  onPressed: _showPhotoPickerOptions,
+                  icon: const Icon(Icons.photo_library_outlined, size: 16, color: _darkRose),
+                  label: Text(
+                    'Pilih Foto dari Galeri',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _darkRose,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
 
               // Full Name
               _buildFieldLabel('Full Name'),
@@ -292,6 +473,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  // Bottom Navigation Bar (3 Ikon yang Berfungsi)
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 64,
@@ -302,22 +484,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           IconButton(
             icon: const Icon(Icons.home_outlined, size: 28),
             color: _navIconInactive,
+            tooltip: 'Beranda',
             onPressed: () => Navigator.pop(context),
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline_rounded, size: 26),
             color: _navIconInactive,
-            onPressed: () => Navigator.pop(context),
+            tooltip: 'Konsultasi',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.person_rounded, size: 28),
             color: _navIconActive,
+            tooltip: 'Profil',
             onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_month_outlined, size: 26),
-            color: _navIconInactive,
-            onPressed: () => Navigator.pop(context),
           ),
         ],
       ),

@@ -58,10 +58,13 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
       if (!mounted) return;
 
       if (_selectedRole == UserRole.pasien) {
+        final displayName = user.fullName.isNotEmpty
+            ? user.fullName
+            : (email.contains('@') ? email.split('@')[0] : email);
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => PatientDashboardScreen(
-              patientName: user.fullName.isNotEmpty ? user.fullName : 'Pasien',
+              patientName: displayName.isNotEmpty ? displayName : 'Pasien',
             ),
           ),
         );

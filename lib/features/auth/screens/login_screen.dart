@@ -63,16 +63,18 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (_selectedRole == UserRole.pasien) {
-        Navigator.of(context).pushReplacement(
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (_) => PatientDashboardScreen(
               patientName: user.fullName.isNotEmpty ? user.fullName : 'Pasien',
             ),
           ),
+          (route) => false,
         );
       } else {
-        Navigator.of(context).pushReplacement(
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+          (route) => false,
         );
       }
     } catch (e) {
@@ -214,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 'Lupa password?',
                                 style: GoogleFonts.poppins(
                                   fontSize: 14,
-                                  color: AppColors.forgotPasswordText.withValues(alpha: 0.92),
+                                  color: const Colors.white,
                                   fontWeight: FontWeight.w400,
                                 ),
                               ),
@@ -245,9 +247,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     style: GoogleFonts.poppins(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.white,
+                                      color: const Color(0xFFFCEAEA),
                                       decoration: TextDecoration.underline,
-                                      decorationColor: Colors.white,
+                                      decorationColor: const Color(0xFFFCEAEA),
                                     ),
                                   ),
                                 ],

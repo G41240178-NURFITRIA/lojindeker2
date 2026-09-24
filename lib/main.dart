@@ -5,9 +5,11 @@ import 'core/config/firebase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/device_preview_wrapper.dart';
 import 'features/auth/screens/landing_screen.dart';
+import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
 
   // Inisialisasi Firebase & dotenv
   await FirebaseConfig.initialize();

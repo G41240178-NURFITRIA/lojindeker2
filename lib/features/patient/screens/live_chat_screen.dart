@@ -251,7 +251,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    '${widget.specialty.length > 5 ? widget.specialty.substring(0, 5) + '...' : widget.specialty} • Online',
+                    '${widget.specialty.length > 5 ? '${widget.specialty.substring(0, 5)}...' : widget.specialty} • Online',
                     style: GoogleFonts.poppins(
                       fontSize: 11.5,
                       color: const Color(0xFF8E8E8E),
@@ -621,7 +621,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               child: Image.asset(
                 'assets/images/logo.png',
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.person,
                   size: 16,
                   color: _darkRose,

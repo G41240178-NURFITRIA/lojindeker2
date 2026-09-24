@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'live_chat_screen.dart';
+import 'patient_profile_screen.dart';
+import 'patient_dashboard_screen.dart';
 
 // Data Model Dokter
 class DoctorModel {
@@ -370,7 +372,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
     );
   }
 
-  // Bottom Navigation Bar
+  // Bottom Navigation Bar (3 Ikon yang Berfungsi)
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 64,
@@ -381,9 +383,15 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
           IconButton(
             icon: const Icon(Icons.home_outlined, size: 28),
             color: _navIconInactive,
+            tooltip: 'Beranda',
             onPressed: () {
               if (Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
+              } else {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PatientDashboardScreen()),
+                );
               }
             },
           ),
@@ -393,17 +401,21 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
               size: 26,
             ),
             color: _navIconActive,
-            onPressed: () {},
+            tooltip: 'Konsultasi',
+            onPressed: () {
+              // Sudah di halaman konsultasi
+            },
           ),
           IconButton(
             icon: const Icon(Icons.person_outline_rounded, size: 28),
             color: _navIconInactive,
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_month_outlined, size: 26),
-            color: _navIconInactive,
-            onPressed: () {},
+            tooltip: 'Profil Pasien',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PatientProfileScreen()),
+              );
+            },
           ),
         ],
       ),

@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/profile_image_service.dart';
 
 import 'edit_profile_screen.dart';
 import 'account_settings_screen.dart';
@@ -13,7 +15,7 @@ class PatientProfileScreen extends StatefulWidget {
 
   const PatientProfileScreen({
     super.key,
-    this.patientName = 'Muhammad Nizam',
+    this.patientName = 'Pasien',
     this.onBackToHome,
     this.isTab = false,
   });
@@ -271,65 +273,96 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             const SizedBox(height: 16),
 
             // Profile Avatar with Camera badge
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _darkRose.withValues(alpha: 0.18),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/doctor_avatar.jpg',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: _primaryPink,
-                          child: const Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 52,
-                          ),
-                        );
+            InkWell(
+              onTap: () async {
+                final result = await Navigator.push<String>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EditProfileScreen(
+                      patientName: _currentName,
+                      onProfileUpdated: (newName) {
+                        setState(() => _currentName = newName);
                       },
                     ),
                   ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 2,
-                  child: Container(
-                    width: 28,
-                    height: 28,
+                );
+                if (result != null && result.isNotEmpty) {
+                  setState(() => _currentName = result);
+                }
+              },
+              borderRadius: BorderRadius.circular(50),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 96,
+                    height: 96,
                     decoration: BoxDecoration(
-                      color: _darkRose,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: Colors.white, width: 3.5),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 4,
+                          color: _darkRose.withValues(alpha: 0.18),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.camera_alt_rounded,
-                      size: 14,
-                      color: Colors.white,
+                    child: ClipOval(
+                      child: ValueListenableBuilder<String?>(
+                        valueListenable: ProfileImageService().profileImagePath,
+                        builder: (context, imagePath, _) {
+                          final hasCustom =
+                              imagePath != null && File(imagePath).existsSync();
+                          return hasCustom
+                              ? Image.file(
+                                  File(imagePath),
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.asset(
+                                  'assets/images/doctor_avatar.jpg',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: _primaryPink,
+                                      child: const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 52,
+                                      ),
+                                    );
+                                  },
+                                );
+                        },
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  Positioned(
+                    bottom: 0,
+                    right: 2,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: _darkRose,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -507,11 +540,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           IconButton(
             icon: const Icon(Icons.person_rounded, size: 28),
             color: _navIconActive,
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_month_outlined, size: 26),
-            color: _navIconInactive,
             onPressed: () {},
           ),
         ],
