@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../core/services/auth_service.dart';
 import '../widgets/figma_auth_field.dart';
 import '../widgets/figma_red_button.dart';
@@ -16,7 +17,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _mobileController = TextEditingController();
-  final TextEditingController _dobController = TextEditingController();
+
+  DateTime? _selectedDob;
   bool _isLoading = false;
 
   @override
@@ -25,8 +27,66 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _passwordController.dispose();
     _emailController.dispose();
     _mobileController.dispose();
-    _dobController.dispose();
     super.dispose();
+  }
+
+  /// Format DateTime ke "dd MMMM yyyy" bahasa Indonesia
+  String _formatDisplay(DateTime date) {
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
+  }
+
+  /// Format ke ISO untuk disimpan ke Firestore
+  String _formatStorage(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final initial = _selectedDob ?? DateTime(now.year - 20, now.month, now.day);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1920),
+      lastDate: now,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFB51419),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Color(0xFF333333),
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFB51419),
+                textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() => _selectedDob = picked);
+    }
   }
 
   void _handleSignUp() async {
@@ -34,12 +94,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final mobile = _mobileController.text.trim();
-    final dob = _dobController.text.trim();
+    final dob = _selectedDob != null ? _formatStorage(_selectedDob!) : '';
 
     if (fullName.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Silakan lengkapi nama, email, dan password Anda.', style: GoogleFonts.poppins()),
+          content: Text(
+            'Silakan lengkapi nama, email, dan password Anda.',
+            style: GoogleFonts.poppins(),
+          ),
           backgroundColor: const Color(0xFFB51419),
         ),
       );
@@ -49,7 +112,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Password minimal harus 6 karakter.', style: GoogleFonts.poppins()),
+          content: Text(
+            'Password minimal harus 6 karakter.',
+            style: GoogleFonts.poppins(),
+          ),
           backgroundColor: const Color(0xFFB51419),
         ),
       );
@@ -71,7 +137,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Pendaftaran akun berhasil! Silakan login.', style: GoogleFonts.poppins()),
+          content: Text(
+            'Pendaftaran akun berhasil! Silakan login.',
+            style: GoogleFonts.poppins(),
+          ),
           backgroundColor: const Color(0xFF2E7D32),
         ),
       );
@@ -89,9 +158,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -100,10 +167,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFB51419),
+        backgroundColor: const Color(0xfff06292),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         centerTitle: true,
@@ -157,16 +228,74 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 14),
 
-              // Date Of Birth
-              FigmaAuthField(
-                label: 'Tanggal Lahir',
-                hintText: 'DD / MM / YYYY',
-                controller: _dobController,
-                keyboardType: TextInputType.datetime,
+              // ─── Tanggal Lahir — Date Picker ───────────────────────
+              Text(
+                'Tanggal Lahir',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF333333),
+                ),
               ),
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: _pickDate,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF0F0),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _selectedDob != null
+                          ? const Color(0xFFB51419).withValues(alpha: 0.55)
+                          : const Color(0xFFE8E8E8),
+                      width: 1.3,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_month_rounded,
+                        size: 20,
+                        color: _selectedDob != null
+                            ? const Color(0xFFB51419)
+                            : const Color(0xFFBBBBBB),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _selectedDob != null
+                              ? _formatDisplay(_selectedDob!)
+                              : 'Pilih tanggal lahir Anda',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13.5,
+                            color: _selectedDob != null
+                                ? const Color(0xFF222222)
+                                : const Color(0xFFBBBBBB),
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_drop_down_rounded,
+                        size: 26,
+                        color: _selectedDob != null
+                            ? const Color(0xFFB51419)
+                            : const Color(0xFFBBBBBB),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // ──────────────────────────────────────────────────────
+
               const SizedBox(height: 18),
 
-              // Terms & Privacy text
+              // Terms & Privacy
               Text(
                 'Dengan mendaftar, Anda menyetujui Syarat Layanan & Kebijakan Privasi kami.',
                 textAlign: TextAlign.center,
@@ -186,7 +315,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Bottom link: Already have an account? Log In
+              // Already have an account?
               Center(
                 child: GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
