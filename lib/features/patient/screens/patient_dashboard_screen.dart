@@ -1,8 +1,10 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/profile_image_service.dart';
 import '../models/risk_assessment_model.dart';
 import 'risk_check_screen.dart';
@@ -36,6 +38,27 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   void initState() {
     super.initState();
     _currentPatientName = widget.patientName;
+    _loadCurrentProfile();
+  }
+
+  void _loadCurrentProfile() async {
+    final user = AuthService.instance.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists && doc.data() != null && mounted) {
+          final data = doc.data()!;
+          final profileName = (data['fullName'] ?? data['profileName'] ?? data['name'])?.toString();
+          if (profileName != null && profileName.trim().isNotEmpty) {
+            setState(() {
+              _currentPatientName = profileName.trim();
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Error loading current profile in dashboard: $e');
+      }
+    }
   }
 
   @override
@@ -1758,6 +1781,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     return PatientProfileScreen(
       patientName: _currentPatientName,
       onBackToHome: () => setState(() => _selectedTabIndex = 0),
+      onProfileUpdated: (newName) {
+        setState(() {
+          _currentPatientName = newName;
+        });
+      },
       isTab: true,
     );
   }

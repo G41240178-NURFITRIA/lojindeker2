@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/profile_image_service.dart';
 import 'consultation_list_screen.dart';
 
@@ -25,6 +27,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late final TextEditingController _dobController;
 
   String? _selectedImagePath;
+  String _accountUsername = '';
 
   static const Color _bgScreen = Color(0xFFFFF0F5);
   static const Color _primaryPink = Color(0xFFF06292);
@@ -42,6 +45,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emailController = TextEditingController();
     _dobController = TextEditingController();
     _selectedImagePath = ProfileImageService().profileImagePath.value;
+    _loadUserData();
+  }
+
+  void _loadUserData() async {
+    final user = AuthService.instance.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists && doc.data() != null && mounted) {
+          final data = doc.data()!;
+          setState(() {
+            _accountUsername = data['username']?.toString() ?? '';
+            if (_phoneController.text.isEmpty && data['phoneNumber'] != null) {
+              _phoneController.text = data['phoneNumber'].toString();
+            }
+            if (_emailController.text.isEmpty) {
+              _emailController.text = data['email']?.toString() ?? user.email ?? '';
+            }
+            if (_dobController.text.isEmpty && data['dob'] != null) {
+              _dobController.text = data['dob'].toString();
+            }
+            final name = data['fullName'] ?? data['profileName'] ?? data['name'];
+            if (name != null && name.toString().trim().isNotEmpty) {
+              _nameController.text = name.toString().trim();
+            }
+          });
+        }
+      } catch (e) {
+        debugPrint('Error loading user data in edit profile: $e');
+      }
+    }
   }
 
   @override
@@ -193,13 +227,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  void _handleUpdateProfile() {
+  void _handleUpdateProfile() async {
     final updatedName = _nameController.text.trim();
     if (updatedName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Nama tidak boleh kosong',
+            'Username profil tidak boleh kosong',
             style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
           ),
           backgroundColor: _darkRose,
@@ -214,7 +248,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ProfileImageService().profileImagePath.value = _selectedImagePath;
     }
 
+    // Simpan permanen perubahan Username Profil ke Firestore (TIDAK menyentuh username akun login)
+    try {
+      final currentUser = AuthService.instance.currentUser;
+      if (currentUser != null) {
+        final Map<String, dynamic> updateData = {
+          'fullName': updatedName,
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+        if (_phoneController.text.trim().isNotEmpty) {
+          updateData['phoneNumber'] = _phoneController.text.trim();
+        }
+        if (_dobController.text.trim().isNotEmpty) {
+          updateData['dob'] = _dobController.text.trim();
+        }
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .set(updateData, SetOptions(merge: true));
+
+        await currentUser.updateDisplayName(updatedName);
+      }
+    } catch (e) {
+      debugPrint('Error updating profile in Firestore: $e');
+    }
+
     widget.onProfileUpdated?.call(updatedName);
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -362,10 +424,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 18),
 
-              // Full Name
-              _buildFieldLabel('Full Name'),
+              // Username Akun (Hanya baca / login credential tetap)
+              if (_accountUsername.isNotEmpty) ...[
+                _buildFieldLabel('Username Akun (Login)'),
+                const SizedBox(height: 6),
+                _buildReadOnlyField(value: _accountUsername),
+                const SizedBox(height: 16),
+              ],
+
+              // Username Profil
+              _buildFieldLabel('Username Profil'),
               const SizedBox(height: 6),
-              _buildInputField(controller: _nameController, hintText: 'Masukkan nama lengkap'),
+              _buildInputField(controller: _nameController, hintText: 'Masukkan username profil'),
               const SizedBox(height: 16),
 
               // Phone Number
@@ -469,6 +539,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ? Icon(suffixIcon, size: 18, color: const Color(0xFF777777))
               : null,
         ),
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyField({required String value}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE0E0E0), width: 1.0),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: const Color(0xFF616161),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const Icon(
+            Icons.lock_outline_rounded,
+            size: 18,
+            color: Color(0xFF9E9E9E),
+          ),
+        ],
       ),
     );
   }

@@ -48,6 +48,7 @@ class AuthService {
   Future<UserModel> signUp({
     required String email,
     required String password,
+    String? username,
     required String fullName,
     required String phoneNumber,
     required String dob,
@@ -68,9 +69,14 @@ class AuthService {
       // Update displayName di Firebase Auth
       await user.updateDisplayName(fullName);
 
+      final accountUsername = (username != null && username.trim().isNotEmpty)
+          ? username.trim()
+          : fullName.trim();
+
       // 2. Simpan profil lengkap ke Firestore koleksi 'users'
       final userModel = UserModel(
         uid: user.uid,
+        username: accountUsername,
         fullName: fullName.trim(),
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
@@ -96,7 +102,7 @@ class AuthService {
     }
   }
 
-  /// Login Pengguna (Bisa menggunakan Email atau Nomor HP / Nama yang terdaftar)
+  /// Login Pengguna (Bisa menggunakan Email atau Username Akun / Nomor HP)
   Future<UserModel> login({
     required String identifier,
     required String password,
@@ -107,28 +113,48 @@ class AuthService {
 
       // Jika input bukan format email (tidak ada tanda @), cari email yang sesuai di Firestore
       if (!emailToUse.contains('@')) {
-        final querySnap = await _firestore
+        // 1. Prioritaskan pencarian berdasarkan username akun login
+        final usernameQuery = await _firestore
             .collection('users')
-            .where('phoneNumber', isEqualTo: identifier.trim())
+            .where('username', isEqualTo: identifier.trim())
             .limit(1)
             .get();
 
-        if (querySnap.docs.isNotEmpty) {
-          emailToUse = querySnap.docs.first.data()['email'] ?? '';
+        if (usernameQuery.docs.isNotEmpty) {
+          emailToUse = usernameQuery.docs.first.data()['email'] ?? '';
         } else {
-          // Coba cari berdasarkan nama lengkap jika input berupa nama
-          final nameQuery = await _firestore
+          // 2. Cari berdasarkan nomor HP
+          final phoneQuery = await _firestore
               .collection('users')
-              .where('fullName', isEqualTo: identifier.trim())
+              .where('phoneNumber', isEqualTo: identifier.trim())
               .limit(1)
               .get();
-          if (nameQuery.docs.isNotEmpty) {
-            emailToUse = nameQuery.docs.first.data()['email'] ?? '';
+
+          if (phoneQuery.docs.isNotEmpty) {
+            emailToUse = phoneQuery.docs.first.data()['email'] ?? '';
+          } else {
+            // 3. Fallback akun lama: Cek fullName hanya jika akun lama belum memiliki username akun terpisah
+            final nameQuery = await _firestore
+                .collection('users')
+                .where('fullName', isEqualTo: identifier.trim())
+                .limit(1)
+                .get();
+
+            if (nameQuery.docs.isNotEmpty) {
+              final docData = nameQuery.docs.first.data();
+              if (docData['username'] == null || docData['username'].toString().isEmpty) {
+                emailToUse = docData['email'] ?? '';
+                // Simpan username akun ini secara permanen agar ke depannya konsisten
+                await _firestore.collection('users').doc(nameQuery.docs.first.id).set({
+                  'username': identifier.trim(),
+                }, SetOptions(merge: true));
+              }
+            }
           }
         }
 
         if (emailToUse.isEmpty || !emailToUse.contains('@')) {
-          throw 'Format login harus berupa email yang valid atau nomor HP yang terdaftar.';
+          throw 'Format login harus berupa email yang valid, username akun, atau nomor HP yang terdaftar.';
         }
       }
 
@@ -153,6 +179,7 @@ class AuthService {
         // Jika dokumen belum ada (misal akun lama), buat dokumen default di Firestore
         userModel = UserModel(
           uid: user.uid,
+          username: identifier.contains('@') ? identifier.split('@')[0] : identifier,
           fullName: user.displayName ?? (identifier.contains('@') ? identifier.split('@')[0] : identifier),
           email: user.email ?? emailToUse,
           phoneNumber: '',
