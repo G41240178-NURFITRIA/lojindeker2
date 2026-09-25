@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/auth_service.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
+import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/figma_auth_field.dart';
 import '../widgets/figma_red_button.dart';
@@ -65,6 +66,14 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
           MaterialPageRoute(
             builder: (_) => PatientDashboardScreen(
               patientName: displayName.isNotEmpty ? displayName : 'Pasien',
+            ),
+          ),
+        );
+      } else if (_selectedRole == UserRole.dokter) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => DoctorDashboardScreen(
+              doctorName: user.fullName.isNotEmpty ? user.fullName : 'Dr. Kaka Pratama',
             ),
           ),
         );
