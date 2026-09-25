@@ -9,7 +9,7 @@ import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
 import 'glucose_history_screen.dart';
 import 'medical_records_screen.dart';
-import 'support_menu_screen.dart';
+import 'nearest_facility_screen.dart';
 import 'live_chat_screen.dart';
 import 'patient_profile_screen.dart';
 import 'article_detail_screen.dart';
@@ -739,16 +739,16 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               Expanded(
                 child: _buildServiceCard(
                   icon: const Icon(
-                    Icons.medical_services_rounded,
+                    Icons.place_rounded,
                     color: Colors.white,
                     size: 28,
                   ),
-                  title: 'Menu\nPenunjang',
+                  title: 'Faskes\nTerdekat',
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const SupportMenuScreen(),
+                        builder: (_) => const NearestFacilityScreen(),
                       ),
                     );
                   },
