@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
-import '../../../features/auth/widgets/role_selector.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
-import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/app_logo_badge.dart';
 import '../widgets/custom_text_field.dart';
@@ -121,10 +119,8 @@ class _LoginScreenState extends State<LoginScreen> {
             end: Alignment.bottomCenter,
             colors: [
               AppColors.bgGradientTop,
-              AppColors.bgGradientMid,
-              AppColors.bgGradientBottom,
+              AppColors.bgGradientTop,
             ],
-            stops: [0.0, 0.48, 1.0],
           ),
         ),
         child: Stack(
