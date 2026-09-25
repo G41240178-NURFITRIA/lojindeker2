@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
+import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/app_logo_badge.dart';
 import '../widgets/custom_text_field.dart';
@@ -67,6 +68,15 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(
             builder: (_) => PatientDashboardScreen(
               patientName: user.fullName.isNotEmpty ? user.fullName : 'Pasien',
+            ),
+          ),
+          (route) => false,
+        );
+      } else if (_selectedRole == UserRole.dokter) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => DoctorDashboardScreen(
+              doctorName: user.fullName.isNotEmpty ? user.fullName : 'Dr. Kaka Pratama',
             ),
           ),
           (route) => false,
