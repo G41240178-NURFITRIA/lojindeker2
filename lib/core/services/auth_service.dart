@@ -102,11 +102,11 @@ class AuthService {
     }
   }
 
-  /// Login Pengguna (Bisa menggunakan Email atau Username Akun / Nomor HP)
-  Future<UserModel> login({
+  /// Login Pengguna — role ditentukan otomatis dari database, tidak perlu dipilih saat login.
+  /// Mendukung identifier berupa: email, nomor HP, username, atau nama lengkap.
+  Future<UserModel> loginAutoRole({
     required String identifier,
     required String password,
-    required UserRole expectedRole,
   }) async {
     try {
       String emailToUse = identifier.trim();
@@ -165,47 +165,50 @@ class AuthService {
       );
 
       final user = credential.user;
-      if (user == null) {
-        throw 'Gagal mendapatkan data akun pengguna.';
-      }
+      if (user == null) throw 'Gagal mendapatkan data akun pengguna.';
 
-      // 2. Ambil profil pengguna dari Firestore
+      // 2. Ambil profil + role dari Firestore
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
       UserModel userModel;
       if (userDoc.exists && userDoc.data() != null) {
         userModel = UserModel.fromMap(userDoc.data()!, user.uid);
       } else {
-        // Jika dokumen belum ada (misal akun lama), buat dokumen default di Firestore
+        // Dokumen belum ada — buat dengan role default pasien
         userModel = UserModel(
           uid: user.uid,
           username: identifier.contains('@') ? identifier.split('@')[0] : identifier,
-          fullName: user.displayName ?? (identifier.contains('@') ? identifier.split('@')[0] : identifier),
+          fullName: user.displayName ??
+              (identifier.contains('@') ? identifier.split('@')[0] : identifier),
           email: user.email ?? emailToUse,
           phoneNumber: '',
           dob: '',
-          role: expectedRole,
+          role: UserRole.pasien,
           createdAt: DateTime.now(),
         );
         await _firestore.collection('users').doc(user.uid).set(userModel.toMap());
       }
 
-      // 3. Verifikasi apakah peran yang dipilih saat login sesuai dengan akun
-      if (userModel.role != expectedRole) {
-        await _auth.signOut();
-        throw 'Akun ini terdaftar sebagai ${_roleName(userModel.role)}, bukan sebagai ${_roleName(expectedRole)}. Silakan pilih peran yang sesuai.';
-      }
-
-      debugPrint('✅ [AuthService] Login berhasil untuk user: ${userModel.fullName} (${userModel.email})');
+      debugPrint(
+        '✅ [AuthService] Login berhasil: ${userModel.fullName} '
+        '(${userModel.email}) — role: ${userModel.role.name}',
+      );
       return userModel;
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ [AuthService] FirebaseAuthException: ${e.code} - ${e.message}');
       throw _mapFirebaseAuthError(e.code, e.message ?? 'Gagal login.');
     } catch (e) {
-      debugPrint('❌ [AuthService] Error login: $e');
+      debugPrint('❌ [AuthService] Error loginAutoRole: $e');
       rethrow;
     }
   }
+
+  /// Login legacy (masih kompatibel, tidak ada validasi role)
+  Future<UserModel> login({
+    required String identifier,
+    required String password,
+    UserRole expectedRole = UserRole.pasien,
+  }) => loginAutoRole(identifier: identifier, password: password);
 
   /// Reset Password melalui email
   Future<void> sendPasswordResetEmail(String email) async {

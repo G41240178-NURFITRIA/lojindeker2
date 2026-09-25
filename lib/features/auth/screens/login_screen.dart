@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../features/auth/widgets/role_selector.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/app_logo_badge.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/glossy_login_button.dart';
-import '../widgets/role_selector.dart';
 import '../widgets/stethoscope_watermark.dart';
 import 'forgot_password_screen.dart';
 import 'sign_up_screen.dart';
@@ -23,7 +23,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  UserRole _selectedRole = UserRole.pasien;
   bool _isLoading = false;
 
   @override
@@ -55,37 +54,40 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final user = await AuthService.instance.login(
+      // Login tanpa memilih role — role dibaca otomatis dari Firestore
+      final user = await AuthService.instance.loginAutoRole(
         identifier: username,
         password: password,
-        expectedRole: _selectedRole,
       );
 
       if (!mounted) return;
 
-      if (_selectedRole == UserRole.pasien) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (_) => PatientDashboardScreen(
-              patientName: user.fullName.isNotEmpty ? user.fullName : 'Pasien',
+      // Routing otomatis berdasarkan role yang tersimpan di database
+      switch (user.role) {
+        case UserRole.admin:
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+            (route) => false,
+          );
+          break;
+        case UserRole.dokter:
+          // Dokter diarahkan ke AdminDashboardScreen (tab Dokter)
+          // Ganti dengan DokterDashboardScreen bila tersedia
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+            (route) => false,
+          );
+          break;
+        case UserRole.pasien:
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => PatientDashboardScreen(
+                patientName: user.fullName.isNotEmpty ? user.fullName : 'Pasien',
+              ),
             ),
-          ),
-          (route) => false,
-        );
-      } else if (_selectedRole == UserRole.dokter) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (_) => DoctorDashboardScreen(
-              doctorName: user.fullName.isNotEmpty ? user.fullName : 'Dr. Kaka Pratama',
-            ),
-          ),
-          (route) => false,
-        );
-      } else {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-          (route) => false,
-        );
+            (route) => false,
+          );
+          break;
       }
     } catch (e) {
       if (!mounted) return;
@@ -106,7 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -174,23 +175,37 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // 3D Emblem, Title & Subtitle
                         const AppLogoBadge(size: 140),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
 
-                        // Role Selector Pills (Pasien, Dokter, Admin)
-                        RoleSelector(
-                          selectedRole: _selectedRole,
-                          onRoleChanged: (role) {
-                            setState(() {
-                              _selectedRole = role;
-                            });
-                          },
+                        // Info teks — tidak ada pilihan role
+                        Center(
+                          child: Text(
+                            'Masuk ke akun Anda',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 6),
+                        Center(
+                          child: Text(
+                            'Sistem akan otomatis mengarahkan Anda\nsesuai peran yang terdaftar.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.75),
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
 
-                        // Username Input Field
+                        // Username / Email Input Field
                         CustomTextField(
                           controller: _userController,
-                          hintText: 'User',
+                          hintText: 'Email / No. HP / Username',
                           prefixIcon: Icons.person_outline_rounded,
                         ),
                         const SizedBox(height: 16),
@@ -211,7 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 18),
 
-                        // Forgot Password Link (opens 04 - B Forgot Password)
+                        // Forgot Password Link
                         Center(
                           child: InkWell(
                             onTap: () {
@@ -235,7 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 14),
 
-                        // Link Daftar Akun → langsung ke SignUpScreen
+                        // Link Daftar Akun
                         Center(
                           child: GestureDetector(
                             onTap: () {
