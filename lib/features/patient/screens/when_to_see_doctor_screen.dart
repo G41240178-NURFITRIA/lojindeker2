@@ -470,14 +470,13 @@ class WhenToSeeDoctorScreen extends StatelessWidget {
           _buildNavItem(
             icon: Icons.home_outlined,
             onTap: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              }
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
           _buildNavItem(
             icon: Icons.chat_bubble_outline_rounded,
             onTap: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -489,23 +488,7 @@ class WhenToSeeDoctorScreen extends StatelessWidget {
           _buildNavItem(
             icon: Icons.person_outline_rounded,
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const MedicalRecordsScreen(),
-                ),
-              );
-            },
-          ),
-          _buildNavItem(
-            icon: Icons.calendar_month_outlined,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const RiwayatResepScreen(),
-                ),
-              );
+              Navigator.of(context).popUntil((route) => route.isFirst);
             },
           ),
         ],

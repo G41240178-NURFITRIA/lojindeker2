@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/risk_assessment_model.dart';
 import 'risk_detail_screen.dart';
+import 'consultation_list_screen.dart';
 
 /// Halaman Riwayat Cek Risiko AI
 /// Menampilkan tab filter horizontal, info banner disclaimers, dan daftar card riwayat dinamis.
@@ -417,22 +418,23 @@ class _AiRiskHistoryScreenState extends State<AiRiskHistoryScreen> {
           _buildNavItem(
             icon: Icons.home_outlined,
             isSelected: false,
-            onTap: () => Navigator.pop(context),
+            onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
           ),
           _buildNavItem(
             icon: Icons.chat_bubble_outline_rounded,
             isSelected: false,
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
+              );
+            },
           ),
           _buildNavItem(
             icon: Icons.person_outline_rounded,
             isSelected: false,
-            onTap: () {},
-          ),
-          _buildNavItem(
-            icon: Icons.calendar_month_outlined,
-            isSelected: true,
-            onTap: () {},
+            onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
           ),
         ],
       ),

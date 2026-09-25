@@ -520,8 +520,8 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             onPressed: () {
               if (widget.onBackToHome != null) {
                 widget.onBackToHome!();
-              } else if (Navigator.of(context).canPop()) {
-                Navigator.of(context).pop();
+              } else {
+                Navigator.of(context).popUntil((route) => route.isFirst);
               }
             },
           ),
