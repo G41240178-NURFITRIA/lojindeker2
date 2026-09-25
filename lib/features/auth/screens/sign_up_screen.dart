@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/auth_service.dart';
 import '../widgets/figma_auth_field.dart';
 import '../widgets/figma_red_button.dart';
+import '../widgets/role_selector.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -13,6 +14,7 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -20,9 +22,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   DateTime? _selectedDob;
   bool _isLoading = false;
+  UserRole _selectedRole = UserRole.pasien; // default role: pasien
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _fullNameController.dispose();
     _passwordController.dispose();
     _emailController.dispose();
@@ -90,17 +94,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   void _handleSignUp() async {
+    final username = _usernameController.text.trim();
     final fullName = _fullNameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final mobile = _mobileController.text.trim();
     final dob = _selectedDob != null ? _formatStorage(_selectedDob!) : '';
 
-    if (fullName.isEmpty || email.isEmpty || password.isEmpty) {
+    if (username.isEmpty || fullName.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Silakan lengkapi nama, email, dan password Anda.',
+            'Silakan lengkapi username akun, username profil, email, dan password Anda.',
             style: GoogleFonts.poppins(),
           ),
           backgroundColor: const Color(0xFFB51419),
@@ -128,9 +133,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       await AuthService.instance.signUp(
         email: email,
         password: password,
+        username: username,
         fullName: fullName,
         phoneNumber: mobile,
         dob: dob,
+        role: _selectedRole, // kirim role yang dipilih
       );
 
       if (!mounted) return;
@@ -193,10 +200,46 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Full Name
+              // ─── Pilih Role ───────────────────────────────────────────
+              Text(
+                'Daftar sebagai',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF333333),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFB51419), Color(0xFFE53935)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: RoleSelector(
+                  selectedRole: _selectedRole,
+                  onRoleChanged: (role) => setState(() => _selectedRole = role),
+                ),
+              ),
+              const SizedBox(height: 14),
+              // ─────────────────────────────────────────────────────────
+
+              // Username Akun
               FigmaAuthField(
-                label: 'Nama Lengkap',
-                hintText: 'Masukkan nama lengkap Anda',
+                label: 'Username Akun',
+                hintText: 'Masukkan username akun login',
+                controller: _usernameController,
+              ),
+              const SizedBox(height: 14),
+
+              // Username Profil (Nama Lengkap)
+              FigmaAuthField(
+                label: 'Username Profil',
+                hintText: 'Masukkan nama / username profil Anda',
                 controller: _fullNameController,
               ),
               const SizedBox(height: 14),

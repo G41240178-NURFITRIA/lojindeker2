@@ -3,6 +3,7 @@ import '../widgets/role_selector.dart';
 /// Model representasi data pengguna di aplikasi dan Firestore
 class UserModel {
   final String uid;
+  final String username;
   final String fullName;
   final String email;
   final String phoneNumber;
@@ -12,6 +13,7 @@ class UserModel {
 
   UserModel({
     required this.uid,
+    this.username = '',
     required this.fullName,
     required this.email,
     required this.phoneNumber,
@@ -45,6 +47,7 @@ class UserModel {
 
     return UserModel(
       uid: id,
+      username: map['username'] ?? '',
       fullName: map['fullName'] ?? map['name'] ?? '',
       email: map['email'] ?? '',
       phoneNumber: map['phoneNumber'] ?? map['mobile'] ?? '',
@@ -57,6 +60,7 @@ class UserModel {
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
+      'username': username,
       'fullName': fullName,
       'email': email,
       'phoneNumber': phoneNumber,

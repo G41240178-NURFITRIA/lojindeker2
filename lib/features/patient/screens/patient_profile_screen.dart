@@ -11,12 +11,14 @@ import '../../auth/screens/landing_screen.dart';
 class PatientProfileScreen extends StatefulWidget {
   final String patientName;
   final VoidCallback? onBackToHome;
+  final ValueChanged<String>? onProfileUpdated;
   final bool isTab;
 
   const PatientProfileScreen({
     super.key,
     this.patientName = 'Pasien',
     this.onBackToHome,
+    this.onProfileUpdated,
     this.isTab = false,
   });
 
@@ -38,6 +40,14 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   void initState() {
     super.initState();
     _currentName = widget.patientName;
+  }
+
+  @override
+  void didUpdateWidget(covariant PatientProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.patientName != widget.patientName) {
+      _currentName = widget.patientName;
+    }
   }
 
   void _showLogoutBottomSheet(BuildContext context) {
@@ -282,12 +292,14 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       patientName: _currentName,
                       onProfileUpdated: (newName) {
                         setState(() => _currentName = newName);
+                        widget.onProfileUpdated?.call(newName);
                       },
                     ),
                   ),
                 );
                 if (result != null && result.isNotEmpty) {
                   setState(() => _currentName = result);
+                  widget.onProfileUpdated?.call(result);
                 }
               },
               borderRadius: BorderRadius.circular(50),
@@ -389,12 +401,14 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       patientName: _currentName,
                       onProfileUpdated: (newName) {
                         setState(() => _currentName = newName);
+                        widget.onProfileUpdated?.call(newName);
                       },
                     ),
                   ),
                 );
                 if (result != null && result.isNotEmpty) {
                   setState(() => _currentName = result);
+                  widget.onProfileUpdated?.call(result);
                 }
               },
             ),

@@ -138,10 +138,8 @@ class _LandingScreenState extends State<LandingScreen>
             end: Alignment.bottomCenter,
             colors: [
               AppColors.bgGradientTop,
-              AppColors.bgGradientMid,
-              AppColors.bgGradientBottom,
+              AppColors.bgGradientTop,
             ],
-            stops: [0.0, 0.48, 1.0],
           ),
         ),
         child: Stack(

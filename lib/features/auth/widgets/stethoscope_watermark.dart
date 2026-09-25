@@ -4,20 +4,23 @@ import '../../../core/constants/app_colors.dart';
 /// Renders the subtle stethoscope line art watermark seen at the bottom of the login screen
 class StethoscopeWatermark extends StatelessWidget {
   final double height;
+  final Color? color;
 
   const StethoscopeWatermark({
     super.key,
     this.height = 280,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = color ?? AppColors.watermarkRed.withValues(alpha: 0.18);
     return IgnorePointer(
       child: SizedBox(
         height: height,
         width: double.infinity,
         child: CustomPaint(
-          painter: _StethoscopePainter(),
+          painter: _StethoscopePainter(color: effectiveColor),
         ),
       ),
     );
@@ -25,17 +28,21 @@ class StethoscopeWatermark extends StatelessWidget {
 }
 
 class _StethoscopePainter extends CustomPainter {
+  final Color color;
+
+  _StethoscopePainter({required this.color});
+
   @override
   void paint(Canvas canvas, Size size) {
     final strokePaint = Paint()
-      ..color = AppColors.watermarkRed.withValues(alpha: 0.85)
+      ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6.5
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
     final fillPaint = Paint()
-      ..color = AppColors.watermarkRed.withValues(alpha: 0.85)
+      ..color = color
       ..style = PaintingStyle.fill;
 
     final w = size.width;
@@ -116,7 +123,7 @@ class _StethoscopePainter extends CustomPainter {
 
     // 6. Subtle ground curve/shadow across the bottom
     final groundPaint = Paint()
-      ..color = AppColors.watermarkRed.withValues(alpha: 0.40)
+      ..color = color.withValues(alpha: (color.a * 0.6).clamp(0.0, 1.0))
       ..style = PaintingStyle.fill;
 
     final groundPath = Path();
@@ -129,5 +136,6 @@ class _StethoscopePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _StethoscopePainter oldDelegate) =>
+      oldDelegate.color != color;
 }

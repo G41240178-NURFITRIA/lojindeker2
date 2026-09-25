@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../features/auth/widgets/role_selector.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
+import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/figma_auth_field.dart';
 import '../widgets/figma_red_button.dart';
-import '../widgets/role_selector.dart';
 import 'forgot_password_screen.dart';
 import 'sign_up_screen.dart';
 
@@ -17,7 +18,6 @@ class EmailLoginScreen extends StatefulWidget {
 }
 
 class _EmailLoginScreenState extends State<EmailLoginScreen> {
-  UserRole _selectedRole = UserRole.pasien;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
@@ -49,29 +49,38 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final user = await AuthService.instance.login(
+      // Login tanpa memilih role — role dibaca otomatis dari Firestore
+      final user = await AuthService.instance.loginAutoRole(
         identifier: email,
         password: password,
-        expectedRole: _selectedRole,
       );
 
       if (!mounted) return;
 
-      if (_selectedRole == UserRole.pasien) {
-        final displayName = user.fullName.isNotEmpty
-            ? user.fullName
-            : (email.contains('@') ? email.split('@')[0] : email);
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => PatientDashboardScreen(
-              patientName: displayName.isNotEmpty ? displayName : 'Pasien',
+      // Routing otomatis berdasarkan role yang tersimpan di database
+      switch (user.role) {
+        case UserRole.admin:
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+          );
+          break;
+        case UserRole.dokter:
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+          );
+          break;
+        case UserRole.pasien:
+          final displayName = user.fullName.isNotEmpty
+              ? user.fullName
+              : (email.contains('@') ? email.split('@')[0] : email);
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => PatientDashboardScreen(
+                patientName: displayName.isNotEmpty ? displayName : 'Pasien',
+              ),
             ),
-          ),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-        );
+          );
+          break;
       }
     } catch (e) {
       if (!mounted) return;
@@ -135,22 +144,18 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Pilih peran akun Anda dan masukkan email/password yang terdaftar.',
+                'Masukkan email / no HP dan password Anda.\nSistem akan otomatis mengarahkan ke dashboard sesuai peran.',
                 style: GoogleFonts.poppins(
                   fontSize: 12,
                   color: const Color(0xFF757575),
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 20),
-
-              // Role Selector Tabs (Pasien, Dokter, Admin)
-              _buildRoleSegmentSelector(),
-              const SizedBox(height: 22),
+              const SizedBox(height: 28),
 
               // Email or Mobile Number
               FigmaAuthField(
-                label: 'Email or Mobile Number',
+                label: 'Email atau No. HP',
                 hintText: 'example@example.com',
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -230,73 +235,6 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Segmented Role Selector Widget
-  Widget _buildRoleSegmentSelector() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7ECEE),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Row(
-        children: [
-          _buildRoleOption(UserRole.pasien, 'Pasien', Icons.person_outline_rounded),
-          _buildRoleOption(UserRole.dokter, 'Dokter', Icons.medical_services_outlined),
-          _buildRoleOption(UserRole.admin, 'Admin', Icons.shield_outlined),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoleOption(UserRole role, String label, IconData icon) {
-    final isSelected = _selectedRole == role;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedRole = role;
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFFB51419) : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFFB51419).withValues(alpha: 0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? Colors.white : const Color(0xFF666666),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 12.5,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? Colors.white : const Color(0xFF555555),
-                ),
-              ),
             ],
           ),
         ),
