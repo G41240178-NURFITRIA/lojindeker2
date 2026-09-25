@@ -44,7 +44,22 @@ class AuthService {
     }
   }
 
-  /// Pendaftaran Akun Baru (Firebase Auth + Simpan Profil ke Firestore)
+  /// Nama koleksi Firestore berdasarkan role
+  String _collectionForRole(UserRole role) {
+    switch (role) {
+      case UserRole.pasien:
+        return 'users';
+      case UserRole.dokter:
+        return 'doctors';
+      case UserRole.admin:
+        return 'admins';
+    }
+  }
+
+  /// Pendaftaran Akun Baru (Firebase Auth + Simpan Profil ke koleksi Firestore sesuai role)
+  /// - Pasien  → koleksi 'users'
+  /// - Dokter  → koleksi 'doctors'
+  /// - Admin   → koleksi 'admins'
   Future<UserModel> signUp({
     required String email,
     required String password,
@@ -73,7 +88,9 @@ class AuthService {
           ? username.trim()
           : fullName.trim();
 
-      // 2. Simpan profil lengkap ke Firestore koleksi 'users'
+      // 2. Tentukan koleksi Firestore berdasarkan role
+      final collection = _collectionForRole(role);
+
       final userModel = UserModel(
         uid: user.uid,
         username: accountUsername,
@@ -85,13 +102,17 @@ class AuthService {
         createdAt: DateTime.now(),
       );
 
-      await _firestore.collection('users').doc(user.uid).set({
+      // 3. Simpan profil lengkap ke koleksi yang sesuai role
+      await _firestore.collection(collection).doc(user.uid).set({
         ...userModel.toMap(),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('✅ [AuthService] Pengguna ${user.uid} berhasil terdaftar dan profil tersimpan di Firestore.');
+      debugPrint(
+        '✅ [AuthService] Pengguna ${user.uid} berhasil terdaftar '
+        'sebagai ${role.name} di koleksi "$collection".',
+      );
       return userModel;
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ [AuthService] FirebaseAuthException: ${e.code} - ${e.message}');
@@ -102,8 +123,52 @@ class AuthService {
     }
   }
 
+  /// Cari email dari identifier (username/HP/nama) di satu koleksi Firestore.
+  /// Mengembalikan email (String) atau null jika tidak ditemukan.
+  Future<String?> _findEmailInCollection(
+    String collection,
+    String identifier,
+  ) async {
+    // Cari by username
+    var q = await _firestore
+        .collection(collection)
+        .where('username', isEqualTo: identifier)
+        .limit(1)
+        .get();
+    if (q.docs.isNotEmpty) return q.docs.first.data()['email'] as String?;
+
+    // Cari by phoneNumber
+    q = await _firestore
+        .collection(collection)
+        .where('phoneNumber', isEqualTo: identifier)
+        .limit(1)
+        .get();
+    if (q.docs.isNotEmpty) return q.docs.first.data()['email'] as String?;
+
+    // Fallback: cari by fullName (akun lama tanpa username)
+    q = await _firestore
+        .collection(collection)
+        .where('fullName', isEqualTo: identifier)
+        .limit(1)
+        .get();
+    if (q.docs.isNotEmpty) {
+      final doc = q.docs.first;
+      final data = doc.data();
+      if (data['username'] == null || data['username'].toString().isEmpty) {
+        // Simpan username agar konsisten ke depannya
+        await _firestore.collection(collection).doc(doc.id).set(
+          {'username': identifier},
+          SetOptions(merge: true),
+        );
+        return data['email'] as String?;
+      }
+    }
+    return null;
+  }
+
   /// Login Pengguna — role ditentukan otomatis dari database, tidak perlu dipilih saat login.
   /// Mendukung identifier berupa: email, nomor HP, username, atau nama lengkap.
+  /// Mencari di ketiga koleksi: 'users' (pasien), 'doctors', 'admins'.
   Future<UserModel> loginAutoRole({
     required String identifier,
     required String password,
@@ -111,45 +176,14 @@ class AuthService {
     try {
       String emailToUse = identifier.trim();
 
-      // Jika input bukan format email (tidak ada tanda @), cari email yang sesuai di Firestore
+      // Jika input bukan format email, cari di semua koleksi role
       if (!emailToUse.contains('@')) {
-        // 1. Prioritaskan pencarian berdasarkan username akun login
-        final usernameQuery = await _firestore
-            .collection('users')
-            .where('username', isEqualTo: identifier.trim())
-            .limit(1)
-            .get();
-
-        if (usernameQuery.docs.isNotEmpty) {
-          emailToUse = usernameQuery.docs.first.data()['email'] ?? '';
-        } else {
-          // 2. Cari berdasarkan nomor HP
-          final phoneQuery = await _firestore
-              .collection('users')
-              .where('phoneNumber', isEqualTo: identifier.trim())
-              .limit(1)
-              .get();
-
-          if (phoneQuery.docs.isNotEmpty) {
-            emailToUse = phoneQuery.docs.first.data()['email'] ?? '';
-          } else {
-            // 3. Fallback akun lama: Cek fullName hanya jika akun lama belum memiliki username akun terpisah
-            final nameQuery = await _firestore
-                .collection('users')
-                .where('fullName', isEqualTo: identifier.trim())
-                .limit(1)
-                .get();
-
-            if (nameQuery.docs.isNotEmpty) {
-              final docData = nameQuery.docs.first.data();
-              if (docData['username'] == null || docData['username'].toString().isEmpty) {
-                emailToUse = docData['email'] ?? '';
-                // Simpan username akun ini secara permanen agar ke depannya konsisten
-                await _firestore.collection('users').doc(nameQuery.docs.first.id).set({
-                  'username': identifier.trim(),
-                }, SetOptions(merge: true));
-              }
-            }
+        const collections = ['users', 'doctors', 'admins'];
+        for (final col in collections) {
+          final found = await _findEmailInCollection(col, identifier.trim());
+          if (found != null && found.contains('@')) {
+            emailToUse = found;
+            break;
           }
         }
 
@@ -167,27 +201,34 @@ class AuthService {
       final user = credential.user;
       if (user == null) throw 'Gagal mendapatkan data akun pengguna.';
 
-      // 2. Ambil profil + role dari Firestore
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-
-      UserModel userModel;
-      if (userDoc.exists && userDoc.data() != null) {
-        userModel = UserModel.fromMap(userDoc.data()!, user.uid);
-      } else {
-        // Dokumen belum ada — buat dengan role default pasien
-        userModel = UserModel(
-          uid: user.uid,
-          username: identifier.contains('@') ? identifier.split('@')[0] : identifier,
-          fullName: user.displayName ??
-              (identifier.contains('@') ? identifier.split('@')[0] : identifier),
-          email: user.email ?? emailToUse,
-          phoneNumber: '',
-          dob: '',
-          role: UserRole.pasien,
-          createdAt: DateTime.now(),
-        );
-        await _firestore.collection('users').doc(user.uid).set(userModel.toMap());
+      // 2. Ambil profil + role dari Firestore — cek ketiga koleksi
+      UserModel? userModel;
+      for (final col in ['users', 'doctors', 'admins']) {
+        final doc = await _firestore.collection(col).doc(user.uid).get();
+        if (doc.exists && doc.data() != null) {
+          userModel = UserModel.fromMap(doc.data()!, user.uid);
+          debugPrint('ℹ️ [AuthService] Profil ditemukan di koleksi "$col".');
+          break;
+        }
       }
+
+      // Jika tidak ditemukan di koleksi manapun — buat dokumen pasien baru
+      userModel ??= UserModel(
+        uid: user.uid,
+        username: identifier.contains('@') ? identifier.split('@')[0] : identifier,
+        fullName: user.displayName ??
+            (identifier.contains('@') ? identifier.split('@')[0] : identifier),
+        email: user.email ?? emailToUse,
+        phoneNumber: '',
+        dob: '',
+        role: UserRole.pasien,
+        createdAt: DateTime.now(),
+      );
+      // Simpan ke 'users' (koleksi pasien) jika belum ada
+      await _firestore.collection('users').doc(user.uid).set(
+        {...userModel.toMap(), 'createdAt': FieldValue.serverTimestamp()},
+        SetOptions(merge: true),
+      );
 
       debugPrint(
         '✅ [AuthService] Login berhasil: ${userModel.fullName} '
@@ -228,15 +269,4 @@ class AuthService {
     debugPrint('ℹ️ [AuthService] User berhasil logout.');
   }
 
-  /// Helper teks nama peran
-  String _roleName(UserRole role) {
-    switch (role) {
-      case UserRole.pasien:
-        return 'Pasien';
-      case UserRole.dokter:
-        return 'Dokter';
-      case UserRole.admin:
-        return 'Admin';
-    }
-  }
 }
