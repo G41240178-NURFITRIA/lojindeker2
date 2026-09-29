@@ -160,7 +160,7 @@ class WhenToSeeDoctorScreen extends StatelessWidget {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFB81018),
+                    backgroundColor: const Color(0xFFF06292),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
@@ -358,7 +358,7 @@ class WhenToSeeDoctorScreen extends StatelessWidget {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFB81018),
+                    backgroundColor: const Color(0xFFF06292),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
