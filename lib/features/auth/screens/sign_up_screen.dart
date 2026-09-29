@@ -22,7 +22,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   DateTime? _selectedDob;
   bool _isLoading = false;
-  UserRole _selectedRole = UserRole.pasien; // default role: pasien
+  final UserRole _selectedRole = UserRole.pasien; // default role: pasien
 
   @override
   void dispose() {
@@ -200,34 +200,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── Pilih Role ───────────────────────────────────────────
-              Text(
-                'Daftar sebagai',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF333333),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFB51419), Color(0xFFE53935)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: RoleSelector(
-                  selectedRole: _selectedRole,
-                  onRoleChanged: (role) => setState(() => _selectedRole = role),
-                ),
-              ),
-              const SizedBox(height: 14),
-              // ─────────────────────────────────────────────────────────
-
               // Username Akun
               FigmaAuthField(
                 label: 'Username Akun',
