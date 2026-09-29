@@ -133,7 +133,7 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFBA171E),
+        backgroundColor: const Color(0xFFF06292),
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
