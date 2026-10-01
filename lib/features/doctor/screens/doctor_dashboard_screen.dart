@@ -1249,6 +1249,1369 @@ class DoctorChatDetailScreen extends StatefulWidget {
 class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _showTyping = false;
+
+  late List<Map<String, dynamic>> _messages;
+
+  @override
+  void initState() {
+    super.initState();
+    _messages = [
+      {
+        'text': 'Selamat siang, dok. Gula darah saya pagi ini 118 mg/dL.',
+        'isDoctor': false,
+        'time': '14:02',
+      },
+      {
+        'text': 'Selamat siang. Itu sudah dalam batas normal. Obatnya sudah diminum?',
+        'isDoctor': true,
+        'time': '14:05',
+        'read': true,
+      },
+      {
+        'text': 'Baik dok, saya sudah minum obatnya.',
+        'isDoctor': false,
+        'time': '14:06',
+      },
+      {
+        'text': 'Baik. Lanjutkan pola makannya dan cek lagi besok pagi ya.',
+        'isDoctor': true,
+        'time': '14:08',
+        'read': true,
+      },
+    ];
+  }
+
+  @override
+  void dispose() {
+    _msgController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _sendMessage() {
+    final text = _msgController.text.trim();
+    if (text.isEmpty) return;
+
+    final now = TimeOfDay.now();
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
+    setState(() {
+      _messages.add({
+        'text': text,
+        'isDoctor': true,
+        'time': timeStr,
+        'read': false,
+      });
+      _msgController.clear();
+      _showTyping = true;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _showTyping = false);
+    });
+  }
+
+  void _openPatientHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PatientHistoryScreen(
+          patientName: widget.patientName,
+          glucoseNote: widget.glucoseNote,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFF0F5),
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: const Icon(Icons.person_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.patientName,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF69FF97),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Online',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.5,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            onPressed: _openPatientHistory,
+            icon: const Icon(Icons.description_outlined, color: Colors.white, size: 24),
+            tooltip: 'Riwayat Pasien',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+              itemCount: _messages.length + 2,
+              itemBuilder: (ctx, idx) {
+                if (idx == 0) return _buildDateSeparator('Hari ini');
+                if (idx == _messages.length + 1) {
+                  return _showTyping ? _buildTypingIndicator() : const SizedBox.shrink();
+                }
+                final m = _messages[idx - 1];
+                final isDoctor = m['isDoctor'] as bool;
+                return _buildMessageBubble(m, isDoctor);
+              },
+            ),
+          ),
+          _buildInputBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateSeparator(String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: AppColors.softPinkBorder, thickness: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: const Color(0xFF9E9E9E),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: AppColors.softPinkBorder, thickness: 1)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(Map<String, dynamic> m, bool isDoctor) {
+    final bool isRead = (m['read'] as bool?) ?? false;
+    return Align(
+      alignment: isDoctor ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: EdgeInsets.only(
+          bottom: 10,
+          left: isDoctor ? 60 : 0,
+          right: isDoctor ? 0 : 60,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDoctor ? AppColors.primary : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isDoctor ? 16 : 4),
+            bottomRight: Radius.circular(isDoctor ? 4 : 16),
+          ),
+          border: isDoctor
+              ? null
+              : Border.all(color: AppColors.softPinkBorder, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment:
+              isDoctor ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Text(
+              m['text'] as String,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                color: isDoctor ? Colors.white : const Color(0xFF212121),
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  m['time'] as String,
+                  style: GoogleFonts.poppins(
+                    fontSize: 9.5,
+                    color: isDoctor
+                        ? Colors.white.withValues(alpha: 0.75)
+                        : const Color(0xFF9E9E9E),
+                  ),
+                ),
+                if (isDoctor) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    isRead ? Icons.done_all_rounded : Icons.done_rounded,
+                    size: 13,
+                    color: isRead
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.6),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12, right: 60),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+            bottomLeft: Radius.circular(4),
+          ),
+          border: Border.all(color: AppColors.softPinkBorder, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) => _BouncingDot(delay: i * 200)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: AppColors.softPinkBorder.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.softPinkCard,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.softPinkBg,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.softPinkBorder, width: 1),
+                ),
+                child: TextField(
+                  controller: _msgController,
+                  style: GoogleFonts.poppins(fontSize: 13),
+                  maxLines: null,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: 'Tulis pesan...',
+                    hintStyle: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: const Color(0xFF9E9E9E),
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  onSubmitted: (_) => _sendMessage(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            InkWell(
+              onTap: _sendMessage,
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF8DA1), AppColors.primary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+/// Animated bouncing dot untuk typing indicator
+// ─────────────────────────────────────────────────────────────────────────────
+class _BouncingDot extends StatefulWidget {
+  final int delay;
+  const _BouncingDot({required this.delay});
+
+  @override
+  State<_BouncingDot> createState() => _BouncingDotState();
+}
+
+class _BouncingDotState extends State<_BouncingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _anim = Tween<double>(begin: 0, end: -6).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) _ctrl.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Transform.translate(
+        offset: Offset(0, _anim.value),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: AppColors.primary,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+/// Riwayat Pasien Screen
+// ─────────────────────────────────────────────────────────────────────────────
+class PatientHistoryScreen extends StatefulWidget {
+  final String patientName;
+  final String glucoseNote;
+
+  const PatientHistoryScreen({
+    super.key,
+    required this.patientName,
+    required this.glucoseNote,
+  });
+
+  @override
+  State<PatientHistoryScreen> createState() => _PatientHistoryScreenState();
+}
+
+class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
+  int _selectedTab = 0;
+  final List<String> _tabs = ['Semua', 'Hasil lab', 'Resep obat'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFF0F5),
+      body: Column(
+        children: [
+          _buildHeader(context),
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPatientCard(),
+                  const SizedBox(height: 14),
+                  _buildTabBar(),
+                  const SizedBox(height: 16),
+                  _buildCatatanHeader(),
+                  const SizedBox(height: 14),
+                  _buildVisitSectionHeader(),
+                  const SizedBox(height: 10),
+                  if (_selectedTab == 0 || _selectedTab == 1) ...[
+                    _ExpandableVisitCard(
+                      date: '20 Mei 2026',
+                      status: 'Terkontrol baik',
+                      statusColor: const Color(0xFF4CAF50),
+                      doctorName: 'dr. Ariena Putri, Sp.PD',
+                      hospital: 'Poli Penyakit Dalam dan Endokrin, RS D-Care',
+                      vitalItems: const [
+                        _VitalItem('Gula darah puasa', '108 mg/dL'),
+                        _VitalItem('Gula darah 2 jam PP', '135 mg/dL'),
+                        _VitalItem('HbA1c', '6.2%'),
+                        _VitalItem('Tekanan darah', '120/80 mmHg'),
+                        _VitalItem('Berat badan', '68 kg'),
+                      ],
+                      prescriptions: const [
+                        'Metformin HCl 500 mg (2x1 sesudah makan)',
+                        'Vitamin B Complex (1x1 pagi)',
+                      ],
+                      doctorNote:
+                          'Kadar gula darah stabil dalam target. Pasien disiplin diet dan olahraga. Jadwal kontrol berikutnya: 20 Juni 2026.',
+                      initiallyExpanded: true,
+                    ),
+                    const SizedBox(height: 12),
+                    _ExpandableVisitCard(
+                      date: '18 April 2026',
+                      status: 'Evaluasi dosis',
+                      statusColor: const Color(0xFFFF9800),
+                      doctorName: 'dr. Hendra Wijaya, Sp.PD',
+                      hospital: 'Poli Penyakit Dalam, RS D-Care',
+                      vitalItems: const [
+                        _VitalItem('Gula darah puasa', '142 mg/dL'),
+                        _VitalItem('Gula darah 2 jam PP', '198 mg/dL'),
+                        _VitalItem('HbA1c', '7.1%'),
+                        _VitalItem('Tekanan darah', '128/84 mmHg'),
+                        _VitalItem('Berat badan', '69 kg'),
+                      ],
+                      prescriptions: const [
+                        'Metformin HCl 500 mg (3x1 sesudah makan)',
+                        'Glibenclamide 5 mg (1x1 pagi)',
+                      ],
+                      doctorNote:
+                          'Gula darah belum terkontrol optimal. Dosis Metformin ditingkatkan. Anjuran kurangi konsumsi karbohidrat sederhana.',
+                      initiallyExpanded: false,
+                    ),
+                  ],
+                  if (_selectedTab == 2) _buildResepList(),
+                  const SizedBox(height: 80),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomBar(context),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF8BBD0), width: 1)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.primary, size: 20),
+              ),
+              Expanded(
+                child: Text(
+                  'Riwayat pasien',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF212121),
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Mengunduh riwayat sebagai PDF...',
+                          style: GoogleFonts.poppins()),
+                      backgroundColor: AppColors.primary,
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.download_outlined,
+                    color: AppColors.primary, size: 22),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPatientCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF8DA1), AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: const Icon(Icons.person_rounded, color: Colors.white, size: 30),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.patientName,
+                      style: GoogleFonts.poppins(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'Diabetes mellitus tipe 2',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'RM-2024-0127',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildPatientStat('Usia', '45 thn'),
+              _buildStatDividerV(),
+              _buildPatientStat('Gender', 'Wanita'),
+              _buildStatDividerV(),
+              _buildPatientStat('Gol. darah', 'O+'),
+              _buildStatDividerV(),
+              _buildPatientStat('Status', 'Rutin kontrol'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPatientStat(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 9.5,
+            color: Colors.white.withValues(alpha: 0.85),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatDividerV() {
+    return Container(
+      height: 28,
+      width: 1,
+      color: Colors.white.withValues(alpha: 0.3),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.softPinkBorder, width: 1),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: List.generate(_tabs.length, (i) {
+          final isSelected = _selectedTab == i;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedTab = i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _tabs[i],
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? Colors.white : const Color(0xFF757575),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildCatatanHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.softPinkBorder, width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.softPinkCard,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.note_alt_outlined,
+                    size: 18, color: AppColors.primary),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Catatan dokter',
+                style: GoogleFonts.poppins(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF212121),
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.softPinkCard,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '2 catatan',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVisitSectionHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Riwayat kunjungan medis',
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF212121),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppColors.softPinkCard,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            '2 catatan',
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResepList() {
+    return Column(
+      children: [
+        _buildResepCard(
+          date: '20 Mei 2026',
+          items: const [
+            'Metformin HCl 500 mg (2x1 sesudah makan)',
+            'Vitamin B Complex (1x1 pagi)',
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildResepCard(
+          date: '18 April 2026',
+          items: const [
+            'Metformin HCl 500 mg (3x1 sesudah makan)',
+            'Glibenclamide 5 mg (1x1 pagi)',
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResepCard({required String date, required List<String> items}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.softPinkBorder, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.medical_services_outlined,
+                  size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                'Resep • $date',
+                style: GoogleFonts.poppins(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 6, right: 8),
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: GoogleFonts.poppins(
+                          fontSize: 12, color: const Color(0xFF424242)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.softPinkBorder, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: GestureDetector(
+          onTap: () => _showWriteNoteSheet(context),
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFF8DA1), AppColors.primary],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.edit_outlined, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Tulis resep dan catatan',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showWriteNoteSheet(BuildContext context) {
+    final ctrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Padding(
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE0E0E0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Tulis Resep & Catatan',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF212121),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.softPinkBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.softPinkBorder),
+                ),
+                child: TextField(
+                  controller: ctrl,
+                  maxLines: 5,
+                  style: GoogleFonts.poppins(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText:
+                        'Contoh: Metformin 500mg 2x1, cek HbA1c bulan depan...',
+                    hintStyle: GoogleFonts.poppins(
+                      fontSize: 12.5,
+                      color: const Color(0xFF9E9E9E),
+                    ),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Catatan berhasil disimpan.',
+                            style: GoogleFonts.poppins()),
+                        backgroundColor: AppColors.primary,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(
+                    'Simpan Catatan',
+                    style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+/// Data model vital sign item
+// ─────────────────────────────────────────────────────────────────────────────
+class _VitalItem {
+  final String label;
+  final String value;
+  const _VitalItem(this.label, this.value);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+/// Kartu kunjungan expandable
+// ─────────────────────────────────────────────────────────────────────────────
+class _ExpandableVisitCard extends StatefulWidget {
+  final String date;
+  final String status;
+  final Color statusColor;
+  final String doctorName;
+  final String hospital;
+  final List<_VitalItem> vitalItems;
+  final List<String> prescriptions;
+  final String doctorNote;
+  final bool initiallyExpanded;
+
+  const _ExpandableVisitCard({
+    required this.date,
+    required this.status,
+    required this.statusColor,
+    required this.doctorName,
+    required this.hospital,
+    required this.vitalItems,
+    required this.prescriptions,
+    required this.doctorNote,
+    required this.initiallyExpanded,
+  });
+
+  @override
+  State<_ExpandableVisitCard> createState() => _ExpandableVisitCardState();
+}
+
+class _ExpandableVisitCardState extends State<_ExpandableVisitCard>
+    with SingleTickerProviderStateMixin {
+  late bool _expanded;
+  late AnimationController _animCtrl;
+  late Animation<double> _expandAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = widget.initiallyExpanded;
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+      value: _expanded ? 1 : 0,
+    );
+    _expandAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _expanded = !_expanded);
+    _expanded ? _animCtrl.forward() : _animCtrl.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.softPinkBorder, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: _toggle,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.softPinkCard,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.calendar_today_outlined,
+                        size: 18, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.date,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF212121),
+                          ),
+                        ),
+                        Text(
+                          widget.doctorName,
+                          style: GoogleFonts.poppins(
+                              fontSize: 11.5, color: const Color(0xFF616161)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: widget.statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      widget.status,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: widget.statusColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    child: const Icon(Icons.expand_more_rounded,
+                        color: AppColors.primary, size: 22),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizeTransition(
+            sizeFactor: _expandAnim,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Divider(color: AppColors.softPinkBorder, thickness: 1, height: 1),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+                  child: Text(
+                    widget.hospital,
+                    style: GoogleFonts.poppins(
+                        fontSize: 11, color: const Color(0xFF9E9E9E)),
+                  ),
+                ),
+                _buildExpandSection(
+                  icon: Icons.monitor_heart_outlined,
+                  title: 'Tanda vital dan glukosa',
+                  child: Column(
+                    children: widget.vitalItems.map((v) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(v.label,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: const Color(0xFF616161))),
+                            Text(v.value,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF212121))),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                _buildExpandSection(
+                  icon: Icons.medication_outlined,
+                  title: 'Resep obat',
+                  child: Column(
+                    children: widget.prescriptions.map((p) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(top: 6, right: 8),
+                              width: 5,
+                              height: 5,
+                              decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle),
+                            ),
+                            Expanded(
+                              child: Text(p,
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: const Color(0xFF424242))),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                _buildExpandSection(
+                  icon: Icons.note_outlined,
+                  title: 'Catatan dokter dan anjuran',
+                  isLast: true,
+                  child: Text(
+                    widget.doctorNote,
+                    style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: const Color(0xFF424242),
+                        height: 1.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandSection({
+    required IconData icon,
+    required String title,
+    required Widget child,
+    bool isLast = false,
+  }) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(14, 12, 14, isLast ? 14 : 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 15, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+
+  const DoctorChatDetailScreen({
+    super.key,
+    required this.doctorName,
+    required this.patientName,
+    required this.initialMessage,
+    required this.glucoseNote,
+  });
+
+  @override
+  State<DoctorChatDetailScreen> createState() => _DoctorChatDetailScreenState();
+}
+
+class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
+  final TextEditingController _msgController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   late List<Map<String, dynamic>> _messages;
 
