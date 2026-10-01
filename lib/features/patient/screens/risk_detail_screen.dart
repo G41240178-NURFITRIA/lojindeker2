@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/risk_assessment_model.dart';
 import 'consultation_list_screen.dart';
+import '../../../core/services/patient_activity_service.dart';
 
 /// Halaman Detail Risiko Diabetes sesuai desain referensi (Image 2)
 /// Fokus murni ke hasil Cek Risiko tanpa tab Konsultasi dan Resep.
@@ -40,6 +41,38 @@ class RiskDetailScreen extends StatefulWidget {
 
 class _RiskDetailScreenState extends State<RiskDetailScreen> {
   final int _selectedBottomNavIndex = 0; // 0 = Home / Dashboard
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.assessment == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final score = calculatedScore;
+        final String status;
+        if (score < 30) {
+          status = 'Rendah';
+        } else if (score <= 60) {
+          status = 'Sedang';
+        } else {
+          status = 'Tinggi';
+        }
+        PatientActivityService.instance.recordRiskAssessment(
+          score: score,
+          status: status,
+          weight: widget.weight,
+          height: widget.height,
+          imt: widget.imt,
+          imtCategory: widget.imtCategory,
+          age: widget.age,
+          gender: widget.gender,
+          familyHistory: widget.familyHistory,
+          smokingHistory: widget.smokingHistory,
+          hypertensionHistory: widget.hypertensionHistory,
+          cardiovascularHistory: widget.cardiovascularHistory,
+        );
+      });
+    }
+  }
 
   // Soft Pink Theme Palette
   static const Color _darkRose = Color(0xFFD81B60);    // Deep Rose

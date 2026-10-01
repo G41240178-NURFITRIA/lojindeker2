@@ -12,6 +12,7 @@ class EducationArticle {
   final Color imageBgColor;
   final Color categoryColor;
   final IconData iconData;
+  final String? imagePath;
   final String summary;
   final List<String> keyPoints;
   final List<ArticleSection> sections;
@@ -28,6 +29,7 @@ class EducationArticle {
     required this.imageBgColor,
     required this.categoryColor,
     required this.iconData,
+    this.imagePath,
     required this.summary,
     required this.keyPoints,
     required this.sections,
@@ -60,6 +62,7 @@ final List<EducationArticle> educationalArticles = [
     imageBgColor: Color(0xFFFBE9E7),
     categoryColor: Color(0xFFB81018),
     iconData: Icons.restaurant_menu_rounded,
+    imagePath: 'assets/images/pola_makan.png',
     summary:
         'Pola makan merupakan kunci utama dalam mengontrol kadar glukosa darah penderita diabetes. Menerapkan prinsip 3J (Jadwal, Jumlah, dan Jenis) membantu menjaga gula darah tetap stabil tanpa lonjakan drastis.',
     keyPoints: [
@@ -291,21 +294,50 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ),
               child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                  if (article.imagePath != null)
+                    Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.asset(
+                          article.imagePath!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            article.iconData,
+                            color: article.categoryColor,
+                            size: 48,
+                          ),
                         ),
-                      ],
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(article.iconData, color: article.categoryColor, size: 48),
                     ),
-                    child: Icon(article.iconData, color: article.categoryColor, size: 48),
-                  ),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../auth/screens/login_screen.dart';
 
 /// Model chat pasien untuk dashboard dokter
@@ -35,7 +36,7 @@ class DoctorDashboardScreen extends StatefulWidget {
 }
 
 class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
-  int _selectedTabIndex = 0; // 0: Beranda, 1: Profil (Chat dan Pasien dihapus)
+  int _selectedTabIndex = 0; // 0: Beranda, 1: Profil (Chat dan Pasien telah dihapus)
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -109,12 +110,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFFCE4EC),
+                color: AppColors.softPinkCard,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.notifications_active_rounded,
-                color: Color(0xFFD81B60),
+                color: AppColors.primary,
                 size: 22,
               ),
             ),
@@ -154,7 +155,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               'Tutup',
               style: GoogleFonts.poppins(
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFFD81B60),
+                color: AppColors.primary,
               ),
             ),
           ),
@@ -175,10 +176,10 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
         Container(
           padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF0F5),
+            color: AppColors.softPinkBg,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, size: 18, color: const Color(0xFFD81B60)),
+          child: Icon(icon, size: 18, color: AppColors.primary),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -216,7 +217,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   void _openChat(DoctorPatientChat chat) {
-    // Reset unread count for demo
+    // Reset unread count
     setState(() {
       final index = _chats.indexWhere((c) => c.id == chat.id);
       if (index != -1) {
@@ -246,17 +247,17 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F5), // Soft Pink Background
+      backgroundColor: AppColors.softPinkBg, // Soft Pink Background (#FFF0F5)
       body: _selectedTabIndex == 0 ? _buildDashboardBody() : _buildProfileTab(),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  /// Dashboard Home Content
+  /// Dashboard Home Content (Persis Referensi)
   Widget _buildDashboardBody() {
     return Column(
       children: [
-        // 1. Top Curved Magenta Header (Sapaan, Nama Dokter, Bell & Search Bar)
+        // 1. Top Curved Soft Pink Header (Avatar, Nama Dokter, Bell & Search Bar)
         _buildHeader(),
 
         // 2. Scrollable Body Content
@@ -268,7 +269,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               children: [
                 const SizedBox(height: 16),
 
-                // 2 Summary Metric Cards (Total pasien & Chat belum dibaca)
+                // 2 Summary Metric Cards (Total pasien: 128 & Chat belum dibaca: 5)
                 _buildSummaryCards(),
 
                 const SizedBox(height: 18),
@@ -278,7 +279,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
                 const SizedBox(height: 10),
 
-                // List of Chat Cards
+                // Daftar pesan pasien
                 _buildChatList(),
 
                 const SizedBox(height: 24),
@@ -290,11 +291,18 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
-  /// 1. Top Curved Magenta Header
+  /// 1. Top Curved Soft Pink Header (Persis Referensi Desain dengan Soft Pink)
   Widget _buildHeader() {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFFD81B60), // Magenta / Deep Rose brand color
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFFFF8DA1), // Soft Pink Light
+            Color(0xFFF06292), // Soft Pink Primary (Sesuai tema seluruh aplikasi)
+          ],
+        ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(30),
           bottomRight: Radius.circular(30),
@@ -314,7 +322,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               // Top Row: Avatar, Greeting + Name, Notification Bell
               Row(
                 children: [
-                  // White circular avatar with outline doctor/person icon
+                  // White circular avatar with outline person icon
                   Container(
                     width: 50,
                     height: 50,
@@ -324,7 +332,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     ),
                     child: const Icon(
                       Icons.person_outline_rounded,
-                      color: Color(0xFFD81B60),
+                      color: Color(0xFFF06292),
                       size: 28,
                     ),
                   ),
@@ -411,7 +419,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     const SizedBox(width: 14),
                     const Icon(
                       Icons.search_rounded,
-                      color: Color(0xFFD81B60),
+                      color: Color(0xFFF06292),
                       size: 22,
                     ),
                     const SizedBox(width: 10),
@@ -465,7 +473,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
-  /// 2 Summary Metric Cards (Total pasien & Chat belum dibaca)
+  /// 2 Summary Metric Cards (Total pasien: 128 & Chat belum dibaca: 5)
   Widget _buildSummaryCards() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -484,7 +492,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       'Total 128 pasien terdaftar dalam pemantauan Dr. Kaka.',
                       style: GoogleFonts.poppins(),
                     ),
-                    backgroundColor: const Color(0xFFD81B60),
+                    backgroundColor: AppColors.primary,
                     duration: const Duration(seconds: 2),
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -507,7 +515,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       'Terdapat 5 pesan konsultasi baru menunggu respons.',
                       style: GoogleFonts.poppins(),
                     ),
-                    backgroundColor: const Color(0xFFD81B60),
+                    backgroundColor: AppColors.primary,
                     duration: const Duration(seconds: 2),
                     behavior: SnackBarBehavior.floating,
                   ),
@@ -535,12 +543,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: const Color(0xFFF8BBD0).withValues(alpha: 0.6),
+            color: AppColors.softPinkBorder.withValues(alpha: 0.6),
             width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFD81B60).withValues(alpha: 0.04),
+              color: AppColors.primary.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -553,12 +561,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               width: 44,
               height: 44,
               decoration: const BoxDecoration(
-                color: Color(0xFFFCE4EC),
+                color: AppColors.softPinkCard,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: const Color(0xFFD81B60),
+                color: AppColors.primary,
                 size: 22,
               ),
             ),
@@ -624,7 +632,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     'Menampilkan seluruh daftar riwayat pesan pasien.',
                     style: GoogleFonts.poppins(),
                   ),
-                  backgroundColor: const Color(0xFFD81B60),
+                  backgroundColor: AppColors.primary,
                   duration: const Duration(seconds: 2),
                   behavior: SnackBarBehavior.floating,
                 ),
@@ -638,7 +646,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFFD81B60),
+                  color: AppColors.primary,
                 ),
               ),
             ),
@@ -648,7 +656,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
-  /// Chat List items (Soft Pink Cards with patient name, message, time, unread badge)
+  /// Chat List items (Kartu soft pink persis seperti pada gambar referensi)
   Widget _buildChatList() {
     final list = _filteredChats;
 
@@ -661,7 +669,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               Icon(
                 Icons.search_off_rounded,
                 size: 48,
-                color: const Color(0xFFD81B60).withValues(alpha: 0.5),
+                color: AppColors.primary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 8),
               Text(
@@ -686,7 +694,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10, left: 16, right: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCE4EC).withValues(alpha: 0.65), // Soft Pink tint
+        color: AppColors.softPinkCard.withValues(alpha: 0.65), // Soft Pink Card Tint
         borderRadius: BorderRadius.circular(16),
       ),
       child: Material(
@@ -698,10 +706,10 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                // Pink circle avatar with white person icon
+                // Soft Pink circle avatar with white person icon
                 const CircleAvatar(
                   radius: 21,
-                  backgroundColor: Color(0xFFD81B60),
+                  backgroundColor: AppColors.primary,
                   child: Icon(
                     Icons.person_rounded,
                     color: Colors.white,
@@ -755,7 +763,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         width: 20,
                         height: 20,
                         decoration: const BoxDecoration(
-                          color: Color(0xFFD81B60),
+                          color: AppColors.primary,
                           shape: BoxShape.circle,
                         ),
                         alignment: Alignment.center,
@@ -781,32 +789,33 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   /// 4. Bottom Navigation Bar:
-  /// Sesuai permintaan: Chat dan Pasien dihapus, sisakan HANYA Beranda dan Profil!
+  /// Sesuai permintaan pengguna: Menu Chat dan Pasien dihapus!
+  /// Hanya menyisakan menu 'Beranda' dan 'Profil'.
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 68,
       decoration: BoxDecoration(
-        color: const Color(0xFFFDEEF2), // Soft pink background matching reference
+        color: const Color(0xFFFDEEF2), // Soft pink bottom nav background
         border: Border(
           top: BorderSide(
-            color: const Color(0xFFF8BBD0).withValues(alpha: 0.4),
+            color: AppColors.softPinkBorder.withValues(alpha: 0.5),
             width: 1,
           ),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 48),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildNavItem(
             index: 0,
             label: 'Beranda',
-            icon: Icons.home_outlined,
+            icon: _selectedTabIndex == 0 ? Icons.home_rounded : Icons.home_outlined,
           ),
           _buildNavItem(
             index: 1,
             label: 'Profil',
-            icon: Icons.account_circle_outlined,
+            icon: _selectedTabIndex == 1 ? Icons.account_circle_rounded : Icons.account_circle_outlined,
           ),
         ],
       ),
@@ -828,7 +837,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // White Pill Container for selected icon (matching the screenshot style)
+          // White Pill Container for selected icon (persis gaya referensi)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
             decoration: BoxDecoration(
@@ -837,7 +846,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: const Color(0xFFD81B60).withValues(alpha: 0.08),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 1),
                       ),
@@ -848,7 +857,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               icon,
               size: 22,
               color: isSelected
-                  ? const Color(0xFFD81B60)
+                  ? AppColors.primary
                   : const Color(0xFF757575),
             ),
           ),
@@ -859,7 +868,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected
-                  ? const Color(0xFFD81B60)
+                  ? AppColors.primary
                   : const Color(0xFF757575),
             ),
           ),
@@ -883,7 +892,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                 IconButton(
                   onPressed: () => setState(() => _selectedTabIndex = 0),
                   icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                  color: const Color(0xFFD81B60),
+                  color: AppColors.primary,
                 ),
                 Text(
                   'Profil Dokter',
@@ -905,12 +914,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: const Color(0xFFF8BBD0).withValues(alpha: 0.6),
+                  color: AppColors.softPinkBorder.withValues(alpha: 0.6),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFD81B60).withValues(alpha: 0.05),
+                    color: AppColors.primary.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -925,16 +934,16 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFCE4EC),
+                          color: AppColors.softPinkCard,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: const Color(0xFFD81B60),
+                            color: AppColors.primary,
                             width: 2.5,
                           ),
                         ),
                         child: const Icon(
                           Icons.person_rounded,
-                          color: Color(0xFFD81B60),
+                          color: AppColors.primary,
                           size: 46,
                         ),
                       ),
@@ -944,7 +953,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
-                            color: Color(0xFFD81B60),
+                            color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -971,7 +980,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFFD81B60),
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -992,13 +1001,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       Container(
                         height: 28,
                         width: 1,
-                        color: const Color(0xFFF8BBD0),
+                        color: AppColors.softPinkBorder,
                       ),
                       _buildProfileStat('8+ Thn', 'Pengalaman'),
                       Container(
                         height: 28,
                         width: 1,
-                        color: const Color(0xFFF8BBD0),
+                        color: AppColors.softPinkBorder,
                       ),
                       _buildProfileStat('4.9 ⭐', 'Rating'),
                     ],
@@ -1042,7 +1051,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFD81B60), width: 1.2),
+                border: Border.all(color: AppColors.primary, width: 1.2),
                 color: Colors.white,
               ),
               child: InkWell(
@@ -1055,7 +1064,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     children: [
                       const Icon(
                         Icons.logout_rounded,
-                        color: Color(0xFFD81B60),
+                        color: AppColors.primary,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -1064,7 +1073,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         style: GoogleFonts.poppins(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFFD81B60),
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -1113,7 +1122,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFFF8BBD0).withValues(alpha: 0.5),
+          color: AppColors.softPinkBorder.withValues(alpha: 0.5),
           width: 1,
         ),
       ),
@@ -1123,10 +1132,10 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFFFCE4EC),
+            color: AppColors.softPinkCard,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: const Color(0xFFD81B60), size: 22),
+          child: Icon(icon, color: AppColors.primary, size: 22),
         ),
         title: Text(
           title,
@@ -1160,7 +1169,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.logout_rounded, color: Color(0xFFD81B60)),
+            const Icon(Icons.logout_rounded, color: AppColors.primary),
             const SizedBox(width: 8),
             Text(
               'Konfirmasi Keluar',
@@ -1199,7 +1208,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD81B60),
+              backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -1218,7 +1227,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 }
 
-/// Detail Chat Dokter & Pasien
+/// Detail Chat Dokter & Pasien (Soft Pink Theme)
 class DoctorChatDetailScreen extends StatefulWidget {
   final String doctorName;
   final String patientName;
@@ -1295,9 +1304,9 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF0F5),
+      backgroundColor: AppColors.softPinkBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFD81B60),
+        backgroundColor: AppColors.primary,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
@@ -1309,7 +1318,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
             const CircleAvatar(
               radius: 18,
               backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: Color(0xFFD81B60), size: 22),
+              child: Icon(Icons.person, color: AppColors.primary, size: 22),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -1347,13 +1356,13 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: const Color(0xFFFCE4EC),
+            color: AppColors.softPinkCard,
             child: Row(
               children: [
                 const Icon(
                   Icons.monitor_heart_outlined,
                   size: 18,
-                  color: Color(0xFFD81B60),
+                  color: AppColors.primary,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1362,7 +1371,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFFD81B60),
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -1394,7 +1403,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: isDoctor
-                          ? const Color(0xFFD81B60)
+                          ? AppColors.primary
                           : Colors.white,
                       borderRadius: BorderRadius.only(
                         topLeft: const Radius.circular(16),
@@ -1405,7 +1414,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                       border: isDoctor
                           ? null
                           : Border.all(
-                              color: const Color(0xFFF8BBD0),
+                              color: AppColors.softPinkBorder,
                               width: 1,
                             ),
                       boxShadow: [
@@ -1453,7 +1462,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
               color: Colors.white,
               border: Border(
                 top: BorderSide(
-                  color: const Color(0xFFF8BBD0).withValues(alpha: 0.5),
+                  color: AppColors.softPinkBorder.withValues(alpha: 0.5),
                   width: 1,
                 ),
               ),
@@ -1465,10 +1474,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFF0F5),
+                        color: AppColors.softPinkBg,
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: const Color(0xFFF8BBD0),
+                          color: AppColors.softPinkBorder,
                           width: 1,
                         ),
                       ),
@@ -1495,7 +1504,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                       width: 44,
                       height: 44,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFD81B60),
+                        color: AppColors.primary,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(

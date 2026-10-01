@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'consultation_list_screen.dart';
 import 'riwayat_resep_screen.dart';
 
+import '../../../core/services/patient_activity_service.dart';
+
 class RiskAssessmentRecord {
   final String id;
   final String date;
@@ -44,7 +46,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
     'Cek Risiko AI',
   ];
 
-  final List<RiskAssessmentRecord> _records = const [
+  static const List<RiskAssessmentRecord> _fallbackRecords = [
     RiskAssessmentRecord(
       id: 'RSK-2026-001',
       date: '20 Mei 2026',
@@ -85,6 +87,25 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
       physicalActivity: 'Sangat jarang / pasif',
     ),
   ];
+
+  List<RiskAssessmentRecord> get _records {
+    final history = PatientActivityService.instance.riskHistoryNotifier.value;
+    if (history.isNotEmpty) {
+      return history.map((h) => RiskAssessmentRecord(
+        id: h.id,
+        date: h.date,
+        status: h.status,
+        glucoseLevel: h.glucoseLevel,
+        scoreDescription: h.scoreDescription,
+        recommendation: h.recommendation,
+        bmi: h.bmi,
+        bloodPressure: h.bloodPressure,
+        familyHistory: h.familyHistory,
+        physicalActivity: h.physicalActivity,
+      )).toList();
+    }
+    return _fallbackRecords;
+  }
 
   Color _getStatusBgColor(String status) {
     switch (status.toLowerCase()) {
