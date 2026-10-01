@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -95,6 +96,10 @@ class _LandingScreenState extends State<LandingScreen>
 
   void _autoAdvance() {
     if (!mounted) return;
+    if (!_pageController.hasClients) {
+      Future.delayed(const Duration(seconds: 3), _autoAdvance);
+      return;
+    }
     final next = (_currentPage + 1) % _features.length;
     _pageController.animateToPage(
       next,
@@ -128,7 +133,13 @@ class _LandingScreenState extends State<LandingScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        SystemNavigator.pop();
+      },
+      child: Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -424,8 +435,9 @@ class _LandingScreenState extends State<LandingScreen>
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildFeatureCard(_FeatureItem item) {
     return Padding(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../services/auth_service.dart';
-import '../../auth/screens/login_screen.dart';
+import '../../auth/screens/landing_screen.dart';
 import 'add_doctor_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -1026,11 +1026,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
     );
 
-    if (confirmed == true && mounted) {
-      final nav = Navigator.of(context);
+    if (confirmed == true && context.mounted) {
       await AuthService.instance.signOut();
-      nav.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      if (!context.mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LandingScreen()),
         (route) => false,
       );
     }

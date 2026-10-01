@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../auth/screens/login_screen.dart';
+import '../../../services/auth_service.dart';
+import '../../auth/screens/landing_screen.dart';
 
 /// Model chat pasien untuk dashboard dokter
 class DoctorPatientChat {
@@ -1200,10 +1201,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
+              await AuthService.instance.signOut();
+              if (!mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                MaterialPageRoute(builder: (_) => const LandingScreen()),
                 (route) => false,
               );
             },
@@ -1682,7 +1685,7 @@ class _BouncingDotState extends State<_BouncingDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => Transform.translate(
+      builder: (_, _) => Transform.translate(
         offset: Offset(0, _anim.value),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 3),

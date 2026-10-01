@@ -11,6 +11,7 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/glossy_login_button.dart';
 import '../widgets/stethoscope_watermark.dart';
 import 'forgot_password_screen.dart';
+import 'landing_screen.dart';
 import 'sign_up_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -30,6 +31,16 @@ class _LoginScreenState extends State<LoginScreen> {
     _userController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _handleBack() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LandingScreen()),
+      );
+    }
   }
 
   void _handleLogin() async {
@@ -113,7 +124,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -142,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Padding(
                 padding: const EdgeInsets.only(left: 12, top: 8),
                 child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _handleBack,
                   icon: const Icon(
                     Icons.arrow_back_ios_rounded,
                     color: Colors.white,
@@ -297,6 +314,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
