@@ -55,7 +55,7 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
   final int _selectedBottomNavIndex = 3; // Calendar / Schedule icon
 
   final List<String> _categories = const [
-    'Cek Risiko AI',
+    'Cek Risiko',
     'Konsultasi',
     'Monitoring',
     'Resep',
