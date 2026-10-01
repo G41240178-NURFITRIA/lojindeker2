@@ -1238,13 +1238,33 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 ),
                 child: Stack(
                   children: [
-                    Center(
-                      child: Icon(
-                        article.iconData,
-                        color: article.categoryColor.withValues(alpha: 0.5),
-                        size: 46,
+                    if (article.imagePath != null)
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(15),
+                          ),
+                          child: Image.asset(
+                            article.imagePath!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Icon(
+                                article.iconData,
+                                color: article.categoryColor.withValues(alpha: 0.5),
+                                size: 46,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Center(
+                        child: Icon(
+                          article.iconData,
+                          color: article.categoryColor.withValues(alpha: 0.5),
+                          size: 46,
+                        ),
                       ),
-                    ),
                     Positioned(
                       top: 8,
                       right: 8,
