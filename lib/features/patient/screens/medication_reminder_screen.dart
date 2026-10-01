@@ -1052,26 +1052,23 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                         fontSize: 11.5,
                         color: const Color(0xFF616161),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 5),
                     Row(
                       children: [
                         const Icon(Icons.repeat_rounded, size: 13, color: _primaryPink),
                         const SizedBox(width: 4),
-                        Text(
-                          rem.schedule,
-                          style: GoogleFonts.poppins(
-                            fontSize: 10.5,
-                            color: const Color(0xFF757575),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '• Tekan opsi',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: const Color(0xFF9E9E9E),
-                            fontStyle: FontStyle.italic,
+                        Expanded(
+                          child: Text(
+                            rem.schedule,
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              color: const Color(0xFF757575),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -1079,6 +1076,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisAlignment: MainAxisAlignment.center,
