@@ -5,6 +5,7 @@ import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../patient/screens/article_detail_screen.dart';
+import '../../patient/screens/patient_profile_screen.dart';
 import 'add_doctor_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -16,6 +17,27 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedTabIndex = 0;
+  String _adminDisplayName = 'Administrator';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAdminData();
+  }
+
+  void _loadAdminData() async {
+    final user = AuthService.instance.currentUser;
+    if (user != null) {
+      final appUser = await UserRepository.instance.findByUid(user.uid);
+      if (appUser != null && mounted) {
+        setState(() {
+          _adminDisplayName = appUser.username.isNotEmpty
+              ? appUser.username
+              : (appUser.fullName.isNotEmpty ? appUser.fullName : 'Administrator');
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,8 +62,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           SafeArea(
             child: Column(
               children: [
-                // Top Bar (Action icons on left, Profile greeting on right) - Clickable
-                _buildHeader(),
+                // Top Bar hanya muncul di tab 0 (Dashboard Home)
+                if (_selectedTabIndex == 0) _buildHeader(),
 
                 // Content area
                 Expanded(
@@ -63,11 +85,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 0:
         return _buildDashboardContent();
       case 1:
-        return _buildChatTabContent();
-      case 2:
-        return _buildProfileTabContent();
-      case 3:
-        return _buildScheduleTabContent();
+        return PatientProfileScreen(
+          patientName: _adminDisplayName,
+          onBackToHome: () => setState(() => _selectedTabIndex = 0),
+          onProfileUpdated: (newName) {
+            setState(() => _adminDisplayName = newName);
+          },
+          onLogout: () => _confirmLogout(context),
+          isTab: true,
+        );
       default:
         return _buildDashboardContent();
     }
@@ -103,9 +129,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ],
           ),
 
-          // Right: "Hi, WelcomeBack" and Avatar (Clickable)
+          // Right: "Hi, WelcomeBack" and Avatar (Clickable: buka tab profil)
           InkWell(
-            onTap: () => _showProfileDialog(context),
+            onTap: () => setState(() => _selectedTabIndex = 1),
             borderRadius: BorderRadius.circular(20),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -677,147 +703,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  /// Tab 1: Chat / Konsultasi
-  Widget _buildChatTabContent() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Pesan & Konsultasi',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF141414),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.5)),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.chat_bubble_outline_rounded, size: 48, color: Color(0xFFF06292)),
-                const SizedBox(height: 12),
-                Text(
-                  'Sesi Konsultasi Terjadwal',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Semua percakapan konsultasi antara dokter dan pasien terpantau aman dan terenkripsi.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575)),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Tab 2: Profile Admin
-  Widget _buildProfileTabContent() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.5)),
-            ),
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: const Color(0xFFF06292),
-                  child: const Icon(Icons.person, size: 40, color: Colors.white),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Administrator',
-                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  'admin@care.com',
-                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575)),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _confirmLogout(context),
-                  icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
-                  label: Text('Keluar dari Akun', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFD81B60),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Tab 3: Jadwal / Kalender
-  Widget _buildScheduleTabContent() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Kalender Kegiatan & Jadwal',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF141414),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.5)),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.calendar_month_outlined, size: 48, color: Color(0xFFF06292)),
-                const SizedBox(height: 12),
-                Text(
-                  'Jadwal Terpantau Normal',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Jadwal praktik dokter dan kontrol pasien terjadwal secara berkala.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575)),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// =========================================================================
   /// MODALS DENGAN ISI LENGKAP MENYESUAIKAN FITUR (KELOLA PENGGUNA, ARTIKEL, AKTIVITAS)
   /// =========================================================================
@@ -1189,41 +1074,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  void _showProfileDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFFD81B60)),
-            const SizedBox(width: 8),
-            Text('Profil Admin', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Role: Administrator LojinDeker', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13)),
-            const SizedBox(height: 4),
-            Text('Email: admin@care.com', style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF616161))),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Tutup')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _confirmLogout(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD81B60)),
-            child: const Text('Logout', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Future<void> _confirmLogout(BuildContext context) async {
     final nav = Navigator.of(context);
@@ -1253,36 +1104,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  /// Bottom Navigation Bar (Interactive)
+  /// Bottom Navigation Bar (Interactive - Home dan Profil)
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 64,
       color: const Color(0xFFFCF8F9), // Seamless soft blush tone
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 50),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildNavItem(0, Icons.home_outlined),
-          _buildNavItem(1, Icons.chat_bubble_outline_rounded),
-          _buildNavItem(2, Icons.person_outline_rounded),
-          _buildNavItem(3, Icons.calendar_month_outlined),
+          _buildNavItem(0, Icons.home_outlined, Icons.home_rounded),
+          _buildNavItem(1, Icons.person_outline_rounded, Icons.person_rounded),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon) {
+  Widget _buildNavItem(int index, IconData inactiveIcon, [IconData? activeIcon]) {
     final isSelected = _selectedTabIndex == index;
-    final color = isSelected ? const Color(0xFFD81B60) : const Color(0xFFBDBDBD);
+    final color = isSelected ? const Color(0xFFD81B60) : const Color(0xFFB0BEC5);
 
     return InkWell(
       onTap: () => setState(() => _selectedTabIndex = index),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
         child: Icon(
-          icon,
-          size: 26,
+          isSelected ? (activeIcon ?? inactiveIcon) : inactiveIcon,
+          size: 28,
           color: color,
         ),
       ),

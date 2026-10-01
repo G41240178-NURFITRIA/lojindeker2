@@ -13,6 +13,7 @@ class PatientProfileScreen extends StatefulWidget {
   final String patientName;
   final VoidCallback? onBackToHome;
   final ValueChanged<String>? onProfileUpdated;
+  final VoidCallback? onLogout;
   final bool isTab;
 
   const PatientProfileScreen({
@@ -20,6 +21,7 @@ class PatientProfileScreen extends StatefulWidget {
     this.patientName = 'Pasien',
     this.onBackToHome,
     this.onProfileUpdated,
+    this.onLogout,
     this.isTab = false,
   });
 
@@ -122,6 +124,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       child: ElevatedButton(
                         onPressed: () async {
                           Navigator.pop(ctx);
+                          if (widget.onLogout != null) {
+                            widget.onLogout!();
+                            return;
+                          }
                           await AuthService.instance.signOut();
                           if (context.mounted) {
                             Navigator.of(context).pushAndRemoveUntil(
