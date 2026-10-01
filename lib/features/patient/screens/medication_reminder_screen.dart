@@ -1,28 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/notification_service.dart';
-
-class MedicationReminder {
-  final String id;
-  String medicineName;
-  String dosage;
-  String schedule;
-  String time;
-  bool isActive;
-  bool isTakenToday;
-  IconData iconData;
-
-  MedicationReminder({
-    required this.id,
-    required this.medicineName,
-    required this.dosage,
-    required this.schedule,
-    required this.time,
-    this.isActive = true,
-    this.isTakenToday = false,
-    this.iconData = Icons.medication_rounded,
-  });
-}
+import '../../../core/services/patient_activity_service.dart';
+import '../models/medication_reminder_model.dart';
+export '../models/medication_reminder_model.dart';
 
 class MedicationReminderScreen extends StatefulWidget {
   const MedicationReminderScreen({super.key});
@@ -41,13 +22,14 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   @override
   void initState() {
     super.initState();
-    _reminders = [];
+    _reminders = List.from(PatientActivityService.instance.reminders);
   }
 
   void _toggleReminder(MedicationReminder rem, bool value) {
     setState(() {
       rem.isActive = value;
     });
+    PatientActivityService.instance.toggleReminderActive(rem.id, value);
 
     if (value) {
       NotificationService().showMedicationNotification(
@@ -632,6 +614,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                               setState(() {
                                 _reminders.insert(0, newRem);
                               });
+                              PatientActivityService.instance.addReminder(newRem);
 
                               // Notifikasi HP saat jadwal disimpan
                               NotificationService().showMedicationNotification(
@@ -815,6 +798,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                   setState(() {
                     rem.isTakenToday = !rem.isTakenToday;
                   });
+                  PatientActivityService.instance.toggleReminderTaken(rem.id, rem.isTakenToday);
                   Navigator.pop(sheetContext);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -910,6 +894,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                     setState(() {
                       rem.time = formatted;
                     });
+                    PatientActivityService.instance.updateReminderTime(rem.id, formatted);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -954,6 +939,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                   setState(() {
                     _reminders.remove(rem);
                   });
+                  PatientActivityService.instance.removeReminder(rem.id);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -967,6 +953,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                           setState(() {
                             _reminders.insert(removedIndex, rem);
                           });
+                          PatientActivityService.instance.addReminder(rem);
                         },
                       ),
                     ),

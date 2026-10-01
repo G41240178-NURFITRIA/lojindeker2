@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/patient_activity_service.dart';
 
 /// Model pesan chat
 class ChatMessage {
@@ -109,6 +110,12 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
       _controller.clear();
       _isDoctorTyping = true;
     });
+
+    PatientActivityService.instance.recordConsultation(
+      doctorName: widget.doctorName,
+      specialty: widget.specialty,
+      lastMessage: trimmed,
+    );
 
     _scrollToBottom();
 

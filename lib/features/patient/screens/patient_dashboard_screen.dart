@@ -6,10 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/profile_image_service.dart';
-import '../models/risk_assessment_model.dart';
 import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
-import 'glucose_history_screen.dart';
 import 'medical_records_screen.dart';
 import 'nearest_facility_screen.dart';
 import 'live_chat_screen.dart';
@@ -19,6 +17,7 @@ import 'when_to_see_doctor_screen.dart';
 import 'health_calendar_screen.dart';
 import 'medication_reminder_screen.dart';
 import 'riwayat_risiko_screen.dart';
+import '../../../core/services/patient_activity_service.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
@@ -39,6 +38,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     super.initState();
     _currentPatientName = widget.patientName;
     _loadCurrentProfile();
+    PatientActivityService.instance.loadUserDataFromFirestore();
   }
 
   void _loadCurrentProfile() async {
@@ -793,71 +793,94 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Builder(builder: (context) {
-              // Ambil data risiko terbaru secara otomatis
-              final latestRisk = dummyRiskAssessments.isNotEmpty
-                  ? dummyRiskAssessments.first
-                  : null;
-              final riskLabel = latestRisk?.level.label ?? 'Belum ada data';
-              final riskColor = latestRisk?.level.color ?? const Color(0xFF757575);
-              final riskDate = latestRisk?.date ?? '-';
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      text: 'Resiko Diabetes : ',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF141414),
+          ValueListenableBuilder<PatientRiskRecord>(
+            valueListenable: PatientActivityService.instance.latestRiskNotifier,
+            builder: (context, latestRisk, _) {
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RiwayatRisikoScreen(),
                       ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        TextSpan(
-                          text: riskLabel,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: riskColor,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              RichText(
+                                text: TextSpan(
+                                  text: 'Resiko Diabetes : ',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF141414),
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: latestRisk.status,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: latestRisk.statusColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Berdasarkan hasil pengecekan terakhir',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  color: const Color(0xFF757575),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                latestRisk.date,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF424242),
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Color(0xFFBDBDBD),
+                          size: 22,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Berdasarkan hasil pengecekan terakhir',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      color: const Color(0xFF757575),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    riskDate,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF424242),
-                    ),
-                  ),
-                ],
+                ),
               );
-            }),
+            },
           ),
 
           const SizedBox(height: 24),
@@ -889,48 +912,53 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             child: Column(
               children: [
                 // 1. Cek Risiko Diabetes
-                _buildAktivitasItem(
-                  iconWidget: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.health_and_safety_outlined,
-                      color: Color(0xFFE56A6F),
-                      size: 21,
-                    ),
-                  ),
-                  title: 'Cek Risiko Diabetes',
-                  subtitleWidget: RichText(
-                    text: TextSpan(
-                      text: 'Hasil terakhir: ',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: const Color(0xFF757575),
+                ValueListenableBuilder<PatientRiskRecord>(
+                  valueListenable: PatientActivityService.instance.latestRiskNotifier,
+                  builder: (context, latestRisk, _) {
+                    return _buildAktivitasItem(
+                      iconWidget: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF0F2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.health_and_safety_outlined,
+                          color: Color(0xFFE56A6F),
+                          size: 21,
+                        ),
                       ),
-                      children: [
-                        TextSpan(
-                          text: 'Risiko Rendah',
+                      title: 'Cek Risiko Diabetes',
+                      subtitleWidget: RichText(
+                        text: TextSpan(
+                          text: 'Hasil terakhir: ',
                           style: GoogleFonts.poppins(
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF2E7D32),
+                            color: const Color(0xFF757575),
                           ),
+                          children: [
+                            TextSpan(
+                              text: 'Risiko ${latestRisk.status}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: latestRisk.statusColor,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  trailingIcon: Icons.calendar_today_outlined,
-                  trailingText: '20 Mei 2026',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RiwayatRisikoScreen(),
                       ),
+                      trailingIcon: Icons.calendar_today_outlined,
+                      trailingText: latestRisk.date,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RiwayatRisikoScreen(),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -943,37 +971,45 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 ),
 
                 // 2. Konsultasi Dokter
-                _buildAktivitasItem(
-                  iconWidget: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Center(
-                      child: _DoctorOutlineIcon(
-                        color: Color(0xFFE56A6F),
-                        size: 20,
+                ValueListenableBuilder<PatientConsultationActivity>(
+                  valueListenable: PatientActivityService.instance.latestConsultationNotifier,
+                  builder: (context, consultation, _) {
+                    return _buildAktivitasItem(
+                      iconWidget: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF0F2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Center(
+                          child: _DoctorOutlineIcon(
+                            color: Color(0xFFE56A6F),
+                            size: 20,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  title: 'Konsultasi Dokter',
-                  subtitleWidget: Text(
-                    'Konsultasi terakhir dengan dr. Koko',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: const Color(0xFF757575),
-                    ),
-                  ),
-                  trailingIcon: Icons.calendar_today_outlined,
-                  trailingText: '18 Mei 2026',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ConsultationListScreen(),
+                      title: 'Konsultasi Dokter',
+                      subtitleWidget: Text(
+                        'Konsultasi terakhir dengan ${consultation.doctorName}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: const Color(0xFF757575),
+                        ),
                       ),
+                      trailingIcon: Icons.calendar_today_outlined,
+                      trailingText: consultation.date,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LiveChatScreen(
+                              doctorName: consultation.doctorName,
+                              specialty: consultation.specialty,
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -986,46 +1022,65 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 ),
 
                 // 3. Pengingat Obat
-                _buildAktivitasItem(
-                  iconWidget: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: _buildPillCapsuleIcon(),
-                    ),
-                  ),
-                  title: 'Pengingat Obat',
-                  subtitleWidget: RichText(
-                    text: TextSpan(
-                      text: 'Pengingat obat berikutnya: ',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: const Color(0xFF757575),
-                      ),
-                      children: [
-                        TextSpan(
-                          text: '19.00',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF141414),
-                          ),
+                ValueListenableBuilder<List<MedicationReminder>>(
+                  valueListenable: PatientActivityService.instance.remindersNotifier,
+                  builder: (context, reminders, _) {
+                    final nextInfo = PatientActivityService.instance.getNextReminderInfo();
+                    return _buildAktivitasItem(
+                      iconWidget: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF0F2),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ],
-                    ),
-                  ),
-                  trailingIcon: Icons.access_time_rounded,
-                  trailingText: 'Hari ini, 19.00',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const MedicationReminderScreen(),
+                        child: Center(
+                          child: _buildPillCapsuleIcon(),
+                        ),
                       ),
+                      title: 'Pengingat Obat',
+                      subtitleWidget: nextInfo.reminder != null
+                          ? RichText(
+                              text: TextSpan(
+                                text: 'Pengingat obat berikutnya: ',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: const Color(0xFF757575),
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: nextInfo.timeText,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF141414),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Text(
+                              nextInfo.subtitleText,
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                color: nextInfo.allTakenToday
+                                    ? const Color(0xFF2E7D32)
+                                    : const Color(0xFF757575),
+                                fontWeight: nextInfo.allTakenToday ? FontWeight.w500 : FontWeight.w400,
+                              ),
+                            ),
+                      trailingIcon: nextInfo.allTakenToday
+                          ? Icons.check_circle_rounded
+                          : Icons.access_time_rounded,
+                      trailingText: nextInfo.labelText,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MedicationReminderScreen(),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -1498,6 +1553,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   }
 
   /// History Tile
+  // ignore: unused_element
   Widget _buildHistoryTile({
     required IconData icon,
     required Color iconColor,
