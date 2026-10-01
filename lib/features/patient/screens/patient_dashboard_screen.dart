@@ -1247,7 +1247,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                             article.imagePath!,
                             fit: BoxFit.cover,
                             alignment: Alignment.center,
-                            errorBuilder: (_, __, ___) => Center(
+                            errorBuilder: (context, error, stackTrace) => Center(
                               child: Icon(
                                 article.iconData,
                                 color: article.categoryColor.withValues(alpha: 0.5),

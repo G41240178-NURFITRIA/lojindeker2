@@ -316,7 +316,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                         child: Image.asset(
                           article.imagePath!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Icon(
+                          errorBuilder: (context, error, stackTrace) => Icon(
                             article.iconData,
                             color: article.categoryColor,
                             size: 48,
