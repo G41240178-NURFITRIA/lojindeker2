@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/auth_service.dart';
-import '../../../features/auth/widgets/role_selector.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
@@ -59,21 +58,21 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
 
       // Routing otomatis berdasarkan role yang tersimpan di database
       switch (user.role) {
-        case UserRole.admin:
+        case AppRole.admin:
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
           );
           break;
-        case UserRole.dokter:
+        case AppRole.doctor:
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (_) => DoctorDashboardScreen(
-                doctorName: user.fullName.isNotEmpty ? user.fullName : 'Dr. Kaka Pratama',
+                doctorName: user.fullName.isNotEmpty ? user.fullName : 'Dokter',
               ),
             ),
           );
           break;
-        case UserRole.pasien:
+        case AppRole.pasien:
           final displayName = user.fullName.isNotEmpty
               ? user.fullName
               : (email.contains('@') ? email.split('@')[0] : email);

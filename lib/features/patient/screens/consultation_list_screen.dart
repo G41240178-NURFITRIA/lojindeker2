@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'live_chat_screen.dart';
-import '../../../core/services/patient_activity_service.dart';
 
 // Data Model Dokter
 class DoctorModel {
@@ -315,10 +314,6 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
           InkWell(
             onTap: doctor.isOnline
                 ? () {
-                    PatientActivityService.instance.recordConsultation(
-                      doctorName: doctor.name,
-                      specialty: doctor.specialty,
-                    );
                     Navigator.push(
                       context,
                       MaterialPageRoute(

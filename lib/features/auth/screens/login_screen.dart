@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/services/auth_service.dart';
+import '../../../models/app_user.dart';
+import '../../../services/auth_service.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/app_logo_badge.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/glossy_login_button.dart';
-import '../widgets/role_selector.dart';
 import '../widgets/stethoscope_watermark.dart';
 import 'forgot_password_screen.dart';
 import 'sign_up_screen.dart';
@@ -33,14 +33,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
-    final username = _userController.text.trim();
+    final identifier = _userController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
+    if (identifier.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Silakan masukkan email / username dan password Anda.',
+            'Silakan masukkan email / username / No. HP dan password Anda.',
             style: GoogleFonts.poppins(color: Colors.white),
           ),
           backgroundColor: Colors.black87,
@@ -54,42 +54,42 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Login tanpa memilih role — role dibaca otomatis dari Firestore
-      final user = await AuthService.instance.loginAutoRole(
-        identifier: username,
+      final appUser = await AuthService.instance.login(
+        identifier: identifier,
         password: password,
       );
 
       if (!mounted) return;
 
-      // Routing otomatis berdasarkan role yang tersimpan di database
-      switch (user.role) {
-        case UserRole.admin:
+      // Routing otomatis berdasarkan role
+      switch (appUser.role) {
+        case AppRole.admin:
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
             (route) => false,
           );
-          break;
-        case UserRole.dokter:
+        case AppRole.doctor:
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (_) => DoctorDashboardScreen(
-                doctorName: user.fullName.isNotEmpty ? user.fullName : 'Dr. Kaka Pratama',
+                doctorName: appUser.fullName.isNotEmpty
+                    ? appUser.fullName
+                    : 'Dokter',
               ),
             ),
             (route) => false,
           );
-          break;
-        case UserRole.pasien:
+        case AppRole.pasien:
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (_) => PatientDashboardScreen(
-                patientName: user.fullName.isNotEmpty ? user.fullName : 'Pasien',
+                patientName: appUser.fullName.isNotEmpty
+                    ? appUser.fullName
+                    : 'Pasien',
               ),
             ),
             (route) => false,
           );
-          break;
       }
     } catch (e) {
       if (!mounted) return;
@@ -231,12 +231,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: InkWell(
                             onTap: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                                MaterialPageRoute(
+                                    builder: (_) => const ForgotPasswordScreen()),
                               );
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               child: Text(
                                 'Lupa password?',
                                 style: GoogleFonts.poppins(
@@ -255,7 +257,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: GestureDetector(
                             onTap: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                                MaterialPageRoute(
+                                    builder: (_) => const SignUpScreen()),
                               );
                             },
                             child: RichText(
@@ -274,7 +277,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       fontWeight: FontWeight.w700,
                                       color: const Color(0xFFFCEAEA),
                                       decoration: TextDecoration.underline,
-                                      decorationColor: const Color(0xFFFCEAEA),
+                                      decorationColor:
+                                          const Color(0xFFFCEAEA),
                                     ),
                                   ),
                                 ],

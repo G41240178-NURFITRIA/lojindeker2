@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/services/auth_service.dart';
+import '../../../services/auth_service.dart';
 import '../widgets/figma_auth_field.dart';
 import '../widgets/figma_red_button.dart';
-import '../widgets/role_selector.dart';
+import '../../patient/screens/patient_dashboard_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -22,7 +22,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   DateTime? _selectedDob;
   bool _isLoading = false;
-  final UserRole _selectedRole = UserRole.pasien; // default role: pasien
 
   @override
   void dispose() {
@@ -99,13 +98,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final mobile = _mobileController.text.trim();
-    final dob = _selectedDob != null ? _formatStorage(_selectedDob!) : '';
 
-    if (username.isEmpty || fullName.isEmpty || email.isEmpty || password.isEmpty) {
+    if (_selectedDob == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Silakan lengkapi username akun, username profil, email, dan password Anda.',
+            'Silakan pilih tanggal lahir Anda.',
             style: GoogleFonts.poppins(),
           ),
           backgroundColor: const Color(0xFFB51419),
@@ -114,30 +112,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    if (password.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Password minimal harus 6 karakter.',
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: const Color(0xFFB51419),
-        ),
-      );
-      return;
-    }
+    final dob = _formatStorage(_selectedDob!);
 
     setState(() => _isLoading = true);
 
     try {
-      await AuthService.instance.signUp(
-        email: email,
-        password: password,
+      final appUser = await AuthService.instance.signUpPatient(
         username: username,
         fullName: fullName,
+        email: email,
+        password: password,
         phoneNumber: mobile,
         dob: dob,
-        role: _selectedRole, // kirim role yang dipilih
       );
 
       if (!mounted) return;
@@ -145,14 +131,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Pendaftaran akun berhasil! Silakan login.',
+            'Pendaftaran berhasil! Selamat datang, ${appUser.fullName}.',
             style: GoogleFonts.poppins(),
           ),
           backgroundColor: const Color(0xFF2E7D32),
         ),
       );
 
-      Navigator.of(context).pop();
+      // Langsung ke PatientHome setelah daftar
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => PatientDashboardScreen(
+            patientName: appUser.fullName.isNotEmpty ? appUser.fullName : 'Pasien',
+          ),
+        ),
+        (route) => false,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

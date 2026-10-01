@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    function isDoctor() {
+      return isSignedIn() && exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
+    }
+    
+    // 1. Admins Collection
+    // Read: pemilik atau admin
+    // Write: false (dibuat manual via Firebase Console)
+    match /admins/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+    
+    // 2. Doctors Collection
+    // Read: pemilik dokter atau admin
+    // Write: hanya admin
+    match /doctors/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // 3. Users Collection (Pasien)
+    // Create: hanya jika uid sama dengan auth dan role == 'pasien'
+    // Read: pemilik, admin, atau dokter
+    // Update: pemilik atau admin, dan role tidak boleh diubah
+    // Delete: hanya admin
+    match /users/{uid} {
+      allow create: if isOwner(uid) && request.resource.data.role == 'pasien';
+      allow read: if isOwner(uid) || isAdmin() || isDoctor();
+      allow update: if (isOwner(uid) || isAdmin()) && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+    
+    // 4. LoginLookup Collection ({username}, {phoneNumber}, {email})
+    // Get: publik (untuk resolving identifier sebelum login)
+    // List: dilarang (mencegah scraping user data)
+    // Create: user yang login (saat registrasi pasien) atau admin (saat buat dokter)
+    // Update & Delete: hanya admin
+    match /loginLookup/{key} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isSignedIn() || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+    
+    // Default fallback deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

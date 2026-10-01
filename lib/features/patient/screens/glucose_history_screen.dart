@@ -12,13 +12,12 @@ class GlucoseHistoryScreen extends StatefulWidget {
 }
 
 class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
-  int _selectedTabIndex = 0;
+  final int _selectedTabIndex = 0;
   int _activePillIndex = 2; // Default: 'Monitoring' aktif
 
   static const Color _primaryPink = Color(0xFFF06292);
   static const Color _darkRose = Color(0xFFD81B60);
   static const Color _primaryRed = Color(0xFFF06292);
-  static const Color _darkRed = Color(0xFFD81B60);
   static const Color _greenDot = Color(0xFF1B5E20);
   static const Color _orangeDot = Color(0xFFE65100);
 

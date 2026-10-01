@@ -11,12 +11,10 @@ class GlucoseChartScreen extends StatefulWidget {
 
 class _GlucoseChartScreenState extends State<GlucoseChartScreen> {
   int _selectedFilterIndex = 0; // 0: 7 Hari, 1: 30 Hari
-  int _selectedTabIndex = 0;
-
+  final int _selectedTabIndex = 0;
   static const Color _primaryPink = Color(0xFFF06292);
   static const Color _darkRose = Color(0xFFD81B60);
   static const Color _primaryRed = Color(0xFFF06292);
-  static const Color _darkRed = Color(0xFFD81B60);
   static const Color _greenLine = Color(0xFF2E7D32);
   static const Color _yellowLine = Color(0xFFD4A017);
 

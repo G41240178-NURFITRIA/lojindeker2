@@ -4,8 +4,9 @@ import 'package:flutter/services.dart';
 import 'core/config/firebase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/device_preview_wrapper.dart';
-import 'features/auth/screens/landing_screen.dart';
 import 'core/services/notification_service.dart';
+
+import 'auth_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +38,7 @@ class DCareApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       builder: (context, child) =>
           DevicePreviewWrapper(child: child ?? const SizedBox.shrink()),
-      home: const LandingScreen(),
+      home: const AuthGate(),
     );
   }
 }
