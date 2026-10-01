@@ -2599,4 +2599,3 @@ class _ExpandableVisitCardState extends State<_ExpandableVisitCard>
     );
   }
 }
-

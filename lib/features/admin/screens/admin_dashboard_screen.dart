@@ -416,9 +416,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               : 'dr. Kaka Pratama - Spesialis',
                           timeAgo: '1 jam lalu',
                           onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const AddDoctorScreen()),
-                            );
+                            if (doctors.isNotEmpty) {
+                              _showDoctorDetailSheet(context, doctors.first);
+                            } else {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const AddDoctorScreen(initialIndex: 1)),
+                              );
+                            }
                           },
                         ),
                         const Padding(
@@ -853,7 +857,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         },
         onOpenDokter: () {
           Navigator.pop(ctx);
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddDoctorScreen()));
+          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddDoctorScreen(initialIndex: 1)));
         },
         onOpenArtikel: () {
           Navigator.pop(ctx);
@@ -863,6 +867,127 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Navigator.pop(ctx);
           _showRiskAISheet(context);
         },
+      ),
+    );
+  }
+
+  /// Detail Profil Dokter dari Aktivitas Terbaru
+  void _showDoctorDetailSheet(BuildContext context, AppUser doctor) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      backgroundColor: Colors.white,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: const Color(0xFFFCE4EC),
+                  child: Icon(
+                    Icons.person,
+                    color: doctor.isActive ? const Color(0xFFD81B60) : Colors.grey,
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        doctor.fullName,
+                        style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        doctor.specialization ?? 'Dokter Spesialis',
+                        style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFFD81B60), fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: doctor.isActive ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    doctor.isActive ? 'Aktif' : 'Nonaktif',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: doctor.isActive ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Color(0xFFFCE4EC)),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Icon(Icons.email_outlined, size: 16, color: Color(0xFFD81B60)),
+                const SizedBox(width: 8),
+                Text('Email: ${doctor.email}', style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF424242))),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.phone_outlined, size: 16, color: Color(0xFFD81B60)),
+                const SizedBox(width: 8),
+                Text('WhatsApp: ${doctor.phoneNumber}', style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF424242))),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.alternate_email, size: 16, color: Color(0xFFD81B60)),
+                const SizedBox(width: 8),
+                Text('Username: @${doctor.username}', style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF424242))),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFF8BBD0)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text('Tutup', style: GoogleFonts.poppins(color: const Color(0xFF757575))),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AddDoctorScreen(initialIndex: 1)),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD81B60),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text('Daftar Dokter', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
