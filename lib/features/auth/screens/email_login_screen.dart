@@ -66,7 +66,11 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
           break;
         case UserRole.dokter:
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+            MaterialPageRoute(
+              builder: (_) => DoctorDashboardScreen(
+                doctorName: user.fullName.isNotEmpty ? user.fullName : 'Dr. Kaka Pratama',
+              ),
+            ),
           );
           break;
         case UserRole.pasien:
