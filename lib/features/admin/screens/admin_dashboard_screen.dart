@@ -6,6 +6,8 @@ import '../../../services/user_repository.dart';
 import '../../auth/screens/login_screen.dart';
 import '../../patient/screens/article_detail_screen.dart';
 import '../../patient/screens/patient_profile_screen.dart';
+import '../../patient/screens/risk_check_screen.dart';
+import '../../patient/screens/riwayat_risiko_screen.dart';
 import 'add_doctor_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -320,9 +322,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Expanded(
                         child: _buildSoftPinkMetricCard(
                           iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
-                          title: 'Cek Risiko AI',
+                          title: 'Cek Risiko',
                           value: '5',
-                          onTap: () => _showRiskAISheet(context),
+                          onTap: () => _showRiskCheckSheet(context),
                         ),
                       ),
                     ],
@@ -455,13 +457,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           padding: EdgeInsets.symmetric(vertical: 8),
                           child: Divider(height: 1, color: Color(0xFFFCE4EC)),
                         ),
-                        // Activity 3: AI Risk Check
+                        // Activity 3: Cek Risiko
                         _buildActivityItem(
                           iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 18),
-                          title: 'Skrining Risiko AI Diabetes',
+                          title: 'Cek Risiko',
                           subtitle: 'Evaluasi mandiri risiko pasien selesai',
                           timeAgo: '3 jam lalu',
-                          onTap: () => _showRiskAISheet(context),
+                          onTap: () => _showRiskCheckSheet(context),
                         ),
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8),
@@ -750,7 +752,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         },
         onOpenRiskAI: () {
           Navigator.pop(ctx);
-          _showRiskAISheet(context);
+          _showRiskCheckSheet(context);
         },
       ),
     );
@@ -926,10 +928,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  void _showRiskAISheet(BuildContext context) {
+  void _showRiskCheckSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       backgroundColor: Colors.white,
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(22),
@@ -948,26 +950,61 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: const Icon(Icons.health_and_safety_rounded, color: Color(0xFFD81B60), size: 22),
                 ),
                 const SizedBox(width: 12),
-                Text('Cek Risiko AI Diabetes', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Cek Risiko', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text('Deteksi dini faktor risiko diabetes pasien', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF757575))),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),
             Text(
-              'Sistem skrining AI memantau 5 pemeriksaan mandiri risiko diabetes dari pasien dengan algoritma deteksi dini.',
-              style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF424242)),
+              'Fitur Cek Risiko memfasilitasi skrining mandiri faktor risiko diabetes (IMT, riwayat keluarga, hipertensi, merokok, dll) untuk tindakan preventif dan pemantauan kesehatan.',
+              style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF424242)),
             ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD81B60),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const RiskCheckScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.play_circle_outline_rounded, size: 16, color: Color(0xFFD81B60)),
+                    label: Text('Mulai Cek', style: GoogleFonts.poppins(color: const Color(0xFFD81B60), fontSize: 12, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFF8BBD0)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
                 ),
-                child: Text('Tutup', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const RiwayatRisikoScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.history_rounded, size: 16, color: Colors.white),
+                    label: Text('Riwayat Risiko', style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD81B60),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1919,10 +1956,10 @@ class _AktivitasTerbaruModalContent extends StatelessWidget {
                     const SizedBox(height: 12),
                     _buildFullActivityCard(
                       icon: Icons.health_and_safety_rounded,
-                      title: 'Skrining Risiko AI Selesai',
-                      subtitle: 'Pasien menyelesaikan kuis mandiri deteksi risiko diabetes tipe 2.',
+                      title: 'Cek Risiko Selesai',
+                      subtitle: 'Pasien menyelesaikan evaluasi mandiri faktor risiko diabetes.',
                       time: '3 Jam yang lalu',
-                      actionLabel: 'Lihat Info AI',
+                      actionLabel: 'Buka Cek Risiko',
                       onTap: onOpenRiskAI,
                     ),
                     const SizedBox(height: 12),
