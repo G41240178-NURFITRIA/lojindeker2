@@ -189,7 +189,7 @@ class PatientActivityService {
   final ValueNotifier<PatientRiskRecord> latestRiskNotifier = ValueNotifier<PatientRiskRecord>(
     const PatientRiskRecord(
       id: 'RSK-INIT',
-      date: '20 Mei 2024',
+      date: '20 Mei 2026',
       time: '16:04',
       status: 'Rendah',
       score: 35,
@@ -227,7 +227,7 @@ class PatientActivityService {
     final initialRecords = [
       const PatientRiskRecord(
         id: 'RSK-2026-001',
-        date: '20 Mei 2024',
+        date: '20 Mei 2026',
         time: '16:04',
         status: 'Rendah',
         score: 25,
@@ -241,7 +241,7 @@ class PatientActivityService {
       ),
       const PatientRiskRecord(
         id: 'RSK-2026-002',
-        date: '14 Maret 2024',
+        date: '14 Maret 2026',
         time: '09:15',
         status: 'Sedang',
         score: 52,

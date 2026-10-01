@@ -14,7 +14,7 @@ class DetailResepScreen extends StatefulWidget {
 
   const DetailResepScreen({
     super.key,
-    this.date = '18 Mei 2024',
+    this.date = '18 Mei 2026',
     this.status = 'Aktif',
     this.doctorName = 'dr. Andini Putri',
     this.doctorSpecialty = 'Sp. Penyakit Dalam',

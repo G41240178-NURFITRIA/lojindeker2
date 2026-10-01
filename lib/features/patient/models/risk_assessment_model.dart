@@ -167,7 +167,7 @@ class RiskAssessmentModel {
 final List<RiskAssessmentModel> dummyRiskAssessments = [
   const RiskAssessmentModel(
     id: 'risk_001',
-    date: '20 Mei 2024',
+    date: '20 Mei 2026',
     time: '16:04',
     score: 35,
     level: RiskLevel.rendah,
@@ -183,7 +183,7 @@ final List<RiskAssessmentModel> dummyRiskAssessments = [
   ),
   const RiskAssessmentModel(
     id: 'risk_002',
-    date: '10 Februari 2024',
+    date: '10 Februari 2026',
     time: '09:15',
     score: 58,
     level: RiskLevel.sedang,

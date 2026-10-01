@@ -64,7 +64,7 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
   final List<PrescriptionModel> _prescriptions = const [
     PrescriptionModel(
       id: 'RXP-001',
-      date: '18 Mei 2024',
+      date: '18 Mei 2026',
       doctorName: 'dr. Andini Putri',
       doctorSpecialty: 'Sp. Penyakit Dalam',
       status: 'Aktif',
@@ -87,7 +87,7 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
     ),
     PrescriptionModel(
       id: 'RXP-002',
-      date: '15 Februari 2024',
+      date: '15 Februari 2026',
       doctorName: 'dr. Andini Putri',
       doctorSpecialty: 'Sp. Penyakit Dalam',
       status: 'Selesai',
