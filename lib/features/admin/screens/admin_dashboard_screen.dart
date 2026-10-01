@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/profile_image_service.dart';
 import '../../../models/app_user.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
@@ -101,105 +103,167 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  /// Top Header Bar (Action buttons on left, profile on right)
+  /// Sapaan menyesuaikan waktu secara real-time
+  String _getTimeBasedGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 11) {
+      return 'Selamat Pagi ✨';
+    } else if (hour >= 11 && hour < 15) {
+      return 'Selamat Siang ☀️';
+    } else if (hour >= 15 && hour < 18) {
+      return 'Selamat Sore 🌅';
+    } else {
+      return 'Selamat Malam 🌙';
+    }
+  }
+
+  /// Top Header Bar (Notifikasi di kiri, sapaan waktu otomatis, nama admin, & avatar di kanan)
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Left: 3 circular white action icons (Clickable)
-          Row(
-            children: [
-              _buildCircleButton(
-                icon: Icons.notifications_none_rounded,
-                tooltip: 'Notifikasi',
-                onTap: () => _showNotificationSheet(context),
+          // Kiri: Hanya Notifikasi (seperti di dashboard pasien)
+          InkWell(
+            onTap: () => _showNotificationSheet(context),
+            borderRadius: BorderRadius.circular(23),
+            child: Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF8BBD0), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              _buildCircleButton(
-                icon: Icons.settings_outlined,
-                tooltip: 'Pengaturan',
-                onTap: () => _showSettingsSheet(context),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Icon(
+                    Icons.notifications_none_rounded,
+                    size: 24,
+                    color: Color(0xFF333333),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 11,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFD81B60),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              _buildCircleButton(
-                icon: Icons.search_rounded,
-                tooltip: 'Pencarian',
-                onTap: () => _showSearchDialog(context),
-              ),
-            ],
+            ),
           ),
 
-          // Right: "Hi, WelcomeBack" and Avatar (Clickable: buka tab profil)
+          // Kanan: Sapaan Waktu Real Time, Nama Admin, & Avatar Profil (Klik untuk buka tab Profil)
           InkWell(
             onTap: () => setState(() => _selectedTabIndex = 1),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               child: Row(
                 children: [
-                  Text(
-                    'Hi, WelcomeBack',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFD81B60),
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _getTimeBasedGreeting(),
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFD81B60),
+                        ),
+                      ),
+                      Text(
+                        _adminDisplayName,
+                        style: GoogleFonts.poppins(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF141414),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(width: 10),
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
                       Container(
-                        width: 42,
-                        height: 42,
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(color: Colors.white, width: 2.2),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFD81B60).withValues(alpha: 0.15),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2.5),
                             ),
                           ],
                         ),
                         child: ClipOval(
-                          child: Image.asset(
-                            'assets/images/doctor_avatar.jpg',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: const Color(0xFFF06292),
-                                child: const Icon(Icons.person, color: Colors.white, size: 24),
-                              );
+                          child: ValueListenableBuilder<String?>(
+                            valueListenable:
+                                ProfileImageService().profileImagePath,
+                            builder: (context, imagePath, _) {
+                              final hasCustom =
+                                  imagePath != null &&
+                                  File(imagePath).existsSync();
+                              return hasCustom
+                                  ? Image.file(
+                                      File(imagePath),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.asset(
+                                      'assets/images/doctor_avatar.jpg',
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return Container(
+                                          color: const Color(0xFFF06292),
+                                          child: const Icon(
+                                            Icons.person,
+                                            color: Colors.white,
+                                            size: 28,
+                                          ),
+                                        );
+                                      },
+                                    );
                             },
                           ),
                         ),
                       ),
-                      // Small circular badge on bottom-right of avatar
+                      // Badge Admin kecil di sudut avatar
                       Positioned(
-                        bottom: -2,
-                        right: -2,
+                        bottom: 0,
+                        right: 0,
                         child: Container(
-                          width: 16,
-                          height: 16,
+                          width: 18,
+                          height: 18,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: const Color(0xFFD81B60),
                             shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 3,
-                              ),
-                            ],
+                            border: Border.all(color: Colors.white, width: 1.5),
                           ),
-                          padding: const EdgeInsets.all(2),
                           child: const Icon(
                             Icons.admin_panel_settings_rounded,
-                            size: 10,
-                            color: Color(0xFFD81B60),
+                            size: 11,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -210,42 +274,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// Circular Header Icon Widget (Clickable)
-  Widget _buildCircleButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFFF8BBD0), width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFD81B60).withValues(alpha: 0.06),
-                blurRadius: 4,
-                offset: const Offset(0, 1.5),
-              ),
-            ],
-          ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: const Color(0xFFD81B60),
-          ),
-        ),
       ),
     );
   }
@@ -1038,75 +1066,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showSettingsSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      backgroundColor: Colors.white,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Pengaturan Administrator', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 14),
-            ListTile(
-              leading: const Icon(Icons.lock_reset_rounded, color: Color(0xFFD81B60)),
-              title: Text('Ubah Kata Sandi', style: GoogleFonts.poppins(fontSize: 13)),
-              onTap: () {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Fitur ubah kata sandi admin siap digunakan.')),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout_rounded, color: Colors.red),
-              title: Text('Keluar', style: GoogleFonts.poppins(fontSize: 13, color: Colors.red, fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmLogout(context);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSearchDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Pencarian Data', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
-        content: TextField(
-          decoration: InputDecoration(
-            hintText: 'Cari nama dokter, pasien...',
-            hintStyle: GoogleFonts.poppins(fontSize: 12),
-            prefixIcon: const Icon(Icons.search, color: Color(0xFFD81B60)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFD81B60)),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _showKelolaPenggunaSheet(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD81B60)),
-            child: const Text('Cari Pasien', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
