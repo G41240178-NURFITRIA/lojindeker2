@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'password_manager_screen.dart';
 import '../../../services/auth_service.dart';
 import '../../auth/screens/landing_screen.dart';
+import '../../../services/auth_service.dart';
 
 class AccountSettingsScreen extends StatelessWidget {
   const AccountSettingsScreen({super.key});

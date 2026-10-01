@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/app_user.dart';
+import '../core/services/session_service.dart';
 import 'user_repository.dart';
 
 /// Service autentikasi utama aplikasi D-Care.
@@ -99,6 +100,11 @@ class AuthService {
       debugPrint(
         '✅ [AuthService] Login berhasil: ${appUser.fullName} (${appUser.role.firestoreValue})',
       );
+
+      // Reset waktu aktif dan mulai tracking sesi otomatis
+      await SessionService.instance.saveLastActive();
+      await SessionService.instance.startSession(isNewLogin: true);
+
       return appUser;
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ [AuthService] FirebaseAuthException: ${e.code}');
@@ -227,6 +233,11 @@ class AuthService {
       debugPrint(
         '✅ [AuthService] Pasien terdaftar: ${appUser.uid}',
       );
+
+      // Mulai tracking sesi otomatis untuk pasien baru
+      await SessionService.instance.saveLastActive();
+      await SessionService.instance.startSession(isNewLogin: true);
+
       return appUser;
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ [AuthService] signUpPatient Firebase: ${e.code}');
@@ -350,6 +361,7 @@ class AuthService {
 
   // ─── Logout ───────────────────────────────────────────────────────
   Future<void> signOut() async {
+    await SessionService.instance.stopSession();
     await _auth.signOut();
     debugPrint('ℹ️ [AuthService] User logout.');
   }

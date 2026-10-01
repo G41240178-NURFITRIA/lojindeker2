@@ -8,6 +8,7 @@ import 'account_settings_screen.dart';
 import 'consultation_list_screen.dart';
 import '../../../services/auth_service.dart';
 import '../../auth/screens/landing_screen.dart';
+import '../../../services/auth_service.dart';
 
 class PatientProfileScreen extends StatefulWidget {
   final String patientName;

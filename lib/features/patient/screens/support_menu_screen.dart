@@ -379,7 +379,11 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                             article.imagePath!,
                             fit: BoxFit.cover,
                             alignment: Alignment.center,
-                            errorBuilder: (_, __, ___) => Center(
+<<<<<<< HEAD
+                            errorBuilder: (context, error, stackTrace) => Center(
+=======
+                            errorBuilder: (_, _, _) => Center(
+>>>>>>> f4ac86887c99728740016a9d5fd0171033269692
                               child: Icon(article.iconData, color: article.categoryColor.withValues(alpha: 0.5), size: 46),
                             ),
                           ),

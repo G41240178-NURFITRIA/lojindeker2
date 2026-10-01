@@ -56,7 +56,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFFBA171E),
+              primary: Color(0xFFD81B60),
               onPrimary: Colors.white,
               onSurface: Color(0xFF222222),
             ),
@@ -114,7 +114,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: const Color(0xFFBA171E),
+          backgroundColor: const Color(0xFFD81B60),
         ),
       );
     } finally {
@@ -136,7 +136,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                 ? 'Akun ${doctor.fullName} diaktifkan.'
                 : 'Akun ${doctor.fullName} dinonaktifkan.',
           ),
-          backgroundColor: nextStatus ? const Color(0xFF2E7D32) : const Color(0xFFBA171E),
+          backgroundColor: nextStatus ? const Color(0xFF2E7D32) : const Color(0xFFD81B60),
         ),
       );
     } catch (e) {
@@ -144,7 +144,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Gagal mengubah status: $e'),
-          backgroundColor: const Color(0xFFBA171E),
+          backgroundColor: const Color(0xFFD81B60),
         ),
       );
     }
@@ -170,7 +170,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFBA171E),
+              backgroundColor: const Color(0xFFD81B60),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () => Navigator.pop(context, true),
@@ -195,7 +195,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal mengirim email: $e'),
-            backgroundColor: const Color(0xFFBA171E),
+            backgroundColor: const Color(0xFFD81B60),
           ),
         );
       }
@@ -205,9 +205,20 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF1F1),
+      backgroundColor: const Color(0xFFFCF8F9), // Soft pink blush background
       appBar: AppBar(
-        backgroundColor: const Color(0xFF8B2326),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFF06292), // Soft pink
+                Color(0xFFD81B60), // Rich rose pink
+              ],
+            ),
+          ),
+        ),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
@@ -253,13 +264,14 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.6)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: const Color(0xFFD81B60).withValues(alpha: 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -273,7 +285,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF8B2326),
+                      color: const Color(0xFFD81B60),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -281,7 +293,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                     'Akun dokter hanya dapat dibuat oleh Admin. Akun akan langsung aktif.',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: const Color(0xFF757575),
                     ),
                   ),
                   const SizedBox(height: 18),
@@ -414,7 +426,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: Colors.grey[600],
+                        color: const Color(0xFFD81B60),
                       ),
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
@@ -439,39 +451,54 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
             ),
             const SizedBox(height: 20),
 
-            // Tombol Simpan
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFBA171E),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                elevation: 3,
+            // Tombol Simpan (Soft Pink Gradient)
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF06292), Color(0xFFD81B60)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFD81B60).withValues(alpha: 0.28),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              onPressed: _isLoading ? null : _submitAddDoctor,
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.person_add_rounded, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Buat Akun Dokter',
-                          style: GoogleFonts.poppins(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                onPressed: _isLoading ? null : _submitAddDoctor,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
-                      ],
-                    ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.person_add_rounded, color: Colors.white),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Buat Akun Dokter',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
             ),
             const SizedBox(height: 30),
           ],
@@ -487,7 +514,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFBA171E)),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD81B60)),
             ),
           );
         }
@@ -512,8 +539,15 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.medical_services_outlined, size: 64, color: Colors.grey[400]),
-                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFCE4EC),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.medical_services_outlined, size: 48, color: Color(0xFFD81B60)),
+                ),
+                const SizedBox(height: 14),
                 Text(
                   'Belum ada akun dokter terdaftar.',
                   style: GoogleFonts.poppins(
@@ -539,12 +573,12 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: doc.isActive ? const Color(0xFFEADBDB) : Colors.grey[300]!,
+                  color: doc.isActive ? const Color(0xFFF8BBD0).withValues(alpha: 0.6) : Colors.grey.shade300,
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
+                    color: const Color(0xFFD81B60).withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -560,9 +594,13 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                         height: 44,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: doc.isActive ? const Color(0xFF8B2326) : Colors.grey[400],
+                          color: doc.isActive ? const Color(0xFFFCE4EC) : Colors.grey[300],
                         ),
-                        child: const Icon(Icons.person, color: Colors.white, size: 26),
+                        child: Icon(
+                          Icons.person,
+                          color: doc.isActive ? const Color(0xFFD81B60) : Colors.grey[600],
+                          size: 26,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -582,7 +620,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                               style: GoogleFonts.poppins(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: const Color(0xFFBA171E),
+                                color: const Color(0xFFD81B60),
                               ),
                             ),
                           ],
@@ -610,7 +648,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                       ),
                     ],
                   ),
-                  const Divider(height: 20, color: Color(0xFFF0E5E5)),
+                  const Divider(height: 20, color: Color(0xFFFCE4EC)),
                   _buildDoctorDetailRow(Icons.alternate_email, doc.username),
                   const SizedBox(height: 4),
                   _buildDoctorDetailRow(Icons.email_outlined, doc.email),
@@ -623,21 +661,21 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                       // Reset Password button
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF8B2326),
-                          side: const BorderSide(color: Color(0xFF8B2326)),
+                          foregroundColor: const Color(0xFFD81B60),
+                          side: const BorderSide(color: Color(0xFFD81B60)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         ),
                         onPressed: () => _confirmResetPassword(doc),
                         icon: const Icon(Icons.lock_reset_rounded, size: 16),
-                        label: Text('Reset Password', style: GoogleFonts.poppins(fontSize: 11)),
+                        label: Text('Reset Password', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600)),
                       ),
                       const SizedBox(width: 8),
                       // Toggle Active Switch
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: doc.isActive
-                              ? const Color(0xFFC62828)
+                              ? const Color(0xFFD81B60)
                               : const Color(0xFF2E7D32),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -650,7 +688,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
                         ),
                         label: Text(
                           doc.isActive ? 'Nonaktifkan' : 'Aktifkan',
-                          style: GoogleFonts.poppins(fontSize: 11, color: Colors.white),
+                          style: GoogleFonts.poppins(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -667,7 +705,7 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
   Widget _buildDoctorDetailRow(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 15, color: Colors.grey[600]),
+        Icon(icon, size: 15, color: const Color(0xFFD81B60)),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
@@ -712,26 +750,26 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 13),
-            prefixIcon: Icon(icon, color: const Color(0xFF8B2326), size: 20),
+            prefixIcon: Icon(icon, color: const Color(0xFFD81B60), size: 20),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: const Color(0xFFFAF7F7),
+            fillColor: const Color(0xFFFCF8F9),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFFCE4EC)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFFCE4EC)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFBA171E), width: 1.5),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFD81B60), width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFBA171E)),
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: Color(0xFFD81B60)),
             ),
           ),
           validator: validator,

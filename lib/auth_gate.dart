@@ -2,19 +2,77 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'services/user_repository.dart';
 import 'services/auth_service.dart';
+import 'core/services/session_service.dart';
 import 'models/app_user.dart';
 import 'features/auth/screens/landing_screen.dart';
+import 'features/auth/screens/login_screen.dart';
 import 'features/admin/screens/admin_dashboard_screen.dart';
 import 'features/doctor/screens/doctor_dashboard_screen.dart';
 import 'features/patient/screens/patient_dashboard_screen.dart';
 
 /// AuthGate mengontrol aliran autentikasi aplikasi berdasarkan status login
-/// FirebaseAuth dan role pengguna di Firestore (Admin, Dokter, Pasien).
-class AuthGate extends StatelessWidget {
+/// FirebaseAuth, pemeriksaan timeout cold start, dan role pengguna di Firestore.
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
   @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _checkedColdStart = false;
+  bool _coldStartTimedOut = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkColdStart();
+  }
+
+  Future<void> _checkColdStart() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final isExpired =
+          await SessionService.instance.isSessionExpiredOnColdStart();
+      if (isExpired) {
+        await AuthService.instance.signOut();
+        if (mounted) {
+          setState(() {
+            _coldStartTimedOut = true;
+            _checkedColdStart = true;
+          });
+        }
+        return;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _checkedColdStart = true;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Tampilkan loading screen sementara memeriksa cold start sesi
+    if (!_checkedColdStart) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFFAF1F1),
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFBA171E)),
+          ),
+        ),
+      );
+    }
+
+    // Jika pada cold start sesi sudah melebihi background timeout (> 5 menit)
+    if (_coldStartTimedOut) {
+      return const LoginScreen(
+        sessionExpiredMessage: 'Sesi Anda telah berakhir, silakan login kembali.',
+      );
+    }
+
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
@@ -73,7 +131,8 @@ class AuthGate extends StatelessWidget {
                 AuthService.instance.signOut();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Akun dokter Anda dinonaktifkan. Hubungi admin.'),
+                    content:
+                        Text('Akun dokter Anda dinonaktifkan. Hubungi admin.'),
                     backgroundColor: Color(0xFFBA171E),
                   ),
                 );

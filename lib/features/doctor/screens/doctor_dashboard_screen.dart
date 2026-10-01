@@ -986,7 +986,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'SIP: 446.1/128/SIP-D/2022 • RS D-Care Sejahtera',
+                    'SIP: 446.1/128/SIP-D/2022 â€¢ RS D-Care Sejahtera',
                     style: GoogleFonts.poppins(
                       fontSize: 11,
                       color: const Color(0xFF757575),
@@ -1010,7 +1010,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         width: 1,
                         color: AppColors.softPinkBorder,
                       ),
-                      _buildProfileStat('4.9 ⭐', 'Rating'),
+                      _buildProfileStat('4.9 â­', 'Rating'),
                     ],
                   ),
                 ],
@@ -1644,9 +1644,9 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /// Animated bouncing dot untuk typing indicator
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _BouncingDot extends StatefulWidget {
   final int delay;
   const _BouncingDot({required this.delay});
@@ -1685,7 +1685,7 @@ class _BouncingDotState extends State<_BouncingDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, _) => Transform.translate(
+      builder: (context, child) => Transform.translate(
         offset: Offset(0, _anim.value),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -1701,9 +1701,9 @@ class _BouncingDotState extends State<_BouncingDot>
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /// Riwayat Pasien Screen
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class PatientHistoryScreen extends StatefulWidget {
   final String patientName;
   final String glucoseNote;
@@ -2133,7 +2133,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                   size: 16, color: AppColors.primary),
               const SizedBox(width: 6),
               Text(
-                'Resep • $date',
+                'Resep â€¢ $date',
                 style: GoogleFonts.poppins(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -2326,18 +2326,18 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /// Data model vital sign item
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _VitalItem {
   final String label;
   final String value;
   const _VitalItem(this.label, this.value);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /// Kartu kunjungan expandable
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _ExpandableVisitCard extends StatefulWidget {
   final String date;
   final String status;
@@ -2598,5 +2598,4 @@ class _ExpandableVisitCardState extends State<_ExpandableVisitCard>
     );
   }
 }
-
 
