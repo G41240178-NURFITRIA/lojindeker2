@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../services/auth_service.dart';
 import '../../auth/screens/login_screen.dart';
 
 /// Model chat pasien untuk dashboard dokter
@@ -1200,12 +1201,15 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
+              await AuthService.instance.signOut();
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -1682,7 +1686,11 @@ class _BouncingDotState extends State<_BouncingDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
+<<<<<<< HEAD
       builder: (context, child) => Transform.translate(
+=======
+      builder: (_, _) => Transform.translate(
+>>>>>>> f4ac86887c99728740016a9d5fd0171033269692
         offset: Offset(0, _anim.value),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -2598,5 +2606,8 @@ class _ExpandableVisitCardState extends State<_ExpandableVisitCard>
 <<<<<<< HEAD
 =======
 
+<<<<<<< HEAD
 
 >>>>>>> 3b1a8a14780e96a0b6b8b2cbb95d1c39fd5bf2f2
+=======
+>>>>>>> f4ac86887c99728740016a9d5fd0171033269692

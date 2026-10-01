@@ -7,6 +7,7 @@ import 'edit_profile_screen.dart';
 import 'account_settings_screen.dart';
 import 'consultation_list_screen.dart';
 import '../../auth/screens/landing_screen.dart';
+import '../../../services/auth_service.dart';
 
 class PatientProfileScreen extends StatefulWidget {
   final String patientName;
@@ -119,14 +120,17 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           Navigator.pop(ctx);
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (_) => const LandingScreen(),
-                            ),
-                            (route) => false,
-                          );
+                          await AuthService.instance.signOut();
+                          if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (_) => const LandingScreen(),
+                              ),
+                              (route) => false,
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _darkRose,
