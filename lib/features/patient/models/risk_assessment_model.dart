@@ -163,54 +163,5 @@ class RiskAssessmentModel {
   String get formattedFactors => factorsUsed.join(', ');
 }
 
-/// Data dummy sesuai spesifikasi Figma dan prompt
-final List<RiskAssessmentModel> dummyRiskAssessments = [
-  const RiskAssessmentModel(
-    id: 'risk_001',
-    date: '20 Mei 2024',
-    time: '16:04',
-    score: 35,
-    level: RiskLevel.rendah,
-    factorsUsed: ['Usia', 'Pola Makan', 'Aktivitas Fisik'],
-    age: '25 tahun',
-    diet: 'Sehat',
-    physicalActivity: 'Tinggi (5x/minggu)',
-    familyHistory: 'Tidak Ada',
-    dominantFactors: [
-      RiskDominantFactor(name: 'Usia', isHighlighted: false),
-      RiskDominantFactor(name: 'Pola Makan', isHighlighted: false),
-    ],
-  ),
-  const RiskAssessmentModel(
-    id: 'risk_002',
-    date: '10 Februari 2024',
-    time: '09:15',
-    score: 58,
-    level: RiskLevel.sedang,
-    factorsUsed: ['Usia', 'Pola Makan', 'Riwayat Keluarga'],
-    age: '38 tahun',
-    diet: 'Cukup Sehat',
-    physicalActivity: 'Sedang (2-3x/minggu)',
-    familyHistory: 'Ada (Saudara Kandung)',
-    dominantFactors: [
-      RiskDominantFactor(name: 'Riwayat Keluarga', isHighlighted: true),
-      RiskDominantFactor(name: 'Pola Makan', isHighlighted: false),
-    ],
-  ),
-  const RiskAssessmentModel(
-    id: 'risk_003',
-    date: '5 November 2023',
-    time: '09:15',
-    score: 72,
-    level: RiskLevel.tinggi,
-    factorsUsed: ['Usia', 'Pola Makan', 'Aktivitas Fisik', 'Riwayat Keluarga'],
-    age: '47 tahun',
-    diet: 'Kurang Sehat',
-    physicalActivity: 'Rendah (<1x/minggu)',
-    familyHistory: 'Ada (Kedua Orang Tua)',
-    dominantFactors: [
-      RiskDominantFactor(name: 'Pola Makan', isHighlighted: true),
-      RiskDominantFactor(name: 'Aktivitas Fisik', isHighlighted: true),
-    ],
-  ),
-];
+/// Daftar hasil cek risiko dari pengguna — dimulai kosong, terisi dari hasil cek risiko nyata.
+final List<RiskAssessmentModel> dummyRiskAssessments = [];

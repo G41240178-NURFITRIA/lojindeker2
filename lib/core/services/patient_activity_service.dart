@@ -186,34 +186,13 @@ class PatientActivityService {
   }
 
   // ValueNotifiers untuk reaktivitas UI real-time
-  final ValueNotifier<PatientRiskRecord> latestRiskNotifier = ValueNotifier<PatientRiskRecord>(
-    const PatientRiskRecord(
-      id: 'RSK-INIT',
-      date: '20 Mei 2024',
-      time: '16:04',
-      status: 'Rendah',
-      score: 35,
-      glucoseLevel: 'Kadar Gula: 98 mg/dL',
-      scoreDescription: 'Skor Risiko: 35% • Kategori Rendah',
-      recommendation: 'Pertahankan gaya hidup sehat Anda. Lanjutkan olahraga rutin dan pola makan seimbang.',
-      bmi: '22.5 kg/m² (Normal)',
-      bloodPressure: '120/80 mmHg',
-      familyHistory: 'Tidak ada riwayat diabetes',
-      physicalActivity: 'Aktif (4x / minggu)',
-    ),
-  );
+  // null = belum ada data (pengguna baru / belum pernah cek)
+  final ValueNotifier<PatientRiskRecord?> latestRiskNotifier = ValueNotifier<PatientRiskRecord?>(null);
 
   final ValueNotifier<List<PatientRiskRecord>> riskHistoryNotifier = ValueNotifier<List<PatientRiskRecord>>([]);
 
-  final ValueNotifier<PatientConsultationActivity> latestConsultationNotifier = ValueNotifier<PatientConsultationActivity>(
-    const PatientConsultationActivity(
-      doctorName: 'dr. Koko',
-      specialty: 'Spesialis Penyakit Dalam',
-      date: '18 Mei 2026',
-      time: '14:00',
-      lastMessage: 'Konsultasi terakhir',
-    ),
-  );
+  // null = belum pernah konsultasi
+  final ValueNotifier<PatientConsultationActivity?> latestConsultationNotifier = ValueNotifier<PatientConsultationActivity?>(null);
 
   final ValueNotifier<List<MedicationReminder>> remindersNotifier = ValueNotifier<List<MedicationReminder>>([]);
 
@@ -222,55 +201,6 @@ class PatientActivityService {
   void _initDefaultData() {
     if (_isInitialized) return;
     _isInitialized = true;
-
-    // Inisialisasi daftar riwayat risiko awal sesuai dengan data referensi
-    final initialRecords = [
-      const PatientRiskRecord(
-        id: 'RSK-2026-001',
-        date: '20 Mei 2024',
-        time: '16:04',
-        status: 'Rendah',
-        score: 25,
-        glucoseLevel: 'Kadar Gula: 98 mg/dL',
-        scoreDescription: 'Skor Risiko: 8% • Kategori Rendah',
-        recommendation: 'Pertahankan pola makan sehat, hidrasi cukup, dan olahraga rutin minimal 30 menit sehari.',
-        bmi: '21.8 kg/m² (Ideal)',
-        bloodPressure: '118/76 mmHg',
-        familyHistory: 'Tidak ada riwayat diabetes',
-        physicalActivity: 'Aktif (4x / minggu)',
-      ),
-      const PatientRiskRecord(
-        id: 'RSK-2026-002',
-        date: '14 Maret 2024',
-        time: '09:15',
-        status: 'Sedang',
-        score: 52,
-        glucoseLevel: 'Kadar Gula: 135 mg/dL',
-        scoreDescription: 'Skor Risiko: 42% • Kategori Sedang',
-        recommendation: 'Kurangi konsumsi gula dan karbohidrat sederhana. Perbanyak serat serta jadwalkan kontrol ulang.',
-        bmi: '25.6 kg/m² (Kelebihan BB)',
-        bloodPressure: '128/84 mmHg',
-        familyHistory: 'Ada pada keluarga',
-        physicalActivity: 'Jarang (1x / minggu)',
-      ),
-    ];
-    riskHistoryNotifier.value = initialRecords;
-    latestRiskNotifier.value = initialRecords.first;
-
-    // Inisialisasi daftar pengingat obat awal (Metformin 19.00 sesuai tampilan awal)
-    remindersNotifier.value = [
-      MedicationReminder(
-        id: 'rem-default-1',
-        medicineName: 'Metformin',
-        dosage: '500 mg (1 tablet)',
-        schedule: 'Malam (Sesudah makan)',
-        time: '19.00',
-        isActive: true,
-        isTakenToday: false,
-        iconData: Icons.medication_rounded,
-      ),
-    ];
-
     // Coba sinkronisasi dari Firestore jika user login
     loadUserDataFromFirestore();
   }
@@ -344,6 +274,15 @@ class PatientActivityService {
         }).toList();
         riskHistoryNotifier.value = loadedRisks;
         latestRiskNotifier.value = loadedRisks.first;
+      } else {
+        // Pengguna baru: tidak ada data, tetap kosong
+        riskHistoryNotifier.value = [];
+        latestRiskNotifier.value = null;
+      }
+
+      // 5. Jika tidak ada data konsultasi dari Firestore, tetap null
+      if (!userDoc.exists || userDoc.data() == null || userDoc.data()!['latestDoctorName'] == null) {
+        latestConsultationNotifier.value = null;
       }
     } catch (e) {
       debugPrint('ℹ️ [PatientActivityService] Gagal load dari Firestore (menggunakan data lokal): $e');

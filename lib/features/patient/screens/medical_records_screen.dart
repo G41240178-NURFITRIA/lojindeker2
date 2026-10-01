@@ -23,63 +23,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
   @override
   void initState() {
     super.initState();
-    _records = [
-      _MedicalRecordItem(
-        date: '20 Mei 2026',
-        doctorName: 'dr. Afieta Putri, Sp.PD',
-        clinic: 'Poli Penyakit Dalam & Endokrin - RS D-Care',
-        status: 'Terkontrol Baik',
-        statusColor: const Color(0xFF2E7D32),
-        gdp: '108 mg/dL',
-        gdpp: '135 mg/dL',
-        hba1c: '6.2%',
-        bloodPressure: '120/80 mmHg',
-        weight: '68 kg',
-        medicines: [
-          'Metformin HCl 500 mg (2x1 sesudah makan)',
-          'Vitamin B Complex (1x1 pagi)',
-        ],
-        notes:
-            'Kadar gula darah stabil dalam target. Pasien disiplin diet dan olahraga. Jadwal kontrol berikutnya: 20 Juni 2026.',
-        isExpanded: true,
-      ),
-      _MedicalRecordItem(
-        date: '18 April 2026',
-        doctorName: 'dr. Hendra Wijaya, Sp.PD',
-        clinic: 'Poli Penyakit Dalam - RS D-Care',
-        status: 'Evaluasi Dosis',
-        statusColor: const Color(0xFFE65100),
-        gdp: '125 mg/dL',
-        gdpp: '158 mg/dL',
-        hba1c: '6.6%',
-        bloodPressure: '125/82 mmHg',
-        weight: '69 kg',
-        medicines: [
-          'Metformin HCl 500 mg (2x1 sesudah makan)',
-        ],
-        notes:
-            'Gula darah puasa sedikit di atas target. Lakukan penyesuaian jam makan malam dan kurangi konsumsi karbohidrat olahan.',
-        isExpanded: false,
-      ),
-      _MedicalRecordItem(
-        date: '15 Maret 2026',
-        doctorName: 'dr. Hendra Wijaya, Sp.PD',
-        clinic: 'Poli Umum / Skrining - RS D-Care',
-        status: 'Diagnosis Awal',
-        statusColor: const Color(0xFFC62828),
-        gdp: '165 mg/dL',
-        gdpp: '195 mg/dL',
-        hba1c: '7.1%',
-        bloodPressure: '130/85 mmHg',
-        weight: '71 kg',
-        medicines: [
-          'Metformin HCl 500 mg (1x1 sesudah makan)',
-        ],
-        notes:
-            'Keluhan sering haus dan lemas. Terdiagnosa awal Diabetes Melitus Tipe 2. Edukasi pola makan dan memulai terapi oral.',
-        isExpanded: false,
-      ),
-    ];
+    _records = [];
   }
 
   void _showAddSelfCheckDialog() {
@@ -460,8 +404,11 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Records List
-                        ..._records.map((item) => _buildRecordCard(item)),
+                        // Records List / Empty State
+                        if (_records.isEmpty)
+                          _buildEmptyRecordsState()
+                        else
+                          ..._records.map((item) => _buildRecordCard(item)),
 
                         const SizedBox(height: 30),
                       ],
@@ -707,6 +654,88 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEmptyRecordsState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFF0F5),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.medical_services_outlined,
+              color: Color(0xFFD81B60),
+              size: 32,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Belum ada riwayat pemeriksaan',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF141414),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Riwayat kunjungan medis dan dokter yang menangani\nakan muncul di sini setelah pemeriksaan dilakukan.',
+            style: GoogleFonts.poppins(
+              fontSize: 11.5,
+              color: const Color(0xFF757575),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: _showAddSelfCheckDialog,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF8DA1), Color(0xFFF06292)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Catat Pemeriksaan Mandiri',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

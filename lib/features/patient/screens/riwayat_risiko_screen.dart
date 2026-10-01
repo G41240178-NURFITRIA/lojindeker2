@@ -46,65 +46,20 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
     'Cek Risiko AI',
   ];
 
-  static const List<RiskAssessmentRecord> _fallbackRecords = [
-    RiskAssessmentRecord(
-      id: 'RSK-2026-001',
-      date: '20 Mei 2026',
-      status: 'Rendah',
-      glucoseLevel: 'Kadar Gula: 98 mg/dL',
-      scoreDescription: 'Skor Risiko: 8% • Kategori Rendah',
-      recommendation:
-          'Pertahankan pola makan sehat, hidrasi cukup, dan olahraga rutin minimal 30 menit sehari.',
-      bmi: '21.8 kg/m² (Ideal)',
-      bloodPressure: '118/76 mmHg',
-      familyHistory: 'Tidak ada riwayat diabetes',
-      physicalActivity: 'Aktif (4x / minggu)',
-    ),
-    RiskAssessmentRecord(
-      id: 'RSK-2026-002',
-      date: '14 Maret 2026',
-      status: 'Sedang',
-      glucoseLevel: 'Kadar Gula: 135 mg/dL',
-      scoreDescription: 'Skor Risiko: 42% • Kategori Sedang',
-      recommendation:
-          'Kurangi konsumsi gula dan karbohidrat sederhana. Perbanyak serat serta jadwalkan kontrol ulang 1 bulan lagi.',
-      bmi: '25.6 kg/m² (Kelebihan BB ringan)',
-      bloodPressure: '128/84 mmHg',
-      familyHistory: 'Ada pada garis keluarga tingkat 1',
-      physicalActivity: 'Jarang (1x / minggu)',
-    ),
-    RiskAssessmentRecord(
-      id: 'RSK-2026-003',
-      date: '10 Januari 2026',
-      status: 'Tinggi',
-      glucoseLevel: 'Kadar Gula: 185 mg/dL',
-      scoreDescription: 'Skor Risiko: 76% • Kategori Tinggi',
-      recommendation:
-          'Segera konsultasikan dengan dokter spesialis penyakit dalam untuk evaluasi terapi obat dan tes laboratorium lanjutan.',
-      bmi: '28.2 kg/m² (Obesitas tingkat 1)',
-      bloodPressure: '138/90 mmHg',
-      familyHistory: 'Orang tua dengan riwayat diabetes tipe 2',
-      physicalActivity: 'Sangat jarang / pasif',
-    ),
-  ];
-
   List<RiskAssessmentRecord> get _records {
     final history = PatientActivityService.instance.riskHistoryNotifier.value;
-    if (history.isNotEmpty) {
-      return history.map((h) => RiskAssessmentRecord(
-        id: h.id,
-        date: h.date,
-        status: h.status,
-        glucoseLevel: h.glucoseLevel,
-        scoreDescription: h.scoreDescription,
-        recommendation: h.recommendation,
-        bmi: h.bmi,
-        bloodPressure: h.bloodPressure,
-        familyHistory: h.familyHistory,
-        physicalActivity: h.physicalActivity,
-      )).toList();
-    }
-    return _fallbackRecords;
+    return history.map((h) => RiskAssessmentRecord(
+      id: h.id,
+      date: h.date,
+      status: h.status,
+      glucoseLevel: h.glucoseLevel,
+      scoreDescription: h.scoreDescription,
+      recommendation: h.recommendation,
+      bmi: h.bmi,
+      bloodPressure: h.bloodPressure,
+      familyHistory: h.familyHistory,
+      physicalActivity: h.physicalActivity,
+    )).toList();
   }
 
   Color _getStatusBgColor(String status) {
@@ -188,26 +143,78 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          // 1. Horizontal Category Tabs/Chips
-          _buildCategoryTabs(),
+      body: ValueListenableBuilder<List<PatientRiskRecord>>(
+        valueListenable: PatientActivityService.instance.riskHistoryNotifier,
+        builder: (context, riskHistory, _) {
+          final records = _records;
+          return Column(
+            children: [
+              // 1. Horizontal Category Tabs/Chips
+              _buildCategoryTabs(),
 
-          // 2. Risk Assessment Cards List
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-              physics: const BouncingScrollPhysics(),
-              itemCount: _records.length,
-              itemBuilder: (context, index) {
-                final record = _records[index];
-                return _buildRiskCard(record);
-              },
-            ),
-          ),
-        ],
+              // 2. Risk Assessment Cards List / Empty State
+              Expanded(
+                child: records.isEmpty
+                    ? _buildEmptyRiskState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: records.length,
+                        itemBuilder: (context, index) {
+                          final record = records[index];
+                          return _buildRiskCard(record);
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildEmptyRiskState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF0F5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.health_and_safety_outlined,
+                color: Color(0xFFD81B60),
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Belum ada riwayat cek risiko',
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF141414),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Lakukan cek risiko diabetes pertama Anda untuk melihat riwayat di sini.',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: const Color(0xFF757575),
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
