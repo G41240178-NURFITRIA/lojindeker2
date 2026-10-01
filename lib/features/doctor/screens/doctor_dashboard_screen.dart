@@ -1686,11 +1686,7 @@ class _BouncingDotState extends State<_BouncingDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
-<<<<<<< HEAD
       builder: (context, child) => Transform.translate(
-=======
-      builder: (_, _) => Transform.translate(
->>>>>>> f4ac86887c99728740016a9d5fd0171033269692
         offset: Offset(0, _anim.value),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -2603,11 +2599,4 @@ class _ExpandableVisitCardState extends State<_ExpandableVisitCard>
     );
   }
 }
-<<<<<<< HEAD
-=======
 
-<<<<<<< HEAD
-
->>>>>>> 3b1a8a14780e96a0b6b8b2cbb95d1c39fd5bf2f2
-=======
->>>>>>> f4ac86887c99728740016a9d5fd0171033269692
