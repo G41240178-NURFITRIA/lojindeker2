@@ -106,7 +106,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
 
               // Horizontal list of articles (Clickable!)
               SizedBox(
-                height: 240,
+                height: 295,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
@@ -347,7 +347,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
         },
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          width: 170,
+          width: 175,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -364,7 +364,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 96,
+                height: 145,
                 decoration: BoxDecoration(
                   color: article.imageBgColor,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
@@ -378,6 +378,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                           child: Image.asset(
                             article.imagePath!,
                             fit: BoxFit.cover,
+                            alignment: Alignment.center,
                             errorBuilder: (_, __, ___) => Center(
                               child: Icon(article.iconData, color: article.categoryColor.withValues(alpha: 0.5), size: 46),
                             ),
@@ -415,12 +416,19 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      article.category,
-                      style: GoogleFonts.poppins(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: article.categoryColor,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: article.categoryColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        article.category,
+                        style: GoogleFonts.poppins(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: article.categoryColor,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),

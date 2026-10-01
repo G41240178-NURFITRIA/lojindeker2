@@ -113,6 +113,7 @@ final List<EducationArticle> educationalArticles = [
     imageBgColor: Color(0xFFF3E5F5),
     categoryColor: Color(0xFF8E24AA),
     iconData: Icons.directions_run_rounded,
+    imagePath: 'assets/images/aktivitas_fisik.png',
     summary:
         'Aktivitas fisik teratur meningkatkan sensitivitas insulin sehingga sel-sel tubuh lebih efektif menyerap glukosa dari peredaran darah. Ketahui jenis olahraga aman dan panduan proteksi diri selama berolahraga.',
     keyPoints: [
@@ -163,6 +164,7 @@ final List<EducationArticle> educationalArticles = [
     imageBgColor: Color(0xFFEFEBE9),
     categoryColor: Color(0xFF6D4C41),
     iconData: Icons.monitor_heart_rounded,
+    imagePath: 'assets/images/monitoring.png',
     summary:
         'Pemantauan Mandiri Glukosa Darah (SMBG) memberikan gambaran nyata pengaruh makanan, aktivitas fisik, dan obat terhadap tubuh Anda, sehingga komplikasi diabetes dapat dicegah sedini mungkin.',
     keyPoints: [
@@ -296,8 +298,8 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                 children: [
                   if (article.imagePath != null)
                     Container(
-                      width: 140,
-                      height: 140,
+                      width: 165,
+                      height: 165,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),

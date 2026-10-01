@@ -1068,7 +1068,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
           // Horizontal List of Educational Articles (Clickable)
           SizedBox(
-            height: 245,
+            height: 295,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -1228,7 +1228,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 98,
+                height: 145,
                 decoration: BoxDecoration(
                   color: article.imageBgColor,
                   borderRadius: const BorderRadius.vertical(
@@ -1237,13 +1237,34 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 ),
                 child: Stack(
                   children: [
-                    Center(
-                      child: Icon(
-                        article.iconData,
-                        color: article.categoryColor.withValues(alpha: 0.5),
-                        size: 46,
+                    if (article.imagePath != null)
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(15),
+                          ),
+                          child: Image.asset(
+                            article.imagePath!,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Icon(
+                                article.iconData,
+                                color: article.categoryColor.withValues(alpha: 0.5),
+                                size: 46,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Center(
+                        child: Icon(
+                          article.iconData,
+                          color: article.categoryColor.withValues(alpha: 0.5),
+                          size: 46,
+                        ),
                       ),
-                    ),
                     Positioned(
                       top: 8,
                       right: 8,
@@ -1274,12 +1295,22 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      article.category,
-                      style: GoogleFonts.poppins(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                        color: article.categoryColor,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: article.categoryColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        article.category,
+                        style: GoogleFonts.poppins(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: article.categoryColor,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
