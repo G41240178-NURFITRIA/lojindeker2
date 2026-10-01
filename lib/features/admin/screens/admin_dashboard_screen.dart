@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/profile_image_service.dart';
 import '../../../models/app_user.dart';
 import '../../../services/auth_service.dart';
@@ -292,226 +293,230 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             final doctors = doctorSnapshot.data ?? [];
             final doctorCount = doctors.length;
 
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 1. Manajemen User (Section Title)
-                  Text(
-                    'Manajemen User',
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF141414),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
+            return ValueListenableBuilder<List<PatientRiskRecord>>(
+              valueListenable: PatientActivityService.instance.riskHistoryNotifier,
+              builder: (context, riskList, _) {
+                final riskCount = riskList.isNotEmpty ? riskList.length : 5;
+                final latestRisk = riskList.isNotEmpty ? riskList.first : null;
 
-                  // 2x2 Grid of Soft Pink Metric Cards (Clickable)
-                  Row(
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: _buildSoftPinkMetricCard(
-                          iconWidget: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 28),
-                          title: 'Total Pengguna',
-                          value: '$patientCount',
-                          onTap: () => _showKelolaPenggunaSheet(context),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: _buildSoftPinkMetricCard(
-                          iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 28),
-                          title: 'Total Dokter',
-                          value: '$doctorCount',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const AddDoctorScreen()),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSoftPinkMetricCard(
-                          iconWidget: const _StethoscopeOutlineIcon(color: Colors.white, size: 28),
-                          title: 'Konsultasi Hari ini',
-                          value: '2',
-                          onTap: () => _showKonsultasiSheet(context),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: _buildSoftPinkMetricCard(
-                          iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
-                          title: 'Cek Risiko',
-                          value: '5',
-                          onTap: () => _showRiskCheckSheet(context),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // 2. Kelola Sistem (Section Title)
-                  Text(
-                    'Kelola Sistem',
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF141414),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  _buildManagementTile(
-                    iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 18),
-                    title: 'Kelola Dokter',
-                    subtitle: doctorCount > 0 ? '$doctorCount dokter aktif' : 'Tambah & kelola akun',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AddDoctorScreen()),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  _buildManagementTile(
-                    iconWidget: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 18),
-                    title: 'Kelola Pengguna',
-                    subtitle: '$patientCount pengguna terdaftar',
-                    onTap: () => _showKelolaPenggunaSheet(context),
-                  ),
-                  const SizedBox(height: 10),
-                  _buildManagementTile(
-                    iconWidget: const _ArticlesOutlineIcon(color: Colors.white, size: 18),
-                    title: 'Kelola Artikel Edukasi',
-                    subtitle: '${educationalArticles.length} artikel aktif',
-                    onTap: () => _showKelolaArtikelSheet(context),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // 3. Aktivitas Terbaru (Section Title)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
+                      // 1. Manajemen User (Section Title)
                       Text(
-                        'Aktivitas Terbaru',
+                        'Manajemen User',
                         style: GoogleFonts.poppins(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFF141414),
                         ),
                       ),
-                      InkWell(
-                        onTap: () => _showAllActivitiesSheet(context, patients, doctors),
-                        borderRadius: BorderRadius.circular(6),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          child: Text(
-                            'Lihat Semua',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFFD81B60),
+                      const SizedBox(height: 14),
+
+                      // 2x2 Grid of Soft Pink Metric Cards (Otomatis Real-Time Display)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSoftPinkMetricCard(
+                              iconWidget: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 28),
+                              title: 'Total Pengguna',
+                              value: '$patientCount',
                             ),
                           ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _buildSoftPinkMetricCard(
+                              iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 28),
+                              title: 'Total Dokter',
+                              value: '$doctorCount',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSoftPinkMetricCard(
+                              iconWidget: const _StethoscopeOutlineIcon(color: Colors.white, size: 28),
+                              title: 'Konsultasi Hari ini',
+                              value: '2',
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _buildSoftPinkMetricCard(
+                              iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
+                              title: 'Cek Risiko',
+                              value: '$riskCount',
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // 2. Kelola Sistem (Section Title - Bisa Diklik)
+                      Text(
+                        'Kelola Sistem',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF141414),
                         ),
                       ),
+                      const SizedBox(height: 12),
+
+                      _buildManagementTile(
+                        iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 18),
+                        title: 'Kelola Dokter',
+                        subtitle: doctorCount > 0 ? '$doctorCount dokter aktif' : 'Tambah & kelola akun',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AddDoctorScreen()),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      _buildManagementTile(
+                        iconWidget: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 18),
+                        title: 'Kelola Pengguna',
+                        subtitle: '$patientCount pengguna terdaftar',
+                        onTap: () => _showKelolaPenggunaSheet(context),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildManagementTile(
+                        iconWidget: const _ArticlesOutlineIcon(color: Colors.white, size: 18),
+                        title: 'Kelola Artikel Edukasi',
+                        subtitle: '${educationalArticles.length} artikel aktif',
+                        onTap: () => _showKelolaArtikelSheet(context),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // 3. Aktivitas Terbaru (Section Title - Bisa Diklik)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Aktivitas Terbaru',
+                            style: GoogleFonts.poppins(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF141414),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => _showAllActivitiesSheet(context, patients, doctors),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: Text(
+                                'Lihat Semua',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFD81B60),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.5), width: 1),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFD81B60).withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Activity 1: Patient registration
+                            _buildActivityItem(
+                              iconWidget: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 18),
+                              title: patients.isNotEmpty
+                                  ? 'Pasien terdaftar: ${patients.first.fullName}'
+                                  : 'Pengguna baru terdaftar',
+                              subtitle: patients.isNotEmpty
+                                  ? patients.first.email
+                                  : 'User dengan email rina@gmail.com',
+                              timeAgo: 'Baru saja',
+                              onTap: () => _showKelolaPenggunaSheet(context),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Divider(height: 1, color: Color(0xFFFCE4EC)),
+                            ),
+                            // Activity 2: Doctor added
+                            _buildActivityItem(
+                              iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 18),
+                              title: doctors.isNotEmpty
+                                  ? 'Dokter aktif: ${doctors.first.fullName}'
+                                  : 'Dokter baru ditambahkan',
+                              subtitle: doctors.isNotEmpty
+                                  ? (doctors.first.specialization ?? 'Spesialis Penyakit Dalam')
+                                  : 'dr. Kaka Pratama - Spesialis',
+                              timeAgo: '1 jam lalu',
+                              onTap: () {
+                                if (doctors.isNotEmpty) {
+                                  _showDoctorDetailSheet(context, doctors.first);
+                                } else {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const AddDoctorScreen(initialIndex: 1)),
+                                  );
+                                }
+                              },
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Divider(height: 1, color: Color(0xFFFCE4EC)),
+                            ),
+                            // Activity 3: Cek Risiko
+                            _buildActivityItem(
+                              iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 18),
+                              title: latestRisk != null
+                                  ? 'Cek Risiko: ${latestRisk.status}'
+                                  : 'Cek Risiko',
+                              subtitle: latestRisk != null
+                                  ? 'Kadar gula: ${latestRisk.glucoseLevel} • ${latestRisk.scoreDescription}'
+                                  : 'Evaluasi mandiri risiko pasien selesai',
+                              timeAgo: latestRisk != null ? latestRisk.date : '3 jam lalu',
+                              onTap: () => _showRiskCheckSheet(context),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Divider(height: 1, color: Color(0xFFFCE4EC)),
+                            ),
+                            // Activity 4: Educational Article Published
+                            _buildActivityItem(
+                              iconWidget: const _ArticlesOutlineIcon(color: Colors.white, size: 18),
+                              title: 'Artikel Edukasi Diperbarui',
+                              subtitle: '3 materi edukasi aktif & siap diakses pasien',
+                              timeAgo: 'Hari ini',
+                              onTap: () => _showKelolaArtikelSheet(context),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 28),
                     ],
                   ),
-                  const SizedBox(height: 12),
-
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.5), width: 1),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFD81B60).withValues(alpha: 0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Activity 1: Patient registration
-                        _buildActivityItem(
-                          iconWidget: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 18),
-                          title: patients.isNotEmpty
-                              ? 'Pasien terdaftar: ${patients.first.fullName}'
-                              : 'Pengguna baru terdaftar',
-                          subtitle: patients.isNotEmpty
-                              ? patients.first.email
-                              : 'User dengan email rina@gmail.com',
-                          timeAgo: 'Baru saja',
-                          onTap: () => _showKelolaPenggunaSheet(context),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Divider(height: 1, color: Color(0xFFFCE4EC)),
-                        ),
-                        // Activity 2: Doctor added
-                        _buildActivityItem(
-                          iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 18),
-                          title: doctors.isNotEmpty
-                              ? 'Dokter aktif: ${doctors.first.fullName}'
-                              : 'Dokter baru ditambahkan',
-                          subtitle: doctors.isNotEmpty
-                              ? (doctors.first.specialization ?? 'Spesialis Penyakit Dalam')
-                              : 'dr. Kaka Pratama - Spesialis',
-                          timeAgo: '1 jam lalu',
-                          onTap: () {
-                            if (doctors.isNotEmpty) {
-                              _showDoctorDetailSheet(context, doctors.first);
-                            } else {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const AddDoctorScreen(initialIndex: 1)),
-                              );
-                            }
-                          },
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Divider(height: 1, color: Color(0xFFFCE4EC)),
-                        ),
-                        // Activity 3: Cek Risiko
-                        _buildActivityItem(
-                          iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 18),
-                          title: 'Cek Risiko',
-                          subtitle: 'Evaluasi mandiri risiko pasien selesai',
-                          timeAgo: '3 jam lalu',
-                          onTap: () => _showRiskCheckSheet(context),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Divider(height: 1, color: Color(0xFFFCE4EC)),
-                        ),
-                        // Activity 4: Educational Article Published
-                        _buildActivityItem(
-                          iconWidget: const _ArticlesOutlineIcon(color: Colors.white, size: 18),
-                          title: 'Artikel Edukasi Diperbarui',
-                          subtitle: '3 materi edukasi aktif & siap diakses pasien',
-                          timeAgo: 'Hari ini',
-                          onTap: () => _showKelolaArtikelSheet(context),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 28),
-                ],
-              ),
+                );
+              },
             );
           },
         );
@@ -519,70 +524,62 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  /// 2x2 Soft Pink Metric Card (Interactive)
+  /// 2x2 Soft Pink Metric Card (Otomatis Real-Time Display)
   Widget _buildSoftPinkMetricCard({
     required Widget iconWidget,
     required String title,
     required String value,
-    required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          height: 116,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFFF06292), // Soft pink
-                Color(0xFFD81B60), // Rich rose pink
-              ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFD81B60).withValues(alpha: 0.28),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                height: 28,
-                child: Center(child: iconWidget),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: GoogleFonts.poppins(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
+    return Container(
+      height: 116,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFF06292), // Soft pink
+            Color(0xFFD81B60), // Rich rose pink
+          ],
         ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFD81B60).withValues(alpha: 0.28),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            height: 28,
+            child: Center(child: iconWidget),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -907,54 +904,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  void _showKonsultasiSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      backgroundColor: Colors.white,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFCE4EC),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.medical_services_rounded, color: Color(0xFFD81B60), size: 22),
-                ),
-                const SizedBox(width: 12),
-                Text('Konsultasi Hari Ini', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Terdapat 2 sesi konsultasi dokter aktif yang sedang berlangsung hari ini via chat telemedis.',
-              style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF424242)),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD81B60),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: Text('Tutup', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _showRiskCheckSheet(BuildContext context) {
     showModalBottomSheet(
