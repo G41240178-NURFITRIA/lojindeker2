@@ -155,6 +155,25 @@ class UserRepository {
     });
   }
 
+  // ─── Daftar Pasien / Pengguna ─────────────────────────────────────
+  Stream<List<AppUser>> streamPatients() {
+    return _db
+        .collection('users')
+        .orderBy('fullName')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => AppUser.fromMap(d.data(), d.id))
+            .toList());
+  }
+
+  /// Aktif/nonaktifkan akun pasien
+  Future<void> setPatientActive(String uid, {required bool isActive}) async {
+    await _db.collection('users').doc(uid).update({
+      'isActive': isActive,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   // ─── Validasi keunikan ────────────────────────────────────────────
   Future<bool> isUsernameAvailable(String username) async {
     final doc = await _db
