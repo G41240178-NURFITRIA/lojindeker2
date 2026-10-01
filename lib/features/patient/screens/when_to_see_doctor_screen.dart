@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'consultation_list_screen.dart';
-import 'medical_records_screen.dart';
-import 'riwayat_resep_screen.dart';
 
 class WhenToSeeDoctorScreen extends StatelessWidget {
   const WhenToSeeDoctorScreen({super.key});

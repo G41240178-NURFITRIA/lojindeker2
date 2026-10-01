@@ -9,7 +9,6 @@ import '../../../core/services/profile_image_service.dart';
 import '../models/risk_assessment_model.dart';
 import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
-import 'glucose_history_screen.dart';
 import 'medical_records_screen.dart';
 import 'nearest_facility_screen.dart';
 import 'live_chat_screen.dart';
@@ -1497,74 +1496,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// History Tile
-  Widget _buildHistoryTile({
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    required String value,
-    required Color valueColor,
-    VoidCallback? onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: iconColor, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF424242),
-                  ),
-                ),
-              ),
-              RichText(
-                text: TextSpan(
-                  text: value,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: valueColor,
-                  ),
-                  children: [
-                    if (value != '-')
-                      TextSpan(
-                        text: ' mg/dL',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF757575),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   /// Bottom Navigation Bar
   Widget _buildBottomNavigationBar() {

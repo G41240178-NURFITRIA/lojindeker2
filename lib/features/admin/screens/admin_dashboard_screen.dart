@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'add_doctor_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -249,7 +250,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _buildManagementTile(
             iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 18),
             title: 'Kelola Dokter',
-            subtitle: '0 dokter',
+            subtitle: 'Tambah & kelola akun',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddDoctorScreen()),
+              );
+            },
           ),
           const SizedBox(height: 10),
           _buildManagementTile(
@@ -381,8 +387,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required Widget iconWidget,
     required String title,
     required String subtitle,
+    VoidCallback? onTap,
   }) {
-    return Container(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -432,6 +442,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 

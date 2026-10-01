@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'when_to_see_doctor_screen.dart';
 import 'article_detail_screen.dart';
 import 'consultation_list_screen.dart';
-import 'medical_records_screen.dart';
 
 class SupportMenuScreen extends StatefulWidget {
   const SupportMenuScreen({super.key});

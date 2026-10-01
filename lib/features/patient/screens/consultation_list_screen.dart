@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'live_chat_screen.dart';
-import 'patient_profile_screen.dart';
-import 'patient_dashboard_screen.dart';
 
 // Data Model Dokter
 class DoctorModel {
