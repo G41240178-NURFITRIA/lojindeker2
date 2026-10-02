@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/app_user.dart';
+import '../core/services/admin_activity_service.dart';
 import '../core/services/session_service.dart';
 import 'user_repository.dart';
 
@@ -99,6 +100,12 @@ class AuthService {
 
       debugPrint(
         '✅ [AuthService] Login berhasil: ${appUser.fullName} (${appUser.role.firestoreValue})',
+      );
+
+      // Catat aktivitas login ke log admin
+      AdminActivityService.instance.logLogin(
+        fullName: appUser.fullName.isNotEmpty ? appUser.fullName : appUser.username,
+        role: appUser.role.firestoreValue,
       );
 
       // Reset waktu aktif dan mulai tracking sesi otomatis
@@ -234,6 +241,13 @@ class AuthService {
         '✅ [AuthService] Pasien terdaftar: ${appUser.uid}',
       );
 
+      // Catat aktivitas pendaftaran pasien baru ke log admin
+      AdminActivityService.instance.logPasienBaru(
+        fullName: fullNameClean,
+        email: emailClean,
+        username: usernameClean,
+      );
+
       // Mulai tracking sesi otomatis untuk pasien baru
       await SessionService.instance.saveLastActive();
       await SessionService.instance.startSession(isNewLogin: true);
@@ -338,6 +352,14 @@ class AuthService {
       await repo.createDoctor(doctor: doctor);
 
       debugPrint('✅ [AuthService] Dokter dibuat oleh admin: $uid');
+
+      // Catat aktivitas penambahan dokter ke log admin
+      AdminActivityService.instance.logDokterBaru(
+        fullName: fullName.trim(),
+        specialization: specialization.trim(),
+        email: emailClean,
+      );
+
       return doctor;
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapError(e.code, e.message ?? 'Gagal membuat akun dokter.'));
@@ -360,7 +382,14 @@ class AuthService {
   }
 
   // ─── Logout ───────────────────────────────────────────────────────
-  Future<void> signOut() async {
+  Future<void> signOut({String fullName = '', String role = ''}) async {
+    // Catat aktivitas logout ke log admin sebelum sign out
+    if (fullName.isNotEmpty) {
+      await AdminActivityService.instance.logLogout(
+        fullName: fullName,
+        role: role,
+      );
+    }
     await SessionService.instance.stopSession();
     await _auth.signOut();
     debugPrint('ℹ️ [AuthService] User logout.');

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/admin_activity_service.dart';
 import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/profile_image_service.dart';
 import '../../../models/app_user.dart';
@@ -996,29 +997,217 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void _showNotificationSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       backgroundColor: Colors.white,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        builder: (_, scrollController) => Column(
           children: [
-            Row(
-              children: [
-                const Icon(Icons.notifications_active_rounded, color: Color(0xFFD81B60)),
-                const SizedBox(width: 8),
-                Text('Pemberitahuan Admin', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
-              ],
+            // Handle bar
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 4),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const CircleAvatar(backgroundColor: Color(0xFFFCE4EC), child: Icon(Icons.check, color: Color(0xFFD81B60))),
-              title: Text('Sistem LojinDeker Normal', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
-              subtitle: Text('Semua layanan berjalan lancar.', style: GoogleFonts.poppins(fontSize: 11)),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_active_rounded, color: Color(0xFFD81B60), size: 22),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Pemberitahuan Admin',
+                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFF8BBD0)),
+            // Stream aktivitas real dari Firestore
+            Expanded(
+              child: StreamBuilder<List<AdminActivityLog>>(
+                stream: AdminActivityService.instance.streamActivities(limit: 100),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: CircularProgressIndicator(color: Color(0xFFD81B60)),
+                      ),
+                    );
+                  }
+
+                  final logs = snapshot.data ?? [];
+
+                  if (logs.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFCE4EC),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.notifications_none_rounded, size: 36, color: Color(0xFFD81B60)),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'Belum Ada Aktivitas',
+                            style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF1F1F1F)),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Semua aktivitas sistem akan\ntercatat dan muncul di sini.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    controller: scrollController,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    itemCount: logs.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFFCE4EC), indent: 56),
+                    itemBuilder: (context, index) {
+                      final log = logs[index];
+                      return _buildNotifLogTile(log);
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNotifLogTile(AdminActivityLog log) {
+    IconData icon;
+    Color iconBg;
+    switch (log.type) {
+      case AdminActivityType.pasienBaru:
+        icon = Icons.person_add_alt_1_rounded;
+        iconBg = const Color(0xFF42A5F5);
+        break;
+      case AdminActivityType.dokterBaru:
+        icon = Icons.medical_services_rounded;
+        iconBg = const Color(0xFF66BB6A);
+        break;
+      case AdminActivityType.cekRisiko:
+        icon = Icons.health_and_safety_rounded;
+        iconBg = const Color(0xFFEF5350);
+        break;
+      case AdminActivityType.konsultasi:
+        icon = Icons.chat_bubble_rounded;
+        iconBg = const Color(0xFF7E57C2);
+        break;
+      case AdminActivityType.statusPengguna:
+      case AdminActivityType.statusDokter:
+        icon = Icons.manage_accounts_rounded;
+        iconBg = const Color(0xFFFF7043);
+        break;
+      case AdminActivityType.resetSandi:
+        icon = Icons.lock_reset_rounded;
+        iconBg = const Color(0xFF26C6DA);
+        break;
+      case AdminActivityType.login:
+        icon = Icons.login_rounded;
+        iconBg = const Color(0xFF8BC34A);
+        break;
+      case AdminActivityType.logout:
+        icon = Icons.logout_rounded;
+        iconBg = const Color(0xFF90A4AE);
+        break;
+      case AdminActivityType.sistemNormal:
+      default:
+        icon = Icons.check_circle_rounded;
+        iconBg = const Color(0xFFD81B60);
+        break;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        log.title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1F1F1F),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      log.relativeTime,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: const Color(0xFFB0BEC5),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  log.subtitle,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF757575),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1044,7 +1233,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
 
     if (confirmed == true) {
-      await AuthService.instance.signOut();
+      await AuthService.instance.signOut(
+        fullName: _adminDisplayName,
+        role: 'admin',
+      );
       nav.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LandingScreen()),
         (route) => false,
@@ -1400,6 +1592,11 @@ class _KelolaPenggunaModalContentState extends State<_KelolaPenggunaModalContent
                 onPressed: () async {
                   try {
                     await AuthService.instance.sendPasswordResetEmail(patient.email);
+                    // Catat ke log admin
+                    AdminActivityService.instance.logResetSandi(
+                      email: patient.email,
+                      fullName: patient.fullName,
+                    );
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -1458,6 +1655,11 @@ class _KelolaPenggunaModalContentState extends State<_KelolaPenggunaModalContent
 
                   if (confirm == true) {
                     await UserRepository.instance.setPatientActive(patient.uid, isActive: newStatus);
+                    // Catat ke log admin
+                    AdminActivityService.instance.logStatusPengguna(
+                      fullName: patient.fullName,
+                      isActive: newStatus,
+                    );
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(

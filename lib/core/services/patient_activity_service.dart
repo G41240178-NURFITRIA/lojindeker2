@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../features/patient/models/medication_reminder_model.dart';
 import '../../features/patient/models/risk_assessment_model.dart';
+import 'admin_activity_service.dart';
 import 'auth_service.dart';
 
 /// Model untuk rekam riwayat dan status pengecekan risiko diabetes pasien
@@ -375,6 +376,13 @@ class PatientActivityService {
     final user = AuthService.instance.currentUser;
     if (user != null) {
       try {
+        // Catat ke log admin
+        AdminActivityService.instance.logCekRisiko(
+          patientName: user.displayName ?? user.email ?? '',
+          status: status,
+          score: score,
+        );
+
         await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
           'latestRiskStatus': status,
           'latestRiskScore': score,

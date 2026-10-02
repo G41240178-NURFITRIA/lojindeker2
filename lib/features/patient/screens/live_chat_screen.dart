@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/admin_activity_service.dart';
 import '../../../core/services/patient_activity_service.dart';
 
 /// Model pesan chat
@@ -116,6 +117,14 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
       specialty: widget.specialty,
       lastMessage: trimmed,
     );
+
+    // Catat ke log admin (hanya pesan pertama / saat memulai konsultasi)
+    if (_messages.length <= 2) {
+      AdminActivityService.instance.logKonsultasi(
+        patientName: '',
+        doctorName: widget.doctorName,
+      );
+    }
 
     _scrollToBottom();
 
