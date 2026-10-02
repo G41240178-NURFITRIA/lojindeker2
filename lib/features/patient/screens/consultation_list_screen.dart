@@ -310,22 +310,14 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
 
           const SizedBox(height: 14),
 
-          // 3. Tombol Chat di Bagian Bawah Kartu
+          // 3. Tombol Booking Konsultasi di Bagian Bawah Kartu
           InkWell(
-            onTap: doctor.isOnline
-                ? () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => LiveChatScreen(
-                          doctorName: doctor.name,
-                          specialty: doctor.specialty,
-                          initials: doctor.initials,
-                        ),
-                      ),
-                    );
-                  }
-                : null,
+            onTap: () {
+              // TODO: Navigasi ke halaman booking
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Fitur booking konsultasi akan segera hadir')),
+              );
+            },
             borderRadius: BorderRadius.circular(16),
             child: Container(
               width: double.infinity,
@@ -334,31 +326,25 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: doctor.isOnline
-                      ? const Color(0xFFE8E8E8)
-                      : const Color(0xFFF2F2F2),
+                  color: const Color(0xFFE8E8E8),
                   width: 1.2,
                 ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.chat_bubble_outline_rounded,
+                  const Icon(
+                    Icons.assignment_outlined,
                     size: 18,
-                    color: doctor.isOnline
-                        ? const Color(0xFF333333)
-                        : const Color(0xFFCCCCCC),
+                    color: Color(0xFF333333),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Chat',
+                    'Booking konsultasi',
                     style: GoogleFonts.poppins(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w600,
-                      color: doctor.isOnline
-                        ? const Color(0xFF333333)
-                        : const Color(0xFFCCCCCC),
+                      color: const Color(0xFF333333),
                     ),
                   ),
                 ],
