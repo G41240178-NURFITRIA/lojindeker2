@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../services/auth_service.dart';
 import '../../auth/screens/landing_screen.dart';
 import '../../auth/screens/login_screen.dart';
+import 'doctor_all_chats_screen.dart';
 import 'doctor_prescription_note_screen.dart';
 
 /// Model chat pasien untuk dashboard dokter
@@ -629,17 +630,18 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                 _searchController.clear();
                 setState(() => _searchQuery = '');
               }
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Menampilkan seluruh daftar riwayat pesan pasien.',
-                    style: GoogleFonts.poppins(),
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DoctorAllChatsScreen(
+                    doctorName: widget.doctorName,
+                    chats: _chats,
+                    onChatOpen: _openChat,
                   ),
-                  backgroundColor: AppColors.primary,
-                  duration: const Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
                 ),
-              );
+              ).then((_) {
+                // Refresh state when coming back if needed
+                setState(() {});
+              });
             },
             borderRadius: BorderRadius.circular(6),
             child: Padding(
@@ -661,7 +663,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
   /// Chat List items (Kartu soft pink persis seperti pada gambar referensi)
   Widget _buildChatList() {
-    final list = _filteredChats;
+    final list = _filteredChats.where((chat) => chat.unreadCount > 0).toList();
 
     if (list.isEmpty) {
       return Padding(
