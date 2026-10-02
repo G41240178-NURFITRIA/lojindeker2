@@ -392,7 +392,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       _buildManagementTile(
                         iconWidget: const _ArticlesOutlineIcon(color: Colors.white, size: 18),
                         title: 'Kelola Artikel Edukasi',
-                        subtitle: '${educationalArticles.length} artikel aktif',
+                        subtitle: '${educationalArticles.length + _adminArticles.length} artikel aktif',
                         onTap: () => _showKelolaArtikelSheet(context),
                       ),
 
@@ -1687,11 +1687,252 @@ class _KelolaPenggunaModalContentState extends State<_KelolaPenggunaModalContent
 /// =========================================================================
 /// 2. KOMPONEN KELOLA ARTIKEL EDUKASI DENGAN ISI REAL & INTERAKTIF
 /// =========================================================================
-class _KelolaArtikelModalContent extends StatelessWidget {
+
+/// Artikel tambahan admin (in-memory, tanpa Firebase)
+class AdminArticle {
+  final String id;
+  final String category;
+  final String title;
+  final String subtitle;
+  final String content;
+  final String readTime;
+  final String reviewer;
+  final DateTime createdAt;
+
+  AdminArticle({
+    required this.id,
+    required this.category,
+    required this.title,
+    required this.subtitle,
+    required this.content,
+    required this.readTime,
+    required this.reviewer,
+    required this.createdAt,
+  });
+}
+
+/// Static list agar artikel tetap ada selama sesi aplikasi berjalan
+final List<AdminArticle> _adminArticles = [];
+
+class _KelolaArtikelModalContent extends StatefulWidget {
   const _KelolaArtikelModalContent();
 
   @override
+  State<_KelolaArtikelModalContent> createState() => _KelolaArtikelModalContentState();
+}
+
+class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> {
+
+  void _showTambahArtikelForm() {
+    final titleCtrl = TextEditingController();
+    final subtitleCtrl = TextEditingController();
+    final contentCtrl = TextEditingController();
+    final reviewerCtrl = TextEditingController();
+    String selectedCategory = 'Pola Makan';
+    String selectedReadTime = '3 menit baca';
+
+    const categories = ['Pola Makan', 'Olahraga', 'Pengobatan', 'Gaya Hidup', 'Psikologi', 'Pencegahan', 'Umum'];
+    const readTimes = ['2 menit baca', '3 menit baca', '4 menit baca', '5 menit baca', '7 menit baca', '10 menit baca'];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.9,
+              minChildSize: 0.6,
+              maxChildSize: 0.95,
+              builder: (_, sc) => Column(
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 4),
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: const Color(0xFFFCE4EC), borderRadius: BorderRadius.circular(10)),
+                          child: const Icon(Icons.add_circle_rounded, color: Color(0xFFD81B60), size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text('Tambah Artikel Baru', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700))),
+                        IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx), padding: EdgeInsets.zero),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFF8BBD0)),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: sc,
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _formLabel('Kategori'),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFCF8F9), borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFF8BBD0)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedCategory, isExpanded: true,
+                                style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF1F1F1F)),
+                                items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                                onChanged: (v) => setModalState(() => selectedCategory = v!),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          _formLabel('Judul Artikel'),
+                          const SizedBox(height: 6),
+                          _formField(titleCtrl, 'Contoh: Cara Mengontrol Gula Darah...'),
+                          const SizedBox(height: 14),
+                          _formLabel('Subjudul / Deskripsi Singkat'),
+                          const SizedBox(height: 6),
+                          _formField(subtitleCtrl, 'Rangkuman singkat isi artikel...', maxLines: 2),
+                          const SizedBox(height: 14),
+                          _formLabel('Isi Artikel'),
+                          const SizedBox(height: 6),
+                          _formField(contentCtrl, 'Tulis isi artikel di sini...', maxLines: 8),
+                          const SizedBox(height: 14),
+                          _formLabel('Nama Reviewer / Dokter'),
+                          const SizedBox(height: 6),
+                          _formField(reviewerCtrl, 'Contoh: dr. Siti Rahma, Sp.PD'),
+                          const SizedBox(height: 14),
+                          _formLabel('Estimasi Waktu Baca'),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFCF8F9), borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFF8BBD0)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedReadTime, isExpanded: true,
+                                style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF1F1F1F)),
+                                items: readTimes.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                                onChanged: (v) => setModalState(() => selectedReadTime = v!),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                if (titleCtrl.text.trim().isEmpty || contentCtrl.text.trim().isEmpty) {
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(content: Text('Judul dan isi artikel wajib diisi.', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: Colors.red.shade700),
+                                  );
+                                  return;
+                                }
+                                final newArticle = AdminArticle(
+                                  id: 'ADM-${DateTime.now().millisecondsSinceEpoch}',
+                                  category: selectedCategory,
+                                  title: titleCtrl.text.trim(),
+                                  subtitle: subtitleCtrl.text.trim(),
+                                  content: contentCtrl.text.trim(),
+                                  readTime: selectedReadTime,
+                                  reviewer: reviewerCtrl.text.trim().isNotEmpty ? reviewerCtrl.text.trim() : 'Tim Medis LojinDeker',
+                                  createdAt: DateTime.now(),
+                                );
+                                _adminArticles.insert(0, newArticle);
+                                Navigator.pop(ctx);
+                                setState(() {});
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Artikel "${newArticle.title}" berhasil ditambahkan!', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: const Color(0xFF2E7D32)),
+                                );
+                              },
+                              icon: const Icon(Icons.save_rounded, color: Colors.white, size: 18),
+                              label: Text('Simpan Artikel', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFD81B60),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _formLabel(String text) => Text(text, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF1F1F1F)));
+
+  Widget _formField(TextEditingController ctrl, String hint, {int maxLines = 1}) {
+    return TextField(
+      controller: ctrl,
+      style: GoogleFonts.poppins(fontSize: 13),
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.poppins(fontSize: 13, color: Colors.grey),
+        filled: true, fillColor: const Color(0xFFFCF8F9),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF8BBD0))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFF8BBD0))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFD81B60), width: 1.5)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      ),
+    );
+  }
+
+  void _confirmDelete(AdminArticle article) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Hapus Artikel?', style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+        content: Text('Artikel "${article.title}" akan dihapus.', style: GoogleFonts.poppins(fontSize: 13)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Batal', style: GoogleFonts.poppins(color: Colors.grey))),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() => _adminArticles.removeWhere((a) => a.id == article.id));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Artikel dihapus.', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: const Color(0xFF2E7D32)),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            child: Text('Hapus', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final totalArticles = educationalArticles.length + _adminArticles.length;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
@@ -1708,12 +1949,8 @@ class _KelolaArtikelModalContent extends StatelessWidget {
               Center(
                 child: Container(
                   margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
                 ),
               ),
 
@@ -1724,10 +1961,7 @@ class _KelolaArtikelModalContent extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFCE4EC),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                      decoration: BoxDecoration(color: const Color(0xFFFCE4EC), borderRadius: BorderRadius.circular(10)),
                       child: const _ArticlesOutlineIcon(color: Color(0xFFD81B60), size: 22),
                     ),
                     const SizedBox(width: 12),
@@ -1735,45 +1969,72 @@ class _KelolaArtikelModalContent extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Kelola Artikel Edukasi',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF1F1F1F),
-                            ),
-                          ),
-                          Text(
-                            '${educationalArticles.length} materi edukasi pasien diabetes terbit',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: const Color(0xFF757575),
-                            ),
-                          ),
+                          Text('Kelola Artikel Edukasi', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF1F1F1F))),
+                          Text('$totalArticles artikel edukasi tersedia', style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575))),
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context),
+                    // Tombol tambah artikel
+                    TextButton.icon(
+                      onPressed: _showTambahArtikelForm,
+                      icon: const Icon(Icons.add_rounded, size: 18, color: Color(0xFFD81B60)),
+                      label: Text('Tambah', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFFD81B60))),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
                     ),
+                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(context)),
                   ],
                 ),
               ),
 
               const Divider(height: 1, color: Color(0xFFF8BBD0)),
 
-              // List of Articles
+              // Daftar Artikel
               Expanded(
-                child: ListView.separated(
+                child: ListView(
                   controller: scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  itemCount: educationalArticles.length,
-                  separatorBuilder: (ctx, i) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final article = educationalArticles[index];
-                    return _buildArticleItemCard(context, article);
-                  },
+                  children: [
+                    // Artikel buatan admin
+                    if (_adminArticles.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: const Color(0xFFD81B60).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                            child: Text('Artikel Admin', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60))),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('${_adminArticles.length} artikel', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ..._adminArticles.map((article) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildAdminArticleCard(article),
+                      )),
+                      const SizedBox(height: 8),
+                      const Divider(color: Color(0xFFF8BBD0)),
+                      const SizedBox(height: 8),
+                    ],
+
+                    // Label artikel bawaan
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: const Color(0xFF757575).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                          child: Text('Artikel Bawaan', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF757575))),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('${educationalArticles.length} artikel', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ...educationalArticles.map((article) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildArticleItemCard(context, article),
+                    )),
+                  ],
                 ),
               ),
             ],
@@ -1783,6 +2044,67 @@ class _KelolaArtikelModalContent extends StatelessWidget {
     );
   }
 
+  /// Card artikel buatan admin (bisa dihapus)
+  Widget _buildAdminArticleCard(AdminArticle article) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white, borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD81B60).withValues(alpha: 0.25)),
+        boxShadow: [BoxShadow(color: const Color(0xFFD81B60).withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 3))],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: const Color(0xFFD81B60).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                  child: Text(article.category, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60))),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.timer_outlined, size: 13, color: Color(0xFF9E9E9E)),
+                const SizedBox(width: 3),
+                Text(article.readTime, style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
+                const Spacer(),
+                InkWell(
+                  onTap: () => _confirmDelete(article),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                    child: Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red.shade700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(article.title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF1F1F1F), height: 1.3)),
+            if (article.subtitle.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(article.subtitle, style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF616161), height: 1.35), maxLines: 2, overflow: TextOverflow.ellipsis),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.verified_user_rounded, size: 13, color: Color(0xFF2E7D32)),
+                const SizedBox(width: 4),
+                Expanded(child: Text('Reviewer: ${article.reviewer}', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF424242)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ],
+            ),
+            if (article.content.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(article.content, style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575), height: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Card artikel statis bawaan (tidak bisa dihapus)
   Widget _buildArticleItemCard(BuildContext context, EducationArticle article) {
     return Container(
       decoration: BoxDecoration(
@@ -1836,21 +2158,14 @@ class _KelolaArtikelModalContent extends StatelessWidget {
                       ),
                       child: Text(
                         article.category,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: article.categoryColor,
-                        ),
+                        style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: article.categoryColor),
                       ),
                     ),
                     Row(
                       children: [
                         const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF9E9E9E)),
                         const SizedBox(width: 4),
-                        Text(
-                          article.readTime,
-                          style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E)),
-                        ),
+                        Text(article.readTime, style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
                       ],
                     ),
                   ],
@@ -1860,23 +2175,14 @@ class _KelolaArtikelModalContent extends StatelessWidget {
                 // Title
                 Text(
                   article.title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1F1F1F),
-                    height: 1.3,
-                  ),
+                  style: GoogleFonts.poppins(fontSize: 14.5, fontWeight: FontWeight.w700, color: const Color(0xFF1F1F1F), height: 1.3),
                 ),
                 const SizedBox(height: 4),
 
                 // Subtitle
                 Text(
                   article.subtitle,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: const Color(0xFF616161),
-                    height: 1.35,
-                  ),
+                  style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF616161), height: 1.35),
                 ),
                 const SizedBox(height: 10),
 
@@ -1888,28 +2194,18 @@ class _KelolaArtikelModalContent extends StatelessWidget {
                     Expanded(
                       child: Text(
                         'Reviewer: ${article.reviewer}',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF424242),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500, color: const Color(0xFF424242)),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     ElevatedButton.icon(
                       onPressed: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ArticleDetailScreen(article: article),
-                          ),
+                          MaterialPageRoute(builder: (_) => ArticleDetailScreen(article: article)),
                         );
                       },
                       icon: const Icon(Icons.menu_book_rounded, size: 14, color: Colors.white),
-                      label: Text(
-                        'Buka Detail',
-                        style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white),
-                      ),
+                      label: Text('Buka Detail', style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFD81B60),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
