@@ -8,12 +8,14 @@ class DoctorAllChatsScreen extends StatefulWidget {
   final String doctorName;
   final List<DoctorPatientChat> chats;
   final Function(DoctorPatientChat) onChatOpen;
+  final bool showBackButton;
 
   const DoctorAllChatsScreen({
     super.key,
     required this.doctorName,
     required this.chats,
     required this.onChatOpen,
+    this.showBackButton = true,
   });
 
   @override
@@ -56,10 +58,13 @@ class _DoctorAllChatsScreenState extends State<DoctorAllChatsScreen> {
             color: Colors.white,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
+        leading: widget.showBackButton
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
       ),
       body: Column(
         children: [
