@@ -545,7 +545,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const LiveChatScreen()),
+                      MaterialPageRoute(builder: (_) => const RiskCheckScreen()),
                     );
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -561,13 +561,13 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.chat_rounded,
+                          Icons.health_and_safety_rounded,
                           size: 15,
                           color: Colors.white,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Tanya Dokter',
+                          'Skrining',
                           style: GoogleFonts.poppins(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w600,
@@ -585,11 +585,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => MedicalRecordsScreen(
-                          patientName: _currentPatientName,
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (_) => const LiveChatScreen()),
                     );
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -607,13 +603,13 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.history_edu_rounded,
+                          Icons.chat_rounded,
                           size: 15,
                           color: Color(0xFFD81B60),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Lihat Riwayat',
+                          'Tanya Dokter',
                           style: GoogleFonts.poppins(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w600,
