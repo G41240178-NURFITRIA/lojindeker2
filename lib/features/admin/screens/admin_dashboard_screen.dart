@@ -495,7 +495,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   ? 'Kadar gula: ${latestRisk.glucoseLevel} • ${latestRisk.scoreDescription}'
                                   : 'Evaluasi mandiri risiko pasien selesai',
                               timeAgo: latestRisk != null ? latestRisk.date : '3 jam lalu',
-                              onTap: () => _showRiskCheckSheet(context),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const RiwayatRisikoScreen(),
+                                  ),
+                                );
+                              },
                             ),
                             const Padding(
                               padding: EdgeInsets.symmetric(vertical: 8),
