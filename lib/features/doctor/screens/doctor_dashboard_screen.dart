@@ -252,9 +252,22 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.softPinkBg, // Soft Pink Background (#FFF0F5)
-      body: _selectedTabIndex == 0 ? _buildDashboardBody() : _buildProfileTab(),
+      body: _buildBody(),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
+  }
+
+  Widget _buildBody() {
+    if (_selectedTabIndex == 0) return _buildDashboardBody();
+    if (_selectedTabIndex == 1) {
+      return DoctorAllChatsScreen(
+        doctorName: widget.doctorName,
+        chats: _chats,
+        onChatOpen: _openChat,
+        showBackButton: false,
+      );
+    }
+    return _buildProfileTab();
   }
 
   /// Dashboard Home Content (Persis Referensi)
@@ -819,8 +832,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           ),
           _buildNavItem(
             index: 1,
+            label: 'Chat',
+            icon: _selectedTabIndex == 1 ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded,
+          ),
+          _buildNavItem(
+            index: 2,
             label: 'Profil',
-            icon: _selectedTabIndex == 1 ? Icons.account_circle_rounded : Icons.account_circle_outlined,
+            icon: _selectedTabIndex == 2 ? Icons.account_circle_rounded : Icons.account_circle_outlined,
           ),
         ],
       ),
