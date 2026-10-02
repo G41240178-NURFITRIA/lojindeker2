@@ -777,7 +777,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         },
         onOpenRiskAI: () {
           Navigator.pop(ctx);
-          _showRiskCheckSheet(context);
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const RiwayatRisikoScreen(),
+            ),
+          );
         },
       ),
     );
@@ -1866,7 +1870,7 @@ class _AktivitasTerbaruModalContent extends StatelessWidget {
                       title: 'Cek Risiko Selesai',
                       subtitle: 'Pasien menyelesaikan evaluasi mandiri faktor risiko diabetes.',
                       time: '3 Jam yang lalu',
-                      actionLabel: 'Buka Cek Risiko',
+                      actionLabel: 'Lihat Riwayat',
                       onTap: onOpenRiskAI,
                     ),
                     const SizedBox(height: 12),
