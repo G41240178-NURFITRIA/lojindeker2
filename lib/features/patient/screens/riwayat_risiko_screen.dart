@@ -39,11 +39,11 @@ class RiwayatRisikoScreen extends StatefulWidget {
 }
 
 class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
-  int _selectedCategoryIndex = 0; // 0 = 'Cek Risiko AI'
+  int _selectedCategoryIndex = 0; // 0 = 'Cek Risiko'
   final int _selectedBottomNavIndex = 0; // 0 = Home / Dashboard
 
   final List<String> _categories = const [
-    'Cek Risiko AI',
+    'Cek Risiko',
   ];
 
   List<RiskAssessmentRecord> get _records {
@@ -511,11 +511,11 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Rincian Cek Risiko AI',
+                      'Rincian Cek Risiko',
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF8B1317),
+                        color: const Color(0xFFD81B60),
                       ),
                     ),
                     Container(
@@ -560,10 +560,10 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF7F7),
+                    color: const Color(0xFFFCF8F9),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFFF3D5D5),
+                      color: const Color(0xFFF8BBD0),
                     ),
                   ),
                   child: Column(
@@ -574,7 +574,7 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
                         style: GoogleFonts.poppins(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF8B1317),
+                          color: const Color(0xFFD81B60),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -622,23 +622,31 @@ class _RiwayatRisikoScreenState extends State<RiwayatRisikoScreen> {
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: const Color(0xFF666666),
+          Expanded(
+            flex: 5,
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: const Color(0xFF666666),
+              ),
             ),
           ),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF1E1E1E),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 6,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1E1E1E),
+              ),
             ),
           ),
         ],

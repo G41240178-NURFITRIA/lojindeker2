@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../services/auth_service.dart';
 import '../../auth/screens/landing_screen.dart';
+import '../../auth/screens/login_screen.dart';
+import 'doctor_prescription_note_screen.dart';
 
 /// Model chat pasien untuk dashboard dokter
 class DoctorPatientChat {
@@ -1721,6 +1723,67 @@ class PatientHistoryScreen extends StatefulWidget {
 class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   int _selectedTab = 0;
   final List<String> _tabs = ['Semua', 'Hasil lab', 'Resep obat'];
+  final List<Map<String, dynamic>> _customVisits = [];
+  final List<Map<String, dynamic>> _customResepList = [];
+
+  Future<void> _openPrescriptionNoteScreen() async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => DoctorPrescriptionNoteScreen(
+          patientName: widget.patientName,
+          rmNumber: 'RM-2026-0812',
+          age: '28 thn',
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (result != null) {
+      final List<String> meds = List<String>.from(result['medications'] ?? []);
+      final String note = result['note'] ?? '';
+      final String status = result['status'] ?? 'Terkontrol baik';
+
+      setState(() {
+        if (meds.isNotEmpty) {
+          _customResepList.insert(0, {
+            'date': 'Hari ini',
+            'items': meds,
+          });
+        }
+        if (note.isNotEmpty || meds.isNotEmpty) {
+          _customVisits.insert(0, {
+            'date': 'Hari ini',
+            'status': status,
+            'statusColor': status == 'Terkontrol baik'
+                ? const Color(0xFF4CAF50)
+                : const Color(0xFFFF9800),
+            'doctorName': 'dr. Saya (Dokter)',
+            'hospital': 'Poli Penyakit Dalam, RS D-Care',
+            'vitalItems': const [
+              _VitalItem('Gula darah puasa', '110 mg/dL'),
+              _VitalItem('Gula darah 2 jam PP', '140 mg/dL'),
+              _VitalItem('HbA1c', '6.4%'),
+              _VitalItem('Tekanan darah', '120/80 mmHg'),
+            ],
+            'prescriptions': meds,
+            'doctorNote': note.isNotEmpty ? note : 'Tidak ada catatan tambahan.',
+          });
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Resep & catatan berhasil disimpan ke riwayat.',
+            style: GoogleFonts.poppins(color: Colors.white),
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1745,6 +1808,20 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                   _buildVisitSectionHeader(),
                   const SizedBox(height: 10),
                   if (_selectedTab == 0 || _selectedTab == 1) ...[
+                    ..._customVisits.map((v) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _ExpandableVisitCard(
+                            date: v['date'],
+                            status: v['status'],
+                            statusColor: v['statusColor'],
+                            doctorName: v['doctorName'],
+                            hospital: v['hospital'],
+                            vitalItems: v['vitalItems'] as List<_VitalItem>,
+                            prescriptions: v['prescriptions'] as List<String>,
+                            doctorNote: v['doctorNote'],
+                            initiallyExpanded: true,
+                          ),
+                        )),
                     _ExpandableVisitCard(
                       date: '20 Mei 2026',
                       status: 'Terkontrol baik',
@@ -1797,7 +1874,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomBar(context),
+      bottomNavigationBar: _buildBottomBar(),
     );
   }
 
@@ -2097,6 +2174,13 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   Widget _buildResepList() {
     return Column(
       children: [
+        ..._customResepList.map((r) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildResepCard(
+                date: r['date'],
+                items: r['items'] as List<String>,
+              ),
+            )),
         _buildResepCard(
           date: '20 Mei 2026',
           items: const [
@@ -2133,7 +2217,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                   size: 16, color: AppColors.primary),
               const SizedBox(width: 6),
               Text(
-                'Resep â€¢ $date',
+                'Resep • $date',
                 style: GoogleFonts.poppins(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -2174,7 +2258,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     );
   }
 
-  Widget _buildBottomBar(BuildContext context) {
+  Widget _buildBottomBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -2190,7 +2274,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
       ),
       child: SafeArea(
         child: GestureDetector(
-          onTap: () => _showWriteNoteSheet(context),
+          onTap: () => _openPrescriptionNoteScreen(),
           child: Container(
             height: 50,
             decoration: BoxDecoration(
@@ -2223,102 +2307,6 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showWriteNoteSheet(BuildContext context) {
-    final ctrl = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0E0E0),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Tulis Resep & Catatan',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF212121),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.softPinkBg,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.softPinkBorder),
-                ),
-                child: TextField(
-                  controller: ctrl,
-                  maxLines: 5,
-                  style: GoogleFonts.poppins(fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText:
-                        'Contoh: Metformin 500mg 2x1, cek HbA1c bulan depan...',
-                    hintStyle: GoogleFonts.poppins(
-                      fontSize: 12.5,
-                      color: const Color(0xFF9E9E9E),
-                    ),
-                    border: InputBorder.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Catatan berhasil disimpan.',
-                            style: GoogleFonts.poppins()),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: Text(
-                    'Simpan Catatan',
-                    style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600, color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
       ),

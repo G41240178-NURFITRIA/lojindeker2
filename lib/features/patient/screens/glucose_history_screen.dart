@@ -22,7 +22,7 @@ class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
   static const Color _orangeDot = Color(0xFFE65100);
 
   final List<String> _pillTitles = [
-    'Cek Risiko AI',
+    'Cek Risiko',
     'Konsultasi',
     'Monitoring',
     'Resep',
@@ -85,8 +85,8 @@ class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
               ]),
               const SizedBox(height: 18),
 
-              // 5. Riwayat: 17 Mei 2024
-              _buildSectionTitle('17 Mei 2024'),
+              // 5. Riwayat: 17 Mei 2026
+              _buildSectionTitle('17 Mei 2026'),
               const SizedBox(height: 8),
               _buildHistoryGroupCard([
                 _HistoryItemData(

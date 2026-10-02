@@ -5,7 +5,8 @@ import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
 
 class AddDoctorScreen extends StatefulWidget {
-  const AddDoctorScreen({super.key});
+  final int initialIndex;
+  const AddDoctorScreen({super.key, this.initialIndex = 0});
 
   @override
   State<AddDoctorScreen> createState() => _AddDoctorScreenState();
@@ -29,7 +30,11 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialIndex.clamp(0, 1),
+    );
   }
 
   @override
