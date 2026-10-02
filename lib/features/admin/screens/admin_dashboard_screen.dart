@@ -949,44 +949,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF424242)),
             ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const RiskCheckScreen()),
-                      );
-                    },
-                    icon: const Icon(Icons.play_circle_outline_rounded, size: 16, color: Color(0xFFD81B60)),
-                    label: Text('Mulai Cek', style: GoogleFonts.poppins(color: const Color(0xFFD81B60), fontSize: 12, fontWeight: FontWeight.w600)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFF8BBD0)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RiwayatRisikoScreen()),
+                  );
+                },
+                icon: const Icon(Icons.history_rounded, size: 16, color: Colors.white),
+                label: Text('Lihat Riwayat Risiko', style: GoogleFonts.poppins(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD81B60),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const RiwayatRisikoScreen()),
-                      );
-                    },
-                    icon: const Icon(Icons.history_rounded, size: 16, color: Colors.white),
-                    label: Text('Riwayat Risiko', style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD81B60),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
