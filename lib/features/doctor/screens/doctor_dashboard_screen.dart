@@ -251,7 +251,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.softPinkBg, // Soft Pink Background (#FFF0F5)
+      backgroundColor: const Color(0xFFFFF4F7), // Match the light background from screenshot
       body: _buildBody(),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
@@ -270,221 +270,257 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     return _buildProfileTab();
   }
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) {
+      return 'Selamat pagi ☀️';
+    } else if (hour < 15) {
+      return 'Selamat siang 🌤️';
+    } else if (hour < 18) {
+      return 'Selamat sore ⛅';
+    } else {
+      return 'Selamat malam 🌙';
+    }
+  }
+
   /// Dashboard Home Content (Persis Referensi)
   Widget _buildDashboardBody() {
-    return Column(
+    return Stack(
       children: [
-        // 1. Top Curved Soft Pink Header (Avatar, Nama Dokter, Bell & Search Bar)
-        _buildHeader(),
-
-        // 2. Scrollable Body Content
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-
-                // 2 Summary Metric Cards (Total pasien: 128 & Chat belum dibaca: 5)
-                _buildSummaryCards(),
-
-                const SizedBox(height: 18),
-
-                // Section Header: "Pesan terbaru" & "Lihat semua"
-                _buildSectionHeader(),
-
-                const SizedBox(height: 10),
-
-                // Daftar pesan pasien
-                _buildChatList(),
-
-                const SizedBox(height: 24),
-              ],
+        // Background Shapes (Top Right Circles)
+        Positioned(
+          top: -80,
+          right: -40,
+          child: Container(
+            width: 250,
+            height: 250,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFE0E8),
+              shape: BoxShape.circle,
             ),
           ),
+        ),
+        Positioned(
+          top: -20,
+          right: -80,
+          child: Container(
+            width: 180,
+            height: 180,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD1DC).withValues(alpha: 0.6),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        
+        // Main Content
+        Column(
+          children: [
+            // 1. Top Header
+            _buildHeader(),
+
+            // 2. Scrollable Body Content
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+
+                    // 2 Summary Metric Cards (Total pasien: 128 & Chat belum dibaca: 5)
+                    _buildSummaryCards(),
+
+                    const SizedBox(height: 18),
+
+                    // Section Header: "Pesan terbaru" & "Lihat semua"
+                    _buildSectionHeader(),
+
+                    const SizedBox(height: 10),
+
+                    // Daftar pesan pasien
+                    _buildChatList(),
+
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  /// 1. Top Curved Soft Pink Header (Persis Referensi Desain dengan Soft Pink)
+  /// 1. Top Header (Sesuai dengan screenshot)
   Widget _buildHeader() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFF8DA1), // Soft Pink Light
-            Color(0xFFF06292), // Soft Pink Primary (Sesuai tema seluruh aplikasi)
-          ],
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 14,
+          bottom: 22,
         ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 14,
-            bottom: 22,
-          ),
-          child: Column(
-            children: [
-              // Top Row: Avatar, Greeting + Name, Notification Bell
-              Row(
-                children: [
-                  // White circular avatar with outline person icon
-                  Container(
+        child: Column(
+          children: [
+            // Top Row: Notification Bell, Greeting + Name, Avatar
+            Row(
+              children: [
+                // Notification Bell
+                InkWell(
+                  onTap: _showNotificationDialog,
+                  borderRadius: BorderRadius.circular(25),
+                  child: Container(
                     width: 50,
                     height: 50,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFFFD1DC),
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.person_outline_rounded,
-                      color: Color(0xFFF06292),
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-
-                  // Greeting & Doctor Name
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Stack(
+                      alignment: Alignment.center,
                       children: [
-                        Text(
-                          'Selamat pagi,',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.95),
-                            fontWeight: FontWeight.w400,
-                          ),
+                        const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Color(0xFF141414),
+                          size: 26,
                         ),
-                        Text(
-                          widget.doctorName,
-                          style: GoogleFonts.poppins(
-                            fontSize: 18.5,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
+                        Positioned(
+                          top: 12,
+                          right: 14,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-
-                  // Notification Bell with Badge Dot
-                  InkWell(
-                    onTap: _showNotificationDialog,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(
-                            Icons.notifications_none_rounded,
-                            color: Colors.white,
-                            size: 27,
-                          ),
-                          Positioned(
-                            top: 2,
-                            right: 2,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ],
+                ),
+                
+                const Spacer(),
+                
+                // Greeting & Doctor Name
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _getGreeting(),
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                    Text(
+                      widget.doctorName,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: const Color(0xFF141414),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(width: 14),
+                
+                // Avatar
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Search Bar: "Cari pasien..."
+            Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 18),
-
-              // Search Bar: "Cari pasien..."
-              Container(
-                height: 46,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(25),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 14),
-                    const Icon(
-                      Icons.search_rounded,
-                      color: Color(0xFFF06292),
-                      size: 22,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val;
-                          });
-                        },
-                        style: GoogleFonts.poppins(
+              child: Row(
+                children: [
+                  const SizedBox(width: 16),
+                  const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFFF06292),
+                    size: 22,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val;
+                        });
+                      },
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        color: const Color(0xFF212121),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Cari pasien...',
+                        hintStyle: GoogleFonts.poppins(
                           fontSize: 13.5,
-                          color: const Color(0xFF212121),
+                          color: const Color(0xFF9E9E9E),
                         ),
-                        decoration: InputDecoration(
-                          hintText: 'Cari pasien...',
-                          hintStyle: GoogleFonts.poppins(
-                            fontSize: 13.5,
-                            color: const Color(0xFF9E9E9E),
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                  if (_searchQuery.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: Color(0xFF9E9E9E),
                         ),
                       ),
                     ),
-                    if (_searchQuery.isNotEmpty)
-                      GestureDetector(
-                        onTap: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Icon(
-                            Icons.close_rounded,
-                            size: 18,
-                            color: Color(0xFF9E9E9E),
-                          ),
-                        ),
-                      ),
-                    const SizedBox(width: 8),
-                  ],
-                ),
+                  const SizedBox(width: 8),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
