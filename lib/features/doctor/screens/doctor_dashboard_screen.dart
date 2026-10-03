@@ -526,23 +526,26 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
-  /// 2 Summary Metric Cards (Total pasien: 128 & Chat belum dibaca: 5)
+  /// 2 Summary Metric Cards (Total pasien & Chat belum dibaca dinamis)
   Widget _buildSummaryCards() {
+    final totalPatients = _chats.length;
+    final unreadCount = _chats.fold<int>(0, (sum, chat) => sum + chat.unreadCount);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          // Total Pasien: 128
+          // Total Pasien
           Expanded(
             child: _buildMetricCard(
               icon: Icons.people_outline_rounded,
-              value: '128',
+              value: '$totalPatients',
               label: 'Total pasien',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      'Total 128 pasien terdaftar dalam pemantauan Dr. Kaka.',
+                      'Total $totalPatients pasien terdaftar dalam pemantauan.',
                       style: GoogleFonts.poppins(),
                     ),
                     backgroundColor: AppColors.primary,
@@ -555,17 +558,17 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           ),
           const SizedBox(width: 12),
 
-          // Chat Belum Dibaca: 5
+          // Chat Belum Dibaca
           Expanded(
             child: _buildMetricCard(
               icon: Icons.chat_bubble_outline_rounded,
-              value: '5',
+              value: '$unreadCount',
               label: 'Chat belum dibaca',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      'Terdapat 5 pesan konsultasi baru menunggu respons.',
+                      'Terdapat $unreadCount pesan konsultasi baru menunggu respons.',
                       style: GoogleFonts.poppins(),
                     ),
                     backgroundColor: AppColors.primary,
@@ -644,9 +647,9 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       fontSize: 11,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF757575),
-                      height: 1.1,
+                      height: 1.2,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
