@@ -28,10 +28,10 @@ service cloud.firestore {
     }
     
     // 2. Doctors Collection
-    // Read: pemilik dokter atau admin
+    // Read: setiap pengguna login dapat melihat data dokter untuk konsultasi
     // Write: hanya admin
     match /doctors/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
     
@@ -45,6 +45,10 @@ service cloud.firestore {
       allow read: if isOwner(uid) || isAdmin() || isDoctor();
       allow update: if (isOwner(uid) || isAdmin()) && request.resource.data.role == resource.data.role;
       allow delete: if isAdmin();
+
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(uid) || isAdmin() || isDoctor();
+      }
     }
     
     // 4. LoginLookup Collection ({username}, {phoneNumber}, {email})
@@ -57,6 +61,14 @@ service cloud.firestore {
       allow list: if false;
       allow create: if isSignedIn() || isAdmin();
       allow update, delete: if isAdmin();
+    }
+
+    // 5. Consultation Chats Collection (Real-time Chat Pasien & Dokter)
+    match /consultation_chats/{chatId} {
+      allow read, write: if isSignedIn();
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn();
+      }
     }
     
     // Default fallback deny

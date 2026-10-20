@@ -9,6 +9,8 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/admin/screens/admin_dashboard_screen.dart';
 import 'features/doctor/screens/doctor_dashboard_screen.dart';
 import 'features/patient/screens/patient_dashboard_screen.dart';
+import 'core/services/patient_chat_notification_service.dart';
+import 'core/services/patient_activity_service.dart';
 
 /// AuthGate mengontrol aliran autentikasi aplikasi berdasarkan status login
 /// FirebaseAuth, pemeriksaan timeout cold start, dan role pengguna di Firestore.
@@ -90,6 +92,7 @@ class _AuthGateState extends State<AuthGate> {
 
         final user = snapshot.data;
         if (user == null) {
+          PatientChatNotificationService.instance.stopListening();
           return const LandingScreen();
         }
 
@@ -112,6 +115,7 @@ class _AuthGateState extends State<AuthGate> {
 
             // Jika UID tidak ditemukan di admins, doctors, maupun users
             if (appUser == null) {
+              PatientChatNotificationService.instance.stopListening();
               // Sign out agar tidak tersangkut
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 AuthService.instance.signOut();
@@ -145,8 +149,14 @@ class _AuthGateState extends State<AuthGate> {
               case AppRole.admin:
                 return const AdminDashboardScreen();
               case AppRole.doctor:
-                return DoctorDashboardScreen(doctorName: appUser.fullName);
+                return DoctorDashboardScreen(
+                  doctorName: appUser.fullName,
+                  doctorId: appUser.uid,
+                );
               case AppRole.pasien:
+                PatientChatNotificationService.instance
+                    .startListening(appUser.uid);
+                PatientActivityService.instance.loadUserDataFromFirestore();
                 return PatientDashboardScreen(patientName: appUser.fullName);
             }
           },

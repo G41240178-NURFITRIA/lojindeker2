@@ -7,7 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/profile_image_service.dart';
-import '../models/risk_assessment_model.dart';
+import '../../../core/services/patient_chat_notification_service.dart';
 import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
 import 'medical_records_screen.dart';
@@ -44,6 +44,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   void _loadCurrentProfile() async {
     final user = AuthService.instance.currentUser;
     if (user != null) {
+      PatientActivityService.instance.loadUserDataFromFirestore();
       try {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data() != null && mounted) {
@@ -543,10 +544,10 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const RiskCheckScreen()),
-                    );
+                    // Beralih ke tab Konsultasi Dokter (index 2) untuk memilih dokter atau melanjutkan chat yang sudah ada
+                    setState(() {
+                      _selectedTabIndex = 2;
+                    });
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -676,15 +677,22 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _buildServiceCard(
-                  icon: const _DoctorOutlineIcon(color: Colors.white, size: 28),
-                  title: 'Konsultasi',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ConsultationListScreen(),
-                      ),
+                child: ValueListenableBuilder<int>(
+                  valueListenable:
+                      PatientChatNotificationService.instance.unreadTotalNotifier,
+                  builder: (context, unreadCount, _) {
+                    return _buildServiceCard(
+                      icon: const _DoctorOutlineIcon(color: Colors.white, size: 28),
+                      title: 'Konsultasi',
+                      showBadge: unreadCount > 0,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ConsultationListScreen(),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -1034,7 +1042,8 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                               ),
 
                             // 2. Konsultasi Dokter
-                            if (hasConsultation) ..._buildKonsultasiItem(latestConsultation!),
+                            if (hasConsultation)
+                              ..._buildKonsultasiItem(latestConsultation),
 
                             if (hasConsultation && hasReminder)
                               const Divider(
@@ -1395,6 +1404,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     required Widget icon,
     required String title,
     VoidCallback? onTap,
+    bool showBadge = false,
   }) {
     return Material(
       color: Colors.transparent,
@@ -1420,23 +1430,47 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              SizedBox(height: 32, child: Center(child: icon)),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  height: 1.2,
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(height: 32, child: Center(child: icon)),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        height: 1.2,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
+              if (showBadge)
+                Positioned(
+                  top: -2,
+                  right: 2,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53935),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 1.8,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1684,6 +1718,42 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
         ? const Color(0xFFD81B60)
         : const Color(0xFFF48FB1);
 
+    Widget iconWidget = Icon(icon, size: 26, color: color);
+
+    // Titik merah (red dot) pada tab Chat (index 1) jika ada pesan dokter baru
+    if (index == 1) {
+      iconWidget = ValueListenableBuilder<int>(
+        valueListenable:
+            PatientChatNotificationService.instance.unreadTotalNotifier,
+        builder: (context, unreadCount, child) {
+          if (unreadCount <= 0) return child!;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              child!,
+              Positioned(
+                right: -3,
+                top: -3,
+                child: Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE53935),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+        child: iconWidget,
+      );
+    }
+
     return InkWell(
       onTap: () {
         if (index == 0) {
@@ -1708,7 +1778,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Icon(icon, size: 26, color: color),
+        child: iconWidget,
       ),
     );
   }
@@ -1750,20 +1820,69 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildDoctorCard(
-            name: 'Dr. Kaka',
-            speciality: 'Spesialis Penyakit Dalam',
-            hospital: 'RS D-Care Sejahtera',
-            status: 'Online',
-            statusColor: const Color(0xFF2E7D32),
-          ),
-          const SizedBox(height: 12),
-          _buildDoctorCard(
-            name: 'Dr. Ika',
-            speciality: 'Spesialis Penyakit Dalam',
-            hospital: 'RS D-Care Sejahtera',
-            status: 'Offline',
-            statusColor: const Color(0xFF757575),
+
+          // Stream daftar dokter terdaftar dari Firestore
+          StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance.collection('doctors').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFD81B60),
+                    ),
+                  ),
+                );
+              }
+
+              final docs = snapshot.data?.docs ?? [];
+              if (docs.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Belum ada dokter yang terdaftar saat ini.',
+                      style: GoogleFonts.poppins(color: Colors.grey),
+                    ),
+                  ),
+                );
+              }
+
+              return Column(
+                children: docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final doctor = AppUser.fromMap(data, doc.id);
+                  final isOnline = doctor.isActive;
+                  final doctorName = doctor.fullName.isNotEmpty
+                      ? doctor.fullName
+                      : doctor.username;
+                  final specialty = (doctor.specialization != null &&
+                          doctor.specialization!.isNotEmpty)
+                      ? doctor.specialization!
+                      : 'Spesialis Penyakit Dalam';
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildDoctorCard(
+                      name: doctorName,
+                      speciality: specialty,
+                      hospital: 'RS D-Care Sejahtera',
+                      status: isOnline ? 'Online' : 'Offline',
+                      statusColor: isOnline
+                          ? const Color(0xFF2E7D32)
+                          : const Color(0xFF757575),
+                      doctorId: doctor.uid,
+                    ),
+                  );
+                }).toList(),
+              );
+            },
           ),
         ],
       ),
@@ -1776,99 +1895,165 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     required String hospital,
     required String status,
     required Color statusColor,
+    String? doctorId,
   }) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                LiveChatScreen(doctorName: name, specialty: speciality),
+    return ValueListenableBuilder<Map<String, int>>(
+      valueListenable:
+          PatientChatNotificationService.instance.unreadDoctorMapNotifier,
+      builder: (context, unreadMap, _) {
+        final unread = (doctorId != null ? unreadMap[doctorId] ?? 0 : 0) +
+            (unreadMap[name.toLowerCase().trim()] ?? 0);
+        final hasUnread = unread > 0;
+
+        return InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LiveChatScreen(
+                  doctorName: name,
+                  specialty: speciality,
+                  doctorId: doctorId,
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: hasUnread
+                  ? Border.all(
+                      color: const Color(0xFFE53935),
+                      width: 1.5,
+                    )
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Avatar dengan titik merah jika ada balasan belum dibaca
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFCE4EC),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.person_rounded,
+                        color: Color(0xFFD81B60),
+                        size: 28,
+                      ),
+                    ),
+                    if (hasUnread)
+                      Positioned(
+                        top: -3,
+                        right: -3,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE53935),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF141414),
+                              ),
+                            ),
+                          ),
+                          if (hasUnread)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE53935),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'Pesan Baru',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      Text(
+                        speciality,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          color: const Color(0xFFD81B60),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        hospital,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: const Color(0xFF757575),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          status,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: statusColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFCE4EC),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: Color(0xFFD81B60),
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF141414),
-                    ),
-                  ),
-                  Text(
-                    speciality,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      color: const Color(0xFFD81B60),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    hospital,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: const Color(0xFF757575),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      status,
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: statusColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

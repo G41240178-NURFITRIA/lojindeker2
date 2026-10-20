@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'consultation_list_screen.dart';
 
 class EducationArticle {
   final String id;
@@ -218,7 +217,6 @@ class ArticleDetailScreen extends StatefulWidget {
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   bool _isBookmarked = false;
-  bool _isCompleted = false;
 
   @override
   Widget build(BuildContext context) {
@@ -697,7 +695,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     ),
                   ],
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),

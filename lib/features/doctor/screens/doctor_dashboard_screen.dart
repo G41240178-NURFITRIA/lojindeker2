@@ -1,10 +1,13 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/chat_service.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/user_repository.dart';
 import '../../auth/screens/landing_screen.dart';
-import '../../auth/screens/login_screen.dart';
 import 'doctor_all_chats_screen.dart';
 import 'doctor_prescription_note_screen.dart';
 
@@ -29,10 +32,12 @@ class DoctorPatientChat {
 
 class DoctorDashboardScreen extends StatefulWidget {
   final String doctorName;
+  final String? doctorId;
 
   const DoctorDashboardScreen({
     super.key,
     this.doctorName = 'Dr. Kaka Pratama',
+    this.doctorId,
   });
 
   @override
@@ -44,50 +49,116 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  // Data pasien persis seperti pada desain gambar referensi
-  late List<DoctorPatientChat> _chats;
+  // Data profil dokter dari Firestore
+  String _doctorSchedule = 'Senin - Jumat (09:00 - 17:00)';
+  String _doctorDisplayName = '';
+  String _doctorSpecialty = 'Spesialis Penyakit Dalam (Sp.PD)';
+  String? _resolvedDoctorUid;
+  StreamSubscription<DocumentSnapshot>? _doctorProfileSubscription;
+
+  // Data pasien terhubung real-time dengan Firestore
+  List<DoctorPatientChat> _chats = [];
+  StreamSubscription<List<RealtimeConsultationChat>>? _chatSubscription;
 
   @override
   void initState() {
     super.initState();
-    _chats = [
-      DoctorPatientChat(
-        id: '1',
-        name: 'Widyatna Dwi',
-        message: 'Baik dok, saya sudah minum obatnya.',
-        time: '14:02',
-        unreadCount: 2,
-        glucoseNote: 'Gula Darah Puasa: 118 mg/dL',
-      ),
-      DoctorPatientChat(
-        id: '2',
-        name: 'Afista Putri K.',
-        message: 'Baik dok, terima kasih banyak.',
-        time: 'Kemarin',
-        unreadCount: 0,
-        glucoseNote: 'Gula Darah 2 Jam PP: 135 mg/dL',
-      ),
-      DoctorPatientChat(
-        id: '3',
-        name: 'Yosua Gunadiel',
-        message: 'Hasil gula darah saya naik lagi dok.',
-        time: 'Senin',
-        unreadCount: 1,
-        glucoseNote: 'Gula Darah Sewaktu: 210 mg/dL (Perlu Evaluasi)',
-      ),
-      DoctorPatientChat(
-        id: '4',
-        name: 'Rina Maharani',
-        message: 'Siap dok, akan saya coba.',
-        time: 'Minggu',
-        unreadCount: 0,
-        glucoseNote: 'Gula Darah Puasa: 124 mg/dL',
-      ),
-    ];
+    _doctorDisplayName = widget.doctorName;
+    _initDoctorProfile();
+    _subscribeToChats();
+  }
+
+  void _subscribeToChats() {
+    _chatSubscription?.cancel();
+    final effectiveUid = widget.doctorId ?? _resolvedDoctorUid ?? AuthService.instance.currentUser?.uid;
+    final effectiveName = _doctorDisplayName.isNotEmpty ? _doctorDisplayName : widget.doctorName;
+    _chatSubscription = ChatService.instance
+        .streamDoctorChats(
+          doctorName: effectiveName,
+          doctorId: effectiveUid,
+        )
+        .listen((realtimeChats) {
+      if (!mounted) return;
+      setState(() {
+        _chats = realtimeChats.map((c) => c.toDoctorPatientChat()).toList();
+      });
+    });
+  }
+
+  void _initDoctorProfile() async {
+    String? uid = widget.doctorId ?? AuthService.instance.currentUser?.uid;
+    if (uid != null && uid.isNotEmpty) {
+      _resolvedDoctorUid = uid;
+      _subscribeToChats();
+      _listenToDoctorProfile(uid);
+      return;
+    }
+
+    // Fallback: cari dokter berdasarkan nama di Firestore
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('doctors')
+          .where('fullName', isEqualTo: widget.doctorName)
+          .limit(1)
+          .get();
+      if (snap.docs.isNotEmpty) {
+        final doc = snap.docs.first;
+        _resolvedDoctorUid = doc.id;
+        _subscribeToChats();
+        _listenToDoctorProfile(doc.id);
+      } else {
+        final allDocs = await FirebaseFirestore.instance
+            .collection('doctors')
+            .limit(1)
+            .get();
+        if (allDocs.docs.isNotEmpty) {
+          final doc = allDocs.docs.first;
+          _resolvedDoctorUid = doc.id;
+          _subscribeToChats();
+          _listenToDoctorProfile(doc.id);
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error init doctor profile: $e');
+    }
+  }
+
+  void _listenToDoctorProfile(String uid) {
+    _doctorProfileSubscription?.cancel();
+    _doctorProfileSubscription = FirebaseFirestore.instance
+        .collection('doctors')
+        .doc(uid)
+        .snapshots()
+        .listen((doc) {
+      if (!mounted) return;
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final previousName = _doctorDisplayName;
+        setState(() {
+          if (data['schedule'] != null &&
+              (data['schedule'] as String).trim().isNotEmpty) {
+            _doctorSchedule = data['schedule'] as String;
+          }
+          if (data['fullName'] != null &&
+              (data['fullName'] as String).trim().isNotEmpty) {
+            _doctorDisplayName = data['fullName'] as String;
+          }
+          if (data['specialization'] != null &&
+              (data['specialization'] as String).trim().isNotEmpty) {
+            _doctorSpecialty = data['specialization'] as String;
+          }
+        });
+        if (previousName != _doctorDisplayName) {
+          _subscribeToChats();
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
+    _doctorProfileSubscription?.cancel();
+    _chatSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -221,24 +292,11 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   void _openChat(DoctorPatientChat chat) {
-    // Reset unread count
-    setState(() {
-      final index = _chats.indexWhere((c) => c.id == chat.id);
-      if (index != -1) {
-        _chats[index] = DoctorPatientChat(
-          id: chat.id,
-          name: chat.name,
-          message: chat.message,
-          time: chat.time,
-          unreadCount: 0,
-          glucoseNote: chat.glucoseNote,
-        );
-      }
-    });
-
+    ChatService.instance.markAsReadByDoctor(chat.id);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => DoctorChatDetailScreen(
+          chatId: chat.id,
           doctorName: widget.doctorName,
           patientName: chat.name,
           initialMessage: chat.message,
@@ -715,7 +773,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
   /// Chat List items (Kartu soft pink persis seperti pada gambar referensi)
   Widget _buildChatList() {
-    final list = _filteredChats.where((chat) => chat.unreadCount > 0).toList();
+    List<DoctorPatientChat> list;
+    if (_searchQuery.trim().isNotEmpty) {
+      list = _filteredChats;
+    } else {
+      final unread = _chats.where((chat) => chat.unreadCount > 0).toList();
+      list = unread.isNotEmpty ? unread : _chats;
+    }
 
     if (list.isEmpty) {
       return Padding(
@@ -724,13 +788,15 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           child: Column(
             children: [
               Icon(
-                Icons.search_off_rounded,
-                size: 48,
+                Icons.chat_bubble_outline_rounded,
+                size: 44,
                 color: AppColors.primary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 8),
               Text(
-                'Pasien "$_searchQuery" tidak ditemukan',
+                _searchQuery.trim().isNotEmpty
+                    ? 'Pasien "$_searchQuery" tidak ditemukan'
+                    : 'Belum ada pesan konsultasi baru',
                 style: GoogleFonts.poppins(
                   fontSize: 13.5,
                   color: const Color(0xFF757575),
@@ -1030,7 +1096,9 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   const SizedBox(height: 14),
 
                   Text(
-                    widget.doctorName,
+                    _doctorDisplayName.isNotEmpty
+                        ? _doctorDisplayName
+                        : widget.doctorName,
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
@@ -1038,7 +1106,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     ),
                   ),
                   Text(
-                    'Spesialis Penyakit Dalam (Sp.PD)',
+                    _doctorSpecialty,
                     style: GoogleFonts.poppins(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w500,
@@ -1090,8 +1158,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             _buildProfileMenuItem(
               icon: Icons.schedule_outlined,
               title: 'Jadwal Konsultasi Online',
-              subtitle: 'Senin - Jumat (09:00 - 17:00)',
-              onTap: () {},
+              subtitle: _doctorSchedule,
+              onTap: _showEditScheduleBottomSheet,
             ),
             _buildProfileMenuItem(
               icon: Icons.security_outlined,
@@ -1223,6 +1291,500 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
+  /// Bottom Sheet untuk Mengubah Jadwal Konsultasi Dokter
+  void _showEditScheduleBottomSheet() {
+    final TextEditingController scheduleController =
+        TextEditingController(text: _doctorSchedule);
+    String selectedDays = 'Senin - Jumat';
+    String selectedHours = '09:00 - 17:00';
+    bool isSaving = false;
+
+    // Deteksi preset hari dari teks yang ada
+    if (_doctorSchedule.contains('Senin - Sabtu')) {
+      selectedDays = 'Senin - Sabtu';
+    } else if (_doctorSchedule.contains('Senin - Kamis')) {
+      selectedDays = 'Senin - Kamis';
+    } else if (_doctorSchedule.contains('Setiap Hari')) {
+      selectedDays = 'Setiap Hari';
+    } else if (_doctorSchedule.contains('Senin - Jumat')) {
+      selectedDays = 'Senin - Jumat';
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            void updateCombinedText(String days, String hours) {
+              setModalState(() {
+                selectedDays = days;
+                selectedHours = hours;
+                scheduleController.text = '$days ($hours)';
+              });
+            }
+
+            return Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle Bar
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.softPinkCard,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.edit_calendar_rounded,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ubah Jadwal Konsultasi',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF212121),
+                                ),
+                              ),
+                              Text(
+                                'Jadwal akan langsung otomatis terlihat oleh pasien',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  color: const Color(0xFF757575),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Label Pilihan Hari
+                    Text(
+                      'Pilih Hari Ketersediaan',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF333333),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        'Senin - Jumat',
+                        'Senin - Sabtu',
+                        'Senin - Kamis',
+                        'Setiap Hari',
+                      ].map((dayOption) {
+                        final isSelected = selectedDays == dayOption;
+                        return ChoiceChip(
+                          label: Text(
+                            dayOption,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF424242),
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: const Color(0xFFF7F7F8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : const Color(0xFFE5E5E5),
+                            ),
+                          ),
+                          onSelected: (selected) {
+                            if (selected) {
+                              updateCombinedText(dayOption, selectedHours);
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Label Pilihan Jam
+                    Text(
+                      'Pilih Jam Praktik',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF333333),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        '08:00 - 16:00',
+                        '09:00 - 17:00',
+                        '10:00 - 18:00',
+                        '13:00 - 20:00',
+                      ].map((hourOption) {
+                        final isSelected = selectedHours == hourOption;
+                        return ChoiceChip(
+                          label: Text(
+                            hourOption,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF424242),
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: AppColors.primary,
+                          backgroundColor: const Color(0xFFF7F7F8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : const Color(0xFFE5E5E5),
+                            ),
+                          ),
+                          onSelected: (selected) {
+                            if (selected) {
+                              updateCombinedText(selectedDays, hourOption);
+                            }
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Tombol Kustom Jam dengan TimePicker
+                    InkWell(
+                      onTap: () async {
+                        final TimeOfDay? start = await showTimePicker(
+                          context: ctx,
+                          initialTime: const TimeOfDay(hour: 9, minute: 0),
+                          helpText: 'PILIH JAM MULAI',
+                        );
+                        if (start == null || !ctx.mounted) return;
+
+                        final TimeOfDay? end = await showTimePicker(
+                          context: ctx,
+                          initialTime: const TimeOfDay(hour: 17, minute: 0),
+                          helpText: 'PILIH JAM SELESAI',
+                        );
+                        if (end == null || !ctx.mounted) return;
+
+                        String formatTime(TimeOfDay t) =>
+                            '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+                        final customHour =
+                            '${formatTime(start)} - ${formatTime(end)}';
+                        updateCombinedText(selectedDays, customHour);
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.softPinkCard,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.softPinkBorder,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.access_time_rounded,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Pilih Jam Lainnya (TimePicker)',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Teks Hasil / Edit Manual
+                    Text(
+                      'Teks Format Jadwal (Dapat Diedit Manual)',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF333333),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: scheduleController,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF212121),
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFFF9F9FA),
+                        hintText: 'Contoh: Senin - Jumat (09:00 - 17:00)',
+                        prefixIcon: const Icon(
+                          Icons.schedule_outlined,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE0E0E0),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Action Buttons (Batal & Simpan)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: isSaving
+                                ? null
+                                : () => Navigator.pop(bottomSheetContext),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              side: const BorderSide(
+                                color: Color(0xFFD0D0D0),
+                              ),
+                            ),
+                            child: Text(
+                              'Batal',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF616161),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: isSaving
+                                ? null
+                                : () async {
+                                    final newSchedule =
+                                        scheduleController.text.trim();
+                                    if (newSchedule.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Teks jadwal tidak boleh kosong.'),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    setModalState(() => isSaving = true);
+
+                                    try {
+                                      // Ambil UID dokter
+                                      String? targetUid = _resolvedDoctorUid ??
+                                          widget.doctorId ??
+                                          AuthService.instance.currentUser?.uid;
+
+                                      if (targetUid != null &&
+                                          targetUid.isNotEmpty) {
+                                        await UserRepository.instance
+                                            .updateDoctorSchedule(
+                                          targetUid,
+                                          newSchedule,
+                                        );
+                                      } else {
+                                        // Update berdasarkan nama jika UID tidak terdeteksi
+                                        final snap = await FirebaseFirestore
+                                            .instance
+                                            .collection('doctors')
+                                            .where('fullName',
+                                                isEqualTo: widget.doctorName)
+                                            .limit(1)
+                                            .get();
+                                        if (snap.docs.isNotEmpty) {
+                                          await snap.docs.first.reference
+                                              .update({
+                                            'schedule': newSchedule,
+                                            'updatedAt':
+                                                FieldValue.serverTimestamp(),
+                                          });
+                                        }
+                                      }
+
+                                      if (mounted) {
+                                        setState(() {
+                                          _doctorSchedule = newSchedule;
+                                        });
+                                      }
+
+                                      if (bottomSheetContext.mounted) {
+                                        Navigator.pop(bottomSheetContext);
+                                      }
+
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.check_circle_rounded,
+                                                  color: Colors.white,
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Jadwal dokter berhasil diperbarui & otomatis sinkron ke akun pasien.',
+                                                    style: GoogleFonts.poppins(
+                                                        fontSize: 12.5),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            backgroundColor:
+                                                const Color(0xFF2E7D32),
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            margin: const EdgeInsets.all(16),
+                                          ),
+                                        );
+                                      }
+                                    } catch (err) {
+                                      setModalState(() => isSaving = false);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Gagal menyimpan jadwal: $err'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: isSaving
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Simpan Jadwal',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showLogoutConfirmDialog() {
     showDialog(
       context: context,
@@ -1293,6 +1855,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
 /// Detail Chat Dokter & Pasien (Soft Pink Theme)
 class DoctorChatDetailScreen extends StatefulWidget {
+  final String? chatId;
   final String doctorName;
   final String patientName;
   final String initialMessage;
@@ -1300,6 +1863,7 @@ class DoctorChatDetailScreen extends StatefulWidget {
 
   const DoctorChatDetailScreen({
     super.key,
+    this.chatId,
     required this.doctorName,
     required this.patientName,
     required this.initialMessage,
@@ -1313,78 +1877,68 @@ class DoctorChatDetailScreen extends StatefulWidget {
 class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _showTyping = false;
+  StreamSubscription<List<RealtimeChatMessage>>? _msgSubscription;
 
-  late List<Map<String, dynamic>> _messages;
+  List<Map<String, dynamic>> _messages = [];
 
   @override
   void initState() {
     super.initState();
-    _messages = [
-      {
-        'text': 'Selamat siang, dok. Gula darah saya pagi ini 118 mg/dL.',
-        'isDoctor': false,
-        'time': '14:02',
-      },
-      {
-        'text': 'Selamat siang. Itu sudah dalam batas normal. Obatnya sudah diminum?',
-        'isDoctor': true,
-        'time': '14:05',
-        'read': true,
-      },
-      {
-        'text': 'Baik dok, saya sudah minum obatnya.',
-        'isDoctor': false,
-        'time': '14:06',
-      },
-      {
-        'text': 'Baik. Lanjutkan pola makannya dan cek lagi besok pagi ya.',
-        'isDoctor': true,
-        'time': '14:08',
-        'read': true,
-      },
-    ];
+    if (widget.chatId != null && widget.chatId!.isNotEmpty) {
+      ChatService.instance.markAsReadByDoctor(widget.chatId!);
+      _msgSubscription = ChatService.instance
+          .streamMessages(widget.chatId!)
+          .listen((items) {
+        if (!mounted) return;
+        setState(() {
+          _messages = items
+              .map((m) => {
+                    'text': m.text,
+                    'isDoctor': m.isDoctor,
+                    'time': m.time,
+                    'read': m.isRead,
+                  })
+              .toList();
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.position.maxScrollExtent + 40,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      });
+    }
   }
 
   @override
   void dispose() {
+    _msgSubscription?.cancel();
     _msgController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     final text = _msgController.text.trim();
     if (text.isEmpty) return;
 
-    final now = TimeOfDay.now();
-    final timeStr =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    _msgController.clear();
 
-    setState(() {
-      _messages.add({
-        'text': text,
-        'isDoctor': true,
-        'time': timeStr,
-        'read': false,
-      });
-      _msgController.clear();
-      _showTyping = true;
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
+    if (widget.chatId != null && widget.chatId!.isNotEmpty) {
+      try {
+        await ChatService.instance.sendMessage(
+          chatId: widget.chatId!,
+          text: text,
+          senderRole: 'doctor',
+          senderName: widget.doctorName,
         );
+      } catch (e) {
+        debugPrint('⚠️ Error sending doctor message: $e');
       }
-    });
-
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _showTyping = false);
-    });
+    }
   }
 
   void _openPatientHistory() {
@@ -1476,11 +2030,24 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-              itemCount: _messages.length + 2,
+              itemCount: _messages.isEmpty ? 2 : _messages.length + 1,
               itemBuilder: (ctx, idx) {
                 if (idx == 0) return _buildDateSeparator('Hari ini');
-                if (idx == _messages.length + 1) {
-                  return _showTyping ? _buildTypingIndicator() : const SizedBox.shrink();
+                if (_messages.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                    child: Center(
+                      child: Text(
+                        'Belum ada pesan dalam sesi konsultasi ini.\nKetik pesan di bawah untuk membalas pasien.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: const Color(0xFF757575),
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  );
                 }
                 final m = _messages[idx - 1];
                 final isDoctor = m['isDoctor'] as bool;
@@ -1590,30 +2157,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     );
   }
 
-  Widget _buildTypingIndicator() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12, right: 60),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-            bottomRight: Radius.circular(16),
-            bottomLeft: Radius.circular(4),
-          ),
-          border: Border.all(color: AppColors.softPinkBorder, width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (i) => _BouncingDot(delay: i * 200)),
-        ),
-      ),
-    );
-  }
-
   Widget _buildInputBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1705,62 +2248,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-/// Animated bouncing dot untuk typing indicator
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-class _BouncingDot extends StatefulWidget {
-  final int delay;
-  const _BouncingDot({required this.delay});
 
-  @override
-  State<_BouncingDot> createState() => _BouncingDotState();
-}
-
-class _BouncingDotState extends State<_BouncingDot>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _anim = Tween<double>(begin: 0, end: -6).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-    Future.delayed(Duration(milliseconds: widget.delay), () {
-      if (mounted) _ctrl.repeat(reverse: true);
-    });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (context, child) => Transform.translate(
-        offset: Offset(0, _anim.value),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: 8,
-          height: 8,
-          decoration: const BoxDecoration(
-            color: AppColors.primary,
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 /// Riwayat Pasien Screen

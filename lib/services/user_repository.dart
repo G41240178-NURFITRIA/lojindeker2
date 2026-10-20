@@ -155,6 +155,14 @@ class UserRepository {
     });
   }
 
+  /// Perbarui jadwal konsultasi online dokter
+  Future<void> updateDoctorSchedule(String uid, String schedule) async {
+    await _db.collection('doctors').doc(uid).update({
+      'schedule': schedule,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
   // ─── Daftar Pasien / Pengguna ─────────────────────────────────────
   Stream<List<AppUser>> streamPatients() {
     return _db

@@ -4,6 +4,7 @@ import '../../features/patient/models/medication_reminder_model.dart';
 import '../../features/patient/models/risk_assessment_model.dart';
 import 'admin_activity_service.dart';
 import 'auth_service.dart';
+import 'notification_service.dart';
 
 /// Model untuk rekam riwayat dan status pengecekan risiko diabetes pasien
 class PatientRiskRecord {
@@ -259,6 +260,18 @@ class PatientActivityService {
           return MedicationReminder.fromMap(doc.data());
         }).toList();
         remindersNotifier.value = loadedReminders;
+
+        // Jadwalkan otomatis alarm ke notifikasi HP untuk semua pengingat yang aktif
+        for (final rem in loadedReminders) {
+          if (rem.isActive) {
+            NotificationService().scheduleReminderNotification(
+              id: rem.id.hashCode,
+              medicineName: rem.medicineName,
+              dosage: rem.dosage,
+              timeStr: rem.time,
+            );
+          }
+        }
       }
 
       // 4. Muat daftar riwayat risiko dari subcollection
@@ -281,9 +294,43 @@ class PatientActivityService {
         latestRiskNotifier.value = null;
       }
 
-      // 5. Jika tidak ada data konsultasi dari Firestore, tetap null
-      if (!userDoc.exists || userDoc.data() == null || userDoc.data()!['latestDoctorName'] == null) {
-        latestConsultationNotifier.value = null;
+      // 5. Muat latest consultation langsung dari consultation_chats jika belum ada atau untuk selalu update
+      try {
+        final chatQuery = await FirebaseFirestore.instance
+            .collection('consultation_chats')
+            .where('patientId', isEqualTo: user.uid)
+            .get();
+
+        if (chatQuery.docs.isNotEmpty) {
+          final docs = chatQuery.docs.toList();
+          docs.sort((a, b) {
+            final tA = (a.data()['lastMessageTime'] as Timestamp?)?.toDate() ?? DateTime(2000);
+            final tB = (b.data()['lastMessageTime'] as Timestamp?)?.toDate() ?? DateTime(2000);
+            return tB.compareTo(tA);
+          });
+          final latestData = docs.first.data();
+          final docName = latestData['doctorName']?.toString() ?? 'Dokter';
+          final docSpec = latestData['doctorSpecialty']?.toString() ?? 'Spesialis Penyakit Dalam';
+          final lastMsg = latestData['lastMessage']?.toString() ?? 'Konsultasi aktif';
+          final lastTime = (latestData['lastMessageTime'] as Timestamp?)?.toDate() ?? DateTime.now();
+
+          latestConsultationNotifier.value = PatientConsultationActivity(
+            doctorName: docName,
+            specialty: docSpec,
+            date: formatIndonesianDate(lastTime),
+            time: formatTime(lastTime),
+            lastMessage: lastMsg,
+          );
+        } else if (userDoc.exists && userDoc.data() != null && userDoc.data()!['latestDoctorName'] != null) {
+          // Tetap gunakan data dari userDoc
+        } else {
+          latestConsultationNotifier.value = null;
+        }
+      } catch (e) {
+        debugPrint('ℹ️ [PatientActivityService] Gagal load latest consultation chat: $e');
+        if (!userDoc.exists || userDoc.data() == null || userDoc.data()!['latestDoctorName'] == null) {
+          latestConsultationNotifier.value = null;
+        }
       }
     } catch (e) {
       debugPrint('ℹ️ [PatientActivityService] Gagal load dari Firestore (menggunakan data lokal): $e');
@@ -452,14 +499,25 @@ class PatientActivityService {
 
   List<MedicationReminder> get reminders => remindersNotifier.value;
 
-  /// Menambahkan jadwal pengingat obat baru
+  /// Menambahkan jadwal pengingat obat baru dan mendaftarkan alarm harian ke HP
   Future<void> addReminder(MedicationReminder reminder) async {
     remindersNotifier.value = [reminder, ...remindersNotifier.value];
     _syncReminderToFirestore(reminder);
+    // Daftarkan alarm harian ke sistem HP
+    if (reminder.isActive) {
+      await NotificationService().scheduleReminderNotification(
+        id: reminder.id.hashCode,
+        medicineName: reminder.medicineName,
+        dosage: reminder.dosage,
+        timeStr: reminder.time,
+      );
+    }
   }
 
-  /// Menghapus jadwal pengingat obat
+  /// Menghapus jadwal pengingat obat dan membatalkan alarm HP
   Future<void> removeReminder(String id) async {
+    // Batalkan alarm HP sebelum dihapus
+    await NotificationService().cancelReminderNotification(id.hashCode);
     remindersNotifier.value = remindersNotifier.value.where((r) => r.id != id).toList();
     final user = AuthService.instance.currentUser;
     if (user != null) {
@@ -476,7 +534,7 @@ class PatientActivityService {
     }
   }
 
-  /// Mengaktifkan atau menonaktifkan pengingat obat
+  /// Mengaktifkan atau menonaktifkan pengingat obat, termasuk alarm HP
   Future<void> toggleReminderActive(String id, bool isActive) async {
     final updatedList = remindersNotifier.value.map((r) {
       if (r.id == id) {
@@ -488,6 +546,18 @@ class PatientActivityService {
 
     final rem = updatedList.firstWhere((r) => r.id == id);
     _syncReminderToFirestore(rem);
+
+    // Aktifkan atau batalkan alarm HP sesuai status toggle
+    if (isActive) {
+      await NotificationService().scheduleReminderNotification(
+        id: rem.id.hashCode,
+        medicineName: rem.medicineName,
+        dosage: rem.dosage,
+        timeStr: rem.time,
+      );
+    } else {
+      await NotificationService().cancelReminderNotification(rem.id.hashCode);
+    }
   }
 
   /// Mengubah status sudah diminum hari ini
@@ -504,7 +574,7 @@ class PatientActivityService {
     _syncReminderToFirestore(rem);
   }
 
-  /// Mengubah waktu jam pengingat obat
+  /// Mengubah waktu jam pengingat obat dan memperbarui alarm HP
   Future<void> updateReminderTime(String id, String newTime) async {
     final updatedList = remindersNotifier.value.map((r) {
       if (r.id == id) {
@@ -516,6 +586,17 @@ class PatientActivityService {
 
     final rem = updatedList.firstWhere((r) => r.id == id);
     _syncReminderToFirestore(rem);
+
+    // Batalkan alarm lama dan jadwalkan ulang dengan waktu baru
+    if (rem.isActive) {
+      await NotificationService().cancelReminderNotification(rem.id.hashCode);
+      await NotificationService().scheduleReminderNotification(
+        id: rem.id.hashCode,
+        medicineName: rem.medicineName,
+        dosage: rem.dosage,
+        timeStr: newTime,
+      );
+    }
   }
 
   void _syncReminderToFirestore(MedicationReminder rem) async {

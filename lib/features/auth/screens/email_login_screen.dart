@@ -68,6 +68,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
             MaterialPageRoute(
               builder: (_) => DoctorDashboardScreen(
                 doctorName: user.fullName.isNotEmpty ? user.fullName : 'Dokter',
+                doctorId: user.uid,
               ),
             ),
           );

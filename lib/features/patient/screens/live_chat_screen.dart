@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/admin_activity_service.dart';
+import '../../../core/services/chat_service.dart';
 import '../../../core/services/patient_activity_service.dart';
+import '../../../core/services/patient_chat_notification_service.dart';
 
 /// Model pesan chat
 class ChatMessage {
@@ -16,6 +18,14 @@ class ChatMessage {
     required this.isUser,
     required this.time,
   });
+
+  factory ChatMessage.fromRealtime(RealtimeChatMessage rm) {
+    return ChatMessage(
+      text: rm.text,
+      isUser: rm.isPatient,
+      time: rm.time,
+    );
+  }
 }
 
 /// Layar Chat Konsultasi Interaktif (Tema Soft Pink)
@@ -23,12 +33,14 @@ class LiveChatScreen extends StatefulWidget {
   final String doctorName;
   final String specialty;
   final String initials;
+  final String? doctorId;
 
   const LiveChatScreen({
     super.key,
     this.doctorName = 'Dr. Kaka',
     this.specialty = 'Spesialis Penyakit Dalam',
     this.initials = 'DK',
+    this.doctorId,
   });
 
   @override
@@ -38,7 +50,9 @@ class LiveChatScreen extends StatefulWidget {
 class _LiveChatScreenState extends State<LiveChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isDoctorTyping = false;
+  String? _chatId;
+  bool _isLoading = true;
+  StreamSubscription<List<RealtimeChatMessage>>? _messageSubscription;
 
   // Palette soft pink matching the app's brand theme
   static const Color _primaryPink = Color(0xFFF06292);       // Soft Pink Brand
@@ -49,7 +63,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   static const Color _inputBarBg = Color(0xFFFFF0F5);        // Soft Pink bar background
   static const Color _borderSoft = Color(0xFFF8BBD0);
 
-  late List<ChatMessage> _messages;
+  List<ChatMessage> _messages = [];
 
   final List<String> _quickPrompts = [
     'Gula darah puasa saya 108 mg/dL',
@@ -61,22 +75,46 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   @override
   void initState() {
     super.initState();
-    _messages = [
-      ChatMessage(
-        text: 'Selamat siang. Bagaimana perkembangan kadar gula darah Anda hari ini?',
-        isUser: false,
-        time: '12:30',
-      ),
-      ChatMessage(
-        text: 'Perkembangan kadar gula saya sangat baik hari ini, lebih baik sebelumnya.',
-        isUser: true,
-        time: '12:45',
-      ),
-    ];
+    _initChat();
+  }
+
+  Future<void> _initChat() async {
+    try {
+      final glucose = PatientActivityService.instance.latestRiskNotifier.value?.glucoseLevel;
+      final chatId = await ChatService.instance.getOrCreateChat(
+        doctorName: widget.doctorName,
+        doctorId: widget.doctorId,
+        doctorSpecialty: widget.specialty,
+        glucoseNote: glucose,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _chatId = chatId;
+        _isLoading = false;
+      });
+
+      _messageSubscription =
+          ChatService.instance.streamMessages(chatId).listen((items) {
+        if (!mounted) return;
+        setState(() {
+          _messages = items.map((m) => ChatMessage.fromRealtime(m)).toList();
+        });
+        _scrollToBottom();
+      });
+
+      PatientChatNotificationService.instance.activeChatId = chatId;
+      ChatService.instance.markAsReadByPatient(chatId);
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   void dispose() {
+    PatientChatNotificationService.instance.activeChatId = null;
+    _messageSubscription?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -94,23 +132,11 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     });
   }
 
-  void _sendMessage(String text) {
+  void _sendMessage(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty || _chatId == null) return;
 
-    final now = DateTime.now();
-    final timeStr =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    setState(() {
-      _messages.add(ChatMessage(
-        text: trimmed,
-        isUser: true,
-        time: timeStr,
-      ));
-      _controller.clear();
-      _isDoctorTyping = true;
-    });
+    _controller.clear();
 
     PatientActivityService.instance.recordConsultation(
       doctorName: widget.doctorName,
@@ -118,63 +144,23 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
       lastMessage: trimmed,
     );
 
-    // Catat ke log admin (hanya pesan pertama / saat memulai konsultasi)
-    if (_messages.length <= 2) {
-      AdminActivityService.instance.logKonsultasi(
-        patientName: '',
-        doctorName: widget.doctorName,
+    AdminActivityService.instance.logKonsultasi(
+      patientName: '',
+      doctorName: widget.doctorName,
+    );
+
+    try {
+      await ChatService.instance.sendMessage(
+        chatId: _chatId!,
+        text: trimmed,
+        senderRole: 'pasien',
+        senderName: 'Pasien',
       );
+    } catch (e) {
+      debugPrint('⚠️ Error sending message: $e');
     }
 
     _scrollToBottom();
-
-    // Simulasi respons dokter yang hidup & komunikatif
-    Timer(const Duration(milliseconds: 1400), () {
-      if (!mounted) return;
-
-      String reply;
-      final lower = trimmed.toLowerCase();
-      if (lower.contains('108') ||
-          lower.contains('gula darah') ||
-          lower.contains('normal') ||
-          lower.contains('baik')) {
-        reply =
-            'Bagus sekali! Angka dan perkembangan tersebut menunjukkan kondisi gula darah Anda terkontrol dengan sangat baik. Tetap pertahankan pola makan rendah gula ya!';
-      } else if (lower.contains('makan') ||
-          lower.contains('pantangan') ||
-          lower.contains('nasi')) {
-        reply =
-            'Untuk asupan makanan, utamakan karbohidrat kompleks seperti nasi merah atau oatmeal, perbanyak sayuran hijau, dan batasi konsumsi minuman manis kemasan.';
-      } else if (lower.contains('pusing') ||
-          lower.contains('obat') ||
-          lower.contains('metformin')) {
-        reply =
-            'Pusing ringan bisa terjadi penyesuaian tubuh. Pastikan obat diminum teratur sesaat setelah makan dan perbanyak minum air putih ya.';
-      } else if (lower.contains('jadwal') ||
-          lower.contains('evaluasi') ||
-          lower.contains('resep')) {
-        reply =
-            'Jadwal evaluasi kontrol rutin berikutnya pada 20 Juni 2026. Anda juga dapat memeriksa menu resep di aplikasi.';
-      } else {
-        reply =
-            'Baik, terima kasih atas informasinya. Kondisi Anda akan terus saya pantau. Segera kabari jika ada keluhan tambahan ya!';
-      }
-
-      final replyNow = DateTime.now();
-      final replyTime =
-          '${replyNow.hour.toString().padLeft(2, '0')}:${replyNow.minute.toString().padLeft(2, '0')}';
-
-      setState(() {
-        _isDoctorTyping = false;
-        _messages.add(ChatMessage(
-          text: reply,
-          isUser: false,
-          time: replyTime,
-        ));
-      });
-
-      _scrollToBottom();
-    });
   }
 
   @override
@@ -315,11 +301,38 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   ),
                 ),
 
-                // Daftar pesan
-                ..._messages.map((msg) => _buildMessageBubble(msg)),
-
-                // Typing indicator dokter
-                if (_isDoctorTyping) _buildTypingIndicator(),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 36),
+                    child: Center(
+                      child: CircularProgressIndicator(color: _primaryPink, strokeWidth: 2.5),
+                    ),
+                  )
+                else if (_messages.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: _doctorBubbleBg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: _doctorBubbleBorder),
+                        ),
+                        child: Text(
+                          'Sesi konsultasi real-time terhubung dengan ${widget.doctorName}.\nSilakan kirim keluhan atau gunakan pertanyaan cepat di bawah.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: const Color(0xFF555555),
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ..._messages.map((msg) => _buildMessageBubble(msg)),
               ],
             ),
           ),
@@ -619,75 +632,5 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         ),
       );
     }
-  }
-
-  /// Typing indicator dokter: bubble tiga titik soft pink
-  Widget _buildTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            margin: const EdgeInsets.only(top: 2, right: 8),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.person,
-                  size: 16,
-                  color: _darkRose,
-                ),
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: _doctorBubbleBg,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _doctorBubbleBorder, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: _primaryPink,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: _primaryPink,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: _primaryPink,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

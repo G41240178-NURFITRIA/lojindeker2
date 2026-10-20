@@ -112,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 doctorName: appUser.fullName.isNotEmpty
                     ? appUser.fullName
                     : 'Dokter',
+                doctorId: appUser.uid,
               ),
             ),
             (route) => false,
