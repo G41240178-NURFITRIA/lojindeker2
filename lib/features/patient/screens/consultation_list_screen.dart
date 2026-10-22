@@ -11,6 +11,7 @@ import '../../../core/widgets/doctor_avatar_widget.dart';
 import '../models/consultation_booking_model.dart';
 import 'live_chat_screen.dart';
 import 'booking_consultation_screen.dart';
+import 'patient_dashboard_screen.dart';
 
 class ConsultationListScreen extends StatefulWidget {
   const ConsultationListScreen({super.key});
@@ -23,6 +24,9 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   /// Daftar booking aktif pasien saat ini (real-time dari Firestore)
   List<ConsultationBookingModel> _activeBookings = [];
   StreamSubscription? _bookingsSub;
+  late final Stream<QuerySnapshot> _doctorsStream;
+  final Map<String, bool> _unlockedCache = {};
+  Timer? _checkUnlockTimer;
 
   // Warna sesuai tema Soft Pink
   static const Color _primaryPink = Color(0xFFF06292);
@@ -35,24 +39,45 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   static const Color _navIconActive = Color(0xFFE56A6F);
   static const Color _navIconInactive = Color(0xFFEFB3B5);
 
-  // Timer real-time untuk update status jam booking
-  Timer? _clockTimer;
-
   @override
   void initState() {
     super.initState();
+    _doctorsStream = FirebaseFirestore.instance.collection('doctors').snapshots();
     _listenPatientBookings();
-    // Timer setiap detik untuk update status waktu booking
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+    // Cek perubahan status unlock secara efisien (hanya setState jika benar-benar ada perubahan status jam)
+    _checkUnlockTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted) return;
+      bool hasChanges = false;
+      for (final b in _activeBookings) {
+        final isUnlockedNow = _isBookingTimeArrived(b);
+        if (_unlockedCache[b.id] != isUnlockedNow) {
+          _unlockedCache[b.id] = isUnlockedNow;
+          hasChanges = true;
+        }
+      }
+      if (hasChanges) {
+        setState(() {});
+      }
     });
   }
 
   @override
   void dispose() {
     _bookingsSub?.cancel();
-    _clockTimer?.cancel();
+    _checkUnlockTimer?.cancel();
     super.dispose();
+  }
+
+  void _handleBack() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const PatientDashboardScreen(),
+        ),
+      );
+    }
   }
 
   /// Subscribe ke stream booking pasien secara real-time
@@ -63,6 +88,9 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
         .streamPatientBookings(uid)
         .listen((bookings) {
       if (mounted) {
+        for (final b in bookings) {
+          _unlockedCache[b.id] = _isBookingTimeArrived(b);
+        }
         setState(() {
           _activeBookings = bookings;
         });
@@ -115,33 +143,34 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bgScreen,
-      appBar: AppBar(
-        backgroundColor: _primaryPink,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: _primaryPink,
-          statusBarIconBrightness: Brightness.light,
-          statusBarBrightness: Brightness.dark,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: _bgScreen,
+        appBar: AppBar(
+          backgroundColor: _primaryPink,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: _primaryPink,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: Colors.white),
+            onPressed: _handleBack,
+          ),
+          title: Text(
+            'Konsultasi',
+            style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
+          ),
+          centerTitle: false,
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19, color: Colors.white),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) Navigator.of(context).pop();
-          },
-        ),
-        title: Text(
-          'Konsultasi',
-          style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
-        ),
-        centerTitle: false,
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('doctors')
-            .snapshots(),
+        body: StreamBuilder<QuerySnapshot>(
+          stream: _doctorsStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: _primaryPink));
@@ -207,6 +236,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
         },
       ),
       bottomNavigationBar: _buildBottomNavigationBar(context),
+      ),
     );
   }
 
@@ -670,9 +700,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
             icon: const Icon(Icons.home_outlined, size: 28),
             color: _navIconInactive,
             tooltip: 'Beranda',
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
+            onPressed: _handleBack,
           ),
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline_rounded, size: 26),
@@ -684,9 +712,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
             icon: const Icon(Icons.person_outline_rounded, size: 28),
             color: _navIconInactive,
             tooltip: 'Profil Pasien',
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
+            onPressed: _handleBack,
           ),
         ],
       ),
