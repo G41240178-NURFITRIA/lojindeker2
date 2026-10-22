@@ -53,10 +53,11 @@ class AppUser {
   final String dob; // "YYYY-MM-DD"
   final AppRole role;
 
-  // Khusus dokter
+  // Khusus dokter / pengguna
   final String? specialization;
   final bool isActive;
   final String? schedule;
+  final String? photoUrl;
 
   const AppUser({
     required this.uid,
@@ -69,6 +70,7 @@ class AppUser {
     this.specialization,
     this.isActive = true,
     this.schedule,
+    this.photoUrl,
   });
 
   factory AppUser.fromMap(Map<String, dynamic> map, String uid) {
@@ -83,6 +85,7 @@ class AppUser {
       specialization: map['specialization'] as String?,
       isActive: (map['isActive'] as bool?) ?? true,
       schedule: (map['schedule'] as String?) ?? 'Senin - Jumat (09:00 - 17:00)',
+      photoUrl: map['photoUrl'] as String?,
     );
   }
 
@@ -95,6 +98,7 @@ class AppUser {
       'phoneNumber': phoneNumber,
       'dob': dob,
       'role': role.firestoreValue,
+      if (photoUrl != null && photoUrl!.isNotEmpty) 'photoUrl': photoUrl,
       if (role == AppRole.doctor) ...{
         'specialization': specialization ?? '',
         'isActive': isActive,
@@ -122,6 +126,7 @@ class AppUser {
     String? specialization,
     bool? isActive,
     String? schedule,
+    String? photoUrl,
   }) {
     return AppUser(
       uid: uid,
@@ -134,6 +139,7 @@ class AppUser {
       specialization: specialization ?? this.specialization,
       isActive: isActive ?? this.isActive,
       schedule: schedule ?? this.schedule,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 }

@@ -163,6 +163,14 @@ class UserRepository {
     });
   }
 
+  /// Perbarui foto profil dokter
+  Future<void> updateDoctorPhoto(String uid, String? photoUrl) async {
+    await _db.collection('doctors').doc(uid).set({
+      'photoUrl': photoUrl ?? '',
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
   // ─── Daftar Pasien / Pengguna ─────────────────────────────────────
   Stream<List<AppUser>> streamPatients() {
     return _db

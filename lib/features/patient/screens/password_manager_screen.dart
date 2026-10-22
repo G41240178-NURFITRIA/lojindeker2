@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../services/auth_service.dart';
 import '../../auth/screens/forgot_password_screen.dart';
 
 class PasswordManagerScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class _PasswordManagerScreenState extends State<PasswordManagerScreen> {
   bool _obscureCurrent = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
+  bool _isLoading = false;
 
   // Theme colors consistent with the app's Soft Pink palette
   static const Color _bgScreen = Color(0xFFFFF0F5);
@@ -33,7 +35,7 @@ class _PasswordManagerScreenState extends State<PasswordManagerScreen> {
     super.dispose();
   }
 
-  void _handleChangePassword() {
+  Future<void> _handleChangePassword() async {
     final current = _currentPasswordController.text.trim();
     final newPass = _newPasswordController.text.trim();
     final confirm = _confirmPasswordController.text.trim();
@@ -68,18 +70,45 @@ class _PasswordManagerScreenState extends State<PasswordManagerScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Kata sandi berhasil diperbarui!',
-          style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthService.instance.changePassword(
+        currentPassword: current,
+        newPassword: newPass,
+      );
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Kata sandi berhasil diperbarui!',
+            style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFF2E7D32),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
-        backgroundColor: const Color(0xFF2E7D32),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-    Navigator.pop(context);
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            msg,
+            style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+          ),
+          backgroundColor: _darkRose,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   @override
@@ -180,7 +209,7 @@ class _PasswordManagerScreenState extends State<PasswordManagerScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _handleChangePassword,
+                  onPressed: _isLoading ? null : _handleChangePassword,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryPink,
                     foregroundColor: Colors.white,
@@ -189,16 +218,26 @@ class _PasswordManagerScreenState extends State<PasswordManagerScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),
+                    disabledBackgroundColor: _primaryPink.withValues(alpha: 0.5),
                   ),
-                  child: Text(
-                    'Change Password',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Text(
+                          'Change Password',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
                 ),
               ),
             ],

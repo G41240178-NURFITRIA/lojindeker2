@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/app_user.dart';
 import '../../../core/services/patient_chat_notification_service.dart';
+import '../../../core/widgets/doctor_avatar_widget.dart';
 import 'live_chat_screen.dart';
 import 'booking_consultation_screen.dart';
 
@@ -165,21 +166,12 @@ class ConsultationListScreen extends StatelessWidget {
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Container(
-                        width: 58,
-                        height: 58,
-                        decoration: const BoxDecoration(
-                            color: _avatarBg, shape: BoxShape.circle),
-                        child: Center(
-                          child: Text(
-                            initials,
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: _avatarText,
-                            ),
-                          ),
-                        ),
+                      DoctorAvatarWidget(
+                        photoUrl: doctor.photoUrl,
+                        size: 58,
+                        initials: initials,
+                        backgroundColor: _avatarBg,
+                        iconColor: _avatarText,
                       ),
                       if (hasUnread)
                         Positioned(

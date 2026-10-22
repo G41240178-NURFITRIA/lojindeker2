@@ -381,6 +381,56 @@ class AuthService {
     }
   }
 
+  // ─── Ganti Kata Sandi ──────────────────────────────────────────────
+  /// Mengubah password pengguna saat ini (Dokter / Pasien / Admin).
+  /// Memerlukan [currentPassword] untuk re-autentikasi akun demi keamanan,
+  /// dan [newPassword] minimal 8 karakter serta mengandung huruf dan angka.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    String? userEmail,
+  }) async {
+    final current = _auth.currentUser;
+    final email = (current?.email ?? userEmail)?.trim();
+
+    if (email == null || email.isEmpty) {
+      throw Exception('Data akun tidak ditemukan. Silakan login kembali.');
+    }
+
+    final newPassClean = newPassword.trim();
+    if (newPassClean.length < 8 ||
+        !newPassClean.contains(RegExp(r'[a-zA-Z]')) ||
+        !newPassClean.contains(RegExp(r'[0-9]'))) {
+      throw Exception(
+        'Kata sandi baru minimal 8 karakter dan harus mengandung huruf serta angka.',
+      );
+    }
+
+    try {
+      if (current != null && current.email != null) {
+        // Re-autentikasi menggunakan kata sandi saat ini
+        final cred = EmailAuthProvider.credential(
+          email: current.email!,
+          password: currentPassword.trim(),
+        );
+        await current.reauthenticateWithCredential(cred);
+        await current.updatePassword(newPassClean);
+        debugPrint('✅ [AuthService] Kata sandi berhasil diperbarui untuk ${current.email}');
+      } else {
+        // Fallback jika session re-auth diperlukan
+        final result = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: currentPassword.trim(),
+        );
+        await result.user?.updatePassword(newPassClean);
+        debugPrint('✅ [AuthService] Kata sandi berhasil diperbarui via signIn fallback untuk $email');
+      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint('❌ [AuthService] changePassword error: ${e.code}');
+      throw Exception(_mapError(e.code, e.message ?? 'Gagal mengubah kata sandi.'));
+    }
+  }
+
   // ─── Logout ───────────────────────────────────────────────────────
   Future<void> signOut({String fullName = '', String role = ''}) async {
     // Catat aktivitas logout ke log admin sebelum sign out

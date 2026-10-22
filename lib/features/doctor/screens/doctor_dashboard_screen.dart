@@ -1,15 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/chat_service.dart';
+import '../../../core/widgets/doctor_avatar_widget.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
 import '../../auth/screens/landing_screen.dart';
 import 'doctor_all_chats_screen.dart';
+import 'doctor_change_password_screen.dart';
 import 'doctor_prescription_note_screen.dart';
 
 /// Model chat pasien untuk dashboard dokter
@@ -54,6 +58,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   String _doctorSchedule = 'Senin - Jumat (09:00 - 17:00)';
   String _doctorDisplayName = '';
   String _doctorSpecialty = 'Spesialis Penyakit Dalam (Sp.PD)';
+  String? _doctorPhotoUrl;
+  String? _doctorEmail;
   String? _resolvedDoctorUid;
   StreamSubscription<DocumentSnapshot>? _doctorProfileSubscription;
 
@@ -65,6 +71,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   void initState() {
     super.initState();
     _doctorDisplayName = widget.doctorName;
+    _doctorEmail = AuthService.instance.currentUser?.email;
     _initDoctorProfile();
     _subscribeToChats();
   }
@@ -148,12 +155,429 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               (data['specialization'] as String).trim().isNotEmpty) {
             _doctorSpecialty = data['specialization'] as String;
           }
+          if (data['photoUrl'] != null) {
+            final photo = data['photoUrl'] as String;
+            _doctorPhotoUrl = photo.trim().isNotEmpty ? photo : null;
+          }
+          if (data['email'] != null &&
+              (data['email'] as String).trim().isNotEmpty) {
+            _doctorEmail = data['email'] as String;
+          }
         });
         if (previousName != _doctorDisplayName) {
           _subscribeToChats();
         }
       }
     });
+  }
+
+  /// Perbarui foto profil dokter di Firestore (koleksi doctors & consultation_chats)
+  Future<void> _updateDoctorPhoto(String? newPhotoUrl) async {
+    final uid = _resolvedDoctorUid ?? widget.doctorId ?? AuthService.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'ID dokter tidak ditemukan. Gagal memperbarui foto.',
+            style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+          ),
+          backgroundColor: AppColors.primaryDark,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // 1. Simpan ke koleksi doctors/{uid}
+      await FirebaseFirestore.instance.collection('doctors').doc(uid).set({
+        'photoUrl': newPhotoUrl ?? '',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // 2. Simpan juga ke koleksi users/{uid} jika ada
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'photoUrl': newPhotoUrl ?? '',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)).catchError((_) {});
+
+      // 3. Sinkronkan ke consultation_chats terkait agar live chat pasien langsung terupdate
+      final effectiveName = _doctorDisplayName.isNotEmpty ? _doctorDisplayName : widget.doctorName;
+      final chatsByName = await FirebaseFirestore.instance
+          .collection('consultation_chats')
+          .where('doctorName', isEqualTo: effectiveName)
+          .get();
+      for (final doc in chatsByName.docs) {
+        doc.reference.update({
+          'doctorPhotoUrl': newPhotoUrl ?? '',
+          'updatedAt': FieldValue.serverTimestamp(),
+        }).catchError((_) {});
+      }
+
+      final chatsById = await FirebaseFirestore.instance
+          .collection('consultation_chats')
+          .where('doctorId', isEqualTo: uid)
+          .get();
+      for (final doc in chatsById.docs) {
+        doc.reference.update({
+          'doctorPhotoUrl': newPhotoUrl ?? '',
+          'updatedAt': FieldValue.serverTimestamp(),
+        }).catchError((_) {});
+      }
+
+      setState(() {
+        _doctorPhotoUrl = newPhotoUrl;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newPhotoUrl != null
+                ? 'Foto profil dokter berhasil diperbarui!'
+                : 'Foto profil dokter berhasil dihapus.',
+            style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFF2E7D32),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } catch (e) {
+      debugPrint('⚠️ Error update doctor photo: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal menyimpan foto: $e',
+            style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+          ),
+          backgroundColor: AppColors.primaryDark,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  /// Ambil gambar dari galeri atau kamera
+  Future<void> _pickDoctorImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: source,
+        maxWidth: 400,
+        maxHeight: 400,
+        imageQuality: 70,
+      );
+
+      if (file != null) {
+        final bytes = await file.readAsBytes();
+        final base64String = base64Encode(bytes);
+        final mimeType = file.mimeType ?? 'image/jpeg';
+        final dataUri = 'data:$mimeType;base64,$base64String';
+        await _updateDoctorPhoto(dataUri);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error picking doctor image: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal mengambil foto: $e',
+            style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+          ),
+          backgroundColor: AppColors.primaryDark,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  /// Dialog pemilihan preset avatar dokter
+  void _showPresetAvatarsDialog() {
+    final presets = [
+      {
+        'title': 'Dr. Ryan (Jas Medis)',
+        'url': 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=300&auto=format&fit=crop&q=80',
+      },
+      {
+        'title': 'Dr. Sarah (Stetoskop)',
+        'url': 'https://images.unsplash.com/photo-1594824813689-53e77864f7b6?w=300&auto=format&fit=crop&q=80',
+      },
+      {
+        'title': 'Dr. Jas Putih',
+        'url': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&auto=format&fit=crop&q=80',
+      },
+      {
+        'title': 'Dr. Spesialis',
+        'url': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=300&auto=format&fit=crop&q=80',
+      },
+      {
+        'title': 'Dr. Senior',
+        'url': 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=300&auto=format&fit=crop&q=80',
+      },
+      {
+        'title': 'Dr. Konsultan',
+        'url': 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=300&auto=format&fit=crop&q=80',
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Pilih Avatar Dokter Siap Pakai',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF212121),
+                  ),
+                ),
+                Text(
+                  'Pilih avatar profesional yang mewakili profil dokter Anda',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF757575),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.95,
+                  ),
+                  itemCount: presets.length,
+                  itemBuilder: (context, index) {
+                    final item = presets[index];
+                    final isSelected = _doctorPhotoUrl == item['url'];
+                    return InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _updateDoctorPhoto(item['url']);
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.softPinkCard : const Color(0xFFF9F9F9),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primary : Colors.grey.shade200,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ClipOval(
+                              child: Image.network(
+                                item['url']!,
+                                width: 54,
+                                height: 54,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 54,
+                                  height: 54,
+                                  color: AppColors.softPinkCard,
+                                  child: const Icon(Icons.person, color: AppColors.primary),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              item['title']!,
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                color: isSelected ? AppColors.primary : const Color(0xFF424242),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Bottom sheet menu ubah foto profil dokter
+  void _showChangeDoctorPhotoBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Ubah Foto Profil Dokter',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF212121),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Foto ini akan ditampilkan di profil Anda dan di ruang chat konsultasi pasien.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF757575),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.softPinkCard,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                  ),
+                  title: Text(
+                    'Pilih dari Galeri / File',
+                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Pilih foto dari galeri atau komputer Anda',
+                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickDoctorImage(ImageSource.gallery);
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.softPinkCard,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                  ),
+                  title: Text(
+                    'Ambil Foto dengan Kamera',
+                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Gunakan kamera untuk mengambil potret langsung',
+                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickDoctorImage(ImageSource.camera);
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.face_retouching_natural_rounded, color: Color(0xFF2E7D32)),
+                  ),
+                  title: Text(
+                    'Pilih Avatar Siap Pakai',
+                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Gunakan salah satu avatar dokter profesional',
+                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showPresetAvatarsDialog();
+                  },
+                ),
+                if (_doctorPhotoUrl != null && _doctorPhotoUrl!.isNotEmpty) ...[
+                  const Divider(height: 16),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFEBEE),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFD32F2F)),
+                    ),
+                    title: Text(
+                      'Hapus Foto Profil',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFD32F2F),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Kembalikan avatar profil ke ikon bawaan',
+                      style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _updateDoctorPhoto(null);
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -495,18 +919,14 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                 const SizedBox(width: 14),
                 
                 // Avatar
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: Colors.white,
-                    size: 32,
-                  ),
+                DoctorAvatarWidget(
+                  photoUrl: _doctorPhotoUrl,
+                  size: 54,
+                  backgroundColor: AppColors.primary,
+                  iconColor: Colors.white,
+                  onTap: () {
+                    setState(() => _selectedTabIndex = 1);
+                  },
                 ),
               ],
             ),
@@ -1056,45 +1476,87 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               ),
               child: Column(
                 children: [
-                  // Avatar with Badge
+                  // Avatar with Badge & Change Photo Trigger
                   Stack(
+                    clipBehavior: Clip.none,
                     children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: AppColors.softPinkCard,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.primary,
-                            width: 2.5,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.person_rounded,
+                      DoctorAvatarWidget(
+                        photoUrl: _doctorPhotoUrl,
+                        size: 88,
+                        border: Border.all(
                           color: AppColors.primary,
-                          size: 46,
+                          width: 2.8,
                         ),
+                        onTap: _showChangeDoctorPhotoBottomSheet,
                       ),
                       Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.verified_rounded,
-                            color: Colors.white,
-                            size: 16,
+                        bottom: -2,
+                        right: -2,
+                        child: InkWell(
+                          onTap: _showChangeDoctorPhotoBottomSheet,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.18),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 15,
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 8),
+
+                  // Tombol Ubah Foto Profil
+                  InkWell(
+                    onTap: _showChangeDoctorPhotoBottomSheet,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.softPinkCard,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.softPinkBorder,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.edit_outlined,
+                            size: 13,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Ubah Foto Profil',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
 
                   Text(
                     _doctorDisplayName.isNotEmpty
@@ -1116,7 +1578,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'SIP: 446.1/128/SIP-D/2022 â€¢ RS D-Care Sejahtera',
+                    'SIP: 446.1/128/SIP-D/2022 • RS D-Care Sejahtera',
                     style: GoogleFonts.poppins(
                       fontSize: 11,
                       color: const Color(0xFF757575),
@@ -1140,7 +1602,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         width: 1,
                         color: AppColors.softPinkBorder,
                       ),
-                      _buildProfileStat('4.9 â­', 'Rating'),
+                      _buildProfileStat('4.9 ⭐', 'Rating'),
                     ],
                   ),
                 ],
@@ -1166,7 +1628,19 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               icon: Icons.security_outlined,
               title: 'Keamanan & Kata Sandi',
               subtitle: 'Ganti password dan keamanan akun',
-              onTap: _showSecurityBottomSheet,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DoctorChangePasswordScreen(
+                      doctorEmail: _doctorEmail ?? AuthService.instance.currentUser?.email ?? '',
+                      doctorName: _doctorDisplayName.isNotEmpty
+                          ? _doctorDisplayName
+                          : widget.doctorName,
+                    ),
+                  ),
+                );
+              },
             ),
             _buildProfileMenuItem(
               icon: Icons.help_outline_rounded,

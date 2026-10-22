@@ -13,6 +13,7 @@ import 'consultation_list_screen.dart';
 import 'medical_records_screen.dart';
 import 'nearest_facility_screen.dart';
 import 'live_chat_screen.dart';
+import '../../../core/widgets/doctor_avatar_widget.dart';
 import 'patient_profile_screen.dart';
 import 'article_detail_screen.dart';
 import 'when_to_see_doctor_screen.dart';
@@ -1878,6 +1879,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                           ? const Color(0xFF2E7D32)
                           : const Color(0xFF757575),
                       doctorId: doctor.uid,
+                      photoUrl: doctor.photoUrl,
                     ),
                   );
                 }).toList(),
@@ -1896,6 +1898,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     required String status,
     required Color statusColor,
     String? doctorId,
+    String? photoUrl,
   }) {
     return ValueListenableBuilder<Map<String, int>>(
       valueListenable:
@@ -1944,18 +1947,12 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFCE4EC),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.person_rounded,
-                        color: Color(0xFFD81B60),
-                        size: 28,
-                      ),
+                    DoctorAvatarWidget(
+                      photoUrl: photoUrl,
+                      size: 48,
+                      isCircle: false,
+                      borderRadius: BorderRadius.circular(14),
+                      iconColor: const Color(0xFFD81B60),
                     ),
                     if (hasUnread)
                       Positioned(

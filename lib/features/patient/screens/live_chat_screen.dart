@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import '../../../core/services/admin_activity_service.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/patient_chat_notification_service.dart';
+import '../../../core/widgets/doctor_avatar_widget.dart';
 
 /// Model pesan chat
 class ChatMessage {
@@ -52,7 +54,10 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   final ScrollController _scrollController = ScrollController();
   String? _chatId;
   bool _isLoading = true;
+  String? _doctorPhotoUrl;
   StreamSubscription<List<RealtimeChatMessage>>? _messageSubscription;
+  StreamSubscription<DocumentSnapshot>? _doctorProfileSubscription;
+  StreamSubscription<DocumentSnapshot>? _chatDocSubscription;
 
   // Palette soft pink matching the app's brand theme
   static const Color _primaryPink = Color(0xFFF06292);       // Soft Pink Brand
@@ -75,7 +80,71 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   @override
   void initState() {
     super.initState();
+    _initDoctorPhotoSubscription();
     _initChat();
+  }
+
+  void _initDoctorPhotoSubscription() {
+    final docId = widget.doctorId;
+    final docName = widget.doctorName.trim();
+
+    if (docId != null && docId.isNotEmpty) {
+      _subscribeDoctorDoc(docId);
+      return;
+    }
+
+    // Cari dokter berdasarkan nama di koleksi 'doctors'
+    FirebaseFirestore.instance
+        .collection('doctors')
+        .where('fullName', isEqualTo: docName)
+        .limit(1)
+        .get()
+        .then((snap) {
+      if (!mounted) return;
+      if (snap.docs.isNotEmpty) {
+        _subscribeDoctorDoc(snap.docs.first.id);
+      } else {
+        // Fallback: cari yang mendekati
+        FirebaseFirestore.instance
+            .collection('doctors')
+            .snapshots()
+            .listen((allSnap) {
+          if (!mounted) return;
+          for (final d in allSnap.docs) {
+            final data = d.data();
+            final fn = (data['fullName'] as String?)?.toLowerCase().trim() ?? '';
+            final target = docName.toLowerCase();
+            if (fn.isNotEmpty && (fn.contains(target) || target.contains(fn))) {
+              final photo = data['photoUrl'] as String?;
+              setState(() {
+                _doctorPhotoUrl = (photo != null && photo.trim().isNotEmpty) ? photo : null;
+              });
+              break;
+            }
+          }
+        });
+      }
+    }).catchError((e) {
+      debugPrint('⚠️ Error init doctor photo subscription: $e');
+    });
+  }
+
+  void _subscribeDoctorDoc(String doctorUid) {
+    _doctorProfileSubscription?.cancel();
+    _doctorProfileSubscription = FirebaseFirestore.instance
+        .collection('doctors')
+        .doc(doctorUid)
+        .snapshots()
+        .listen((doc) {
+      if (!mounted) return;
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final photo = data['photoUrl'] as String?;
+        setState(() {
+          _doctorPhotoUrl = (photo != null && photo.trim().isNotEmpty) ? photo : null;
+        });
+      }
+    });
   }
 
   Future<void> _initChat() async {
@@ -104,6 +173,30 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         _scrollToBottom();
       });
 
+      // Pantau dokumen chat untuk foto dokter & ID dokter real-time
+      _chatDocSubscription = FirebaseFirestore.instance
+          .collection('consultation_chats')
+          .doc(chatId)
+          .snapshots()
+          .listen((chatDoc) {
+        if (!mounted) return;
+        if (chatDoc.exists && chatDoc.data() != null) {
+          final data = chatDoc.data()!;
+          final photo = data['doctorPhotoUrl'] as String?;
+          if (photo != null && photo.trim().isNotEmpty) {
+            setState(() {
+              _doctorPhotoUrl = photo;
+            });
+          }
+          final resolvedDocId = data['doctorId'] as String?;
+          if (resolvedDocId != null &&
+              resolvedDocId.isNotEmpty &&
+              _doctorProfileSubscription == null) {
+            _subscribeDoctorDoc(resolvedDocId);
+          }
+        }
+      });
+
       PatientChatNotificationService.instance.activeChatId = chatId;
       ChatService.instance.markAsReadByPatient(chatId);
     } catch (e) {
@@ -114,6 +207,8 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   @override
   void dispose() {
     PatientChatNotificationService.instance.activeChatId = null;
+    _doctorProfileSubscription?.cancel();
+    _chatDocSubscription?.cancel();
     _messageSubscription?.cancel();
     _controller.dispose();
     _scrollController.dispose();
@@ -190,36 +285,13 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _doctorBubbleBorder,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: _doctorBubbleBg,
-                          child: Center(
-                            child: Text(
-                              widget.initials,
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: _darkRose,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                DoctorAvatarWidget(
+                  photoUrl: _doctorPhotoUrl,
+                  size: 40,
+                  initials: widget.initials,
+                  border: Border.all(
+                    color: _doctorBubbleBorder,
+                    width: 1.5,
                   ),
                 ),
                 Positioned(
@@ -551,34 +623,13 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar Logo Dokter
-            Container(
-              width: 28,
-              height: 28,
-              margin: const EdgeInsets.only(top: 2, right: 8),
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-              ),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: _doctorBubbleBg,
-                      child: Center(
-                        child: Text(
-                          widget.initials,
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            color: _darkRose,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+            // Avatar Foto Dokter
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: 8),
+              child: DoctorAvatarWidget(
+                photoUrl: _doctorPhotoUrl,
+                size: 28,
+                initials: widget.initials,
               ),
             ),
 
