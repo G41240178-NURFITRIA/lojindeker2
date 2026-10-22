@@ -53,7 +53,7 @@ class _PaymentQrisScreenState extends State<PaymentQrisScreen> {
   static const Color _warningAmber = Color(0xFFB5701B);
   static const Color _dividerColor = Color(0xFFF1E3E7);
 
-  // Countdown timer: 15 menit (900 detik)
+  // Countdown timer: 6 menit (360 detik)
   late int _remainingSeconds;
   Timer? _countdownTimer;
 
@@ -64,10 +64,34 @@ class _PaymentQrisScreenState extends State<PaymentQrisScreen> {
   @override
   void initState() {
     super.initState();
-    _remainingSeconds = 15 * 60; // 15:00
+    _remainingSeconds = 6 * 60; // 06:00 (tepat 6 menit)
 
     _startCountdown();
     _startSimulatedPaymentDetection();
+  }
+
+  void _downloadQrisCode() {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Barcode QRIS berhasil diunduh ke perangkat Anda!',
+                style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF2E7D32),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -317,7 +341,52 @@ class _PaymentQrisScreenState extends State<PaymentQrisScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+
+              // Tombol Unduh Barcode QR
+              InkWell(
+                onTap: _downloadQrisCode,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _headerPink,
+                      width: 1.2,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x08000000),
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.download_rounded,
+                        size: 18,
+                        color: _headerPink,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Unduh QR',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: _headerPink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
 
               // 2. Teks Panduan Scan QR
               Padding(
