@@ -67,6 +67,10 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   List<DoctorPatientChat> _chats = [];
   StreamSubscription<List<RealtimeConsultationChat>>? _chatSubscription;
 
+  // Jumlah pasien sebenarnya dari koleksi 'users' di Firestore (bukan dummy)
+  int _totalPatientCount = 0;
+  StreamSubscription<QuerySnapshot>? _patientCountSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +78,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     _doctorEmail = AuthService.instance.currentUser?.email;
     _initDoctorProfile();
     _subscribeToChats();
+    _subscribeToPatientCount();
   }
 
   void _subscribeToChats() {
@@ -580,10 +585,28 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
+  /// Subscribe ke koleksi 'users' di Firestore untuk mendapatkan jumlah pasien
+  /// yang sesungguhnya (bukan dummy), secara real-time.
+  void _subscribeToPatientCount() {
+    _patientCountSubscription?.cancel();
+    _patientCountSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+      setState(() {
+        _totalPatientCount = snapshot.docs.length;
+      });
+    }, onError: (e) {
+      debugPrint('⚠️ Error subscribing to patient count: $e');
+    });
+  }
+
   @override
   void dispose() {
     _doctorProfileSubscription?.cancel();
     _chatSubscription?.cancel();
+    _patientCountSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -1007,7 +1030,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
   /// 2 Summary Metric Cards (Total pasien & Chat belum dibaca dinamis)
   Widget _buildSummaryCards() {
-    final totalPatients = _chats.length;
+    final totalPatients = _totalPatientCount;
     final unreadCount = _chats.fold<int>(0, (sum, chat) => sum + chat.unreadCount);
 
     return Padding(
@@ -1590,7 +1613,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildProfileStat('128', 'Pasien'),
+                      _buildProfileStat('$_totalPatientCount', 'Pasien'),
                       Container(
                         height: 28,
                         width: 1,
