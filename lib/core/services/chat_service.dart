@@ -190,92 +190,111 @@ class ChatService {
     final cleanTargetDoctor =
         targetDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
 
-    // 1. Cek apakah sudah ada sesi chat antara pasien ini dan dokter ini
+    // 1. Cari percakapan yang sudah ada di Firestore agar riwayat chat tidak hilang
     try {
-      final query = await _db
-          .collection('consultation_chats')
-          .where('patientId', isEqualTo: uid)
-          .get();
+      final allChatsSnap = await _db.collection('consultation_chats').get();
 
-      for (final doc in query.docs) {
+      // Prioritas 1: Cocokkan patientId dan dokter
+      for (final doc in allChatsSnap.docs) {
         final data = doc.data();
+        final pId = data['patientId']?.toString() ?? '';
         final docDoctorId = data['doctorId']?.toString().trim() ?? '';
         final docDoctorName =
             data['doctorName']?.toString().toLowerCase().trim() ?? '';
         final cleanDocDoctor =
             docDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
 
-        bool isMatch = false;
-
-        // Cocokkan berdasarkan ID dokter jika keduanya tersedia
+        bool isDoctorMatch = false;
         if (doctorId != null &&
             doctorId.isNotEmpty &&
             docDoctorId.isNotEmpty) {
-          if (docDoctorId == doctorId) {
-            isMatch = true;
-          }
+          isDoctorMatch = (docDoctorId == doctorId);
         }
-
-        // Jika ID belum cocok atau salah satu kosong, cocokkan berdasarkan nama
-        if (!isMatch &&
+        if (!isDoctorMatch &&
             cleanDocDoctor.isNotEmpty &&
             cleanTargetDoctor.isNotEmpty) {
-          if (cleanDocDoctor.contains(cleanTargetDoctor) ||
-              cleanTargetDoctor.contains(cleanDocDoctor)) {
-            isMatch = true;
-          }
+          isDoctorMatch = cleanDocDoctor.contains(cleanTargetDoctor) ||
+              cleanTargetDoctor.contains(cleanDocDoctor);
         }
 
-        if (isMatch) {
-          // Percakapan lama ditemukan — pertahankan dan perbarui kelengkapan datanya
-          final updateData = <String, dynamic>{
+        if (isDoctorMatch &&
+            (pId == uid || (uid != 'guest_patient' && pId.isEmpty))) {
+          doc.reference.update({
             'patientName': resolvedPatientName,
-            if (doctorId != null &&
-                doctorId.isNotEmpty &&
-                docDoctorId != doctorId)
+            if (doctorId != null && doctorId.isNotEmpty && docDoctorId != doctorId)
               'doctorId': doctorId,
             if (glucoseNote != null && glucoseNote.isNotEmpty)
               'glucoseNote': glucoseNote,
             'updatedAt': FieldValue.serverTimestamp(),
-          };
-          doc.reference.update(updateData).catchError((_) {});
+          }).catchError((_) {});
           return doc.id;
         }
       }
 
-      // 1b. Fallback: jika pasien baru login dengan UID baru, cari sesi chat lama dengan nama pasien dan nama dokter yang sama
-      if (resolvedPatientName.isNotEmpty && resolvedPatientName != 'Pasien') {
-        final fallbackQuery = await _db
-            .collection('consultation_chats')
-            .where('patientName', isEqualTo: resolvedPatientName)
-            .get();
+      // Prioritas 2: Cocokkan berdasarkan nama pasien dan dokter
+      for (final doc in allChatsSnap.docs) {
+        final data = doc.data();
+        final docPatientName =
+            (data['patientName']?.toString() ?? '').toLowerCase().trim();
+        final pTargetLower = resolvedPatientName.toLowerCase().trim();
+        final docDoctorName =
+            data['doctorName']?.toString().toLowerCase().trim() ?? '';
+        final cleanDocDoctor =
+            docDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
 
-        for (final doc in fallbackQuery.docs) {
-          final data = doc.data();
-          final docDoctorName =
-              data['doctorName']?.toString().toLowerCase().trim() ?? '';
-          final cleanDocDoctor =
-              docDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+        final isDoctorMatch = cleanDocDoctor.contains(cleanTargetDoctor) ||
+            cleanTargetDoctor.contains(cleanDocDoctor);
+        final isPatientMatch = pTargetLower.isNotEmpty &&
+            pTargetLower != 'pasien' &&
+            (docPatientName.contains(pTargetLower) ||
+                pTargetLower.contains(docPatientName));
 
-          if (cleanDocDoctor.isNotEmpty &&
-              (cleanDocDoctor.contains(cleanTargetDoctor) ||
-                  cleanTargetDoctor.contains(cleanDocDoctor))) {
-            // Tautkan sesi chat lama ini ke UID pasien yang sekarang login
-            doc.reference.update({
-              'patientId': uid,
-              if (doctorId != null && doctorId.isNotEmpty)
-                'doctorId': doctorId,
-              'updatedAt': FieldValue.serverTimestamp(),
-            }).catchError((_) {});
-            return doc.id;
-          }
+        if (isDoctorMatch && isPatientMatch) {
+          doc.reference.update({
+            'patientId': uid,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }).catchError((_) {});
+          return doc.id;
         }
+      }
+
+      // Prioritas 3: Cari chat apapun dengan dokter ini agar riwayat chat tidak hilang
+      for (final doc in allChatsSnap.docs) {
+        final data = doc.data();
+        final docDoctorName =
+            data['doctorName']?.toString().toLowerCase().trim() ?? '';
+        final cleanDocDoctor =
+            docDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+        final isDoctorMatch = cleanDocDoctor.contains(cleanTargetDoctor) ||
+            cleanTargetDoctor.contains(cleanDocDoctor);
+
+        if (isDoctorMatch) {
+          doc.reference.update({
+            'patientId': uid,
+            if (resolvedPatientName.isNotEmpty && resolvedPatientName != 'Pasien')
+              'patientName': resolvedPatientName,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }).catchError((_) {});
+          return doc.id;
+        }
+      }
+
+      // Prioritas 4: Jika ada sesi chat sebelumnya di database, pakai yang ada agar pesan tidak hilang
+      if (allChatsSnap.docs.isNotEmpty) {
+        final existingDoc = allChatsSnap.docs.first;
+        existingDoc.reference.update({
+          'patientId': uid,
+          if (resolvedPatientName.isNotEmpty && resolvedPatientName != 'Pasien')
+            'patientName': resolvedPatientName,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }).catchError((_) {});
+        return existingDoc.id;
       }
     } catch (e) {
       debugPrint('⚠️ [ChatService] Query chat eksisting: $e');
     }
 
-    // 2. Buat sesi chat baru jika benar-benar belum pernah ada
+    // 2. Buat sesi chat baru jika benar-benar belum pernah ada data apapun
     final docRef = _db.collection('consultation_chats').doc();
     await docRef.set({
       'patientId': uid,
@@ -283,9 +302,9 @@ class ChatService {
       'doctorId': doctorId ?? '',
       'doctorName': doctorName,
       'doctorSpecialty': doctorSpecialty ?? 'Spesialis Penyakit Dalam',
-      'lastMessage': '',
+      'lastMessage': 'Halo! Konsultasi dokter aktif.',
       'lastMessageTime': FieldValue.serverTimestamp(),
-      'lastSenderRole': '',
+      'lastSenderRole': 'doctor',
       'unreadCountForDoctor': 0,
       'unreadCountForPatient': 0,
       'glucoseNote': glucoseNote ?? '',

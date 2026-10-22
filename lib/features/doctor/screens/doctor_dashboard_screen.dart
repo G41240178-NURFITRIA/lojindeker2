@@ -9,6 +9,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
+import '../../../core/widgets/in_app_camera_screen.dart';
+import '../../../core/widgets/medical_document_viewer_screen.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
 import '../../auth/screens/landing_screen.dart';
@@ -2976,9 +2978,26 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     icon: Icons.camera_alt_rounded,
                     label: 'Kamera',
                     colors: const [Color(0xFFFF5252), Color(0xFFFF1744)],
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(ctx);
-                      _pickAndSendImage(ImageSource.camera);
+                      final resultBase64 = await Navigator.push<String>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const InAppCameraScreen(
+                            title: 'Kamera Dokter D-Care',
+                            subtitle: 'Arahkan kamera ke resep atau dokumen medis',
+                          ),
+                        ),
+                      );
+                      if (resultBase64 != null && resultBase64.isNotEmpty) {
+                        _sendMessage(
+                          type: 'image',
+                          attachmentData: resultBase64,
+                          attachmentName:
+                              'Foto_Resep_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                          attachmentSize: '120 KB',
+                        );
+                      }
                     },
                   ),
                   _buildAttachmentOption(
@@ -3365,9 +3384,26 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
               }),
               const SizedBox(height: 6),
               InkWell(
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
-                  _pickAndSendImage(ImageSource.camera);
+                  final resultBase64 = await Navigator.push<String>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const InAppCameraScreen(
+                        title: 'Pindai Berkas Medis',
+                        subtitle: 'Posisikan dokumen atau resep di dalam bingkai',
+                      ),
+                    ),
+                  );
+                  if (resultBase64 != null && resultBase64.isNotEmpty) {
+                    _sendMessage(
+                      type: 'image',
+                      attachmentData: resultBase64,
+                      attachmentName:
+                          'Dokumen_Scan_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                      attachmentSize: '120 KB',
+                    );
+                  }
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
@@ -3512,23 +3548,16 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   ),
                   onPressed: () {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            const Icon(Icons.check_circle_rounded,
-                                color: Colors.white, size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Dokumen "$name" berhasil dibuka / diunduh.',
-                                style: GoogleFonts.poppins(fontSize: 12.5),
-                              ),
-                            ),
-                          ],
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MedicalDocumentViewerScreen(
+                          documentTitle: name,
+                          patientName: widget.patientName,
+                          doctorName: widget.doctorName,
+                          fileSize: size,
+                          glucoseSummary: widget.glucoseNote,
                         ),
-                        backgroundColor: const Color(0xFF2E7D32),
-                        behavior: SnackBarBehavior.floating,
                       ),
                     );
                   },
