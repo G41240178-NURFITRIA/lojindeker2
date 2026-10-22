@@ -1,7 +1,19 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'risk_detail_screen.dart';
+
+// ─── URL API otomatis sesuai platform ───────────────────────────────────────
+// Web/Desktop  → localhost:5000
+// Android emu  → 10.0.2.2:5000  (address khusus emulator)
+// Device fisik → ganti dengan IP WiFi laptop kamu
+String get _kApiBaseUrl {
+  if (kIsWeb) return 'http://localhost:5000';      // Chrome / web
+  return 'http://10.0.2.2:5000';                   // Android emulator
+}
 
 class RiskCheckScreen extends StatefulWidget {
   const RiskCheckScreen({super.key});
@@ -25,6 +37,8 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
   bool? _smokingHistory; // true = Ya, false = Tidak
   bool? _hypertensionHistory; // true = Ya, false = Tidak
   bool? _cardiovascularHistory; // true = Ya, false = Tidak
+
+  bool _isLoading = false; // Loading saat memanggil API
 
   // Soft Pink Theme Palette
   static const Color _primaryPink = Color(0xFFF06292); // Soft pink utama
@@ -116,8 +130,8 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
     );
   }
 
-  /// Hitung total skor risiko diabetes dan buka halaman Detail Risiko
-  void _calculateRiskScore() {
+  /// Panggil Flask API lalu buka halaman Detail Risiko
+  Future<void> _calculateRiskScore() async {
     // Pastikan IMT sudah terhitung jika BB & TB diisi
     if (_calculatedImt == null &&
         _weightController.text.isNotEmpty &&
@@ -128,9 +142,14 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
     final ageText = _ageController.text.trim();
     final age = int.tryParse(ageText);
 
-    final weight = double.tryParse(_weightController.text.trim().replaceAll(',', '.')) ?? 65.0;
-    final height = double.tryParse(_heightController.text.trim().replaceAll(',', '.')) ?? 170.0;
+    final weight =
+        double.tryParse(_weightController.text.trim().replaceAll(',', '.')) ??
+            65.0;
+    final height =
+        double.tryParse(_heightController.text.trim().replaceAll(',', '.')) ??
+            170.0;
 
+    // Validasi semua field terisi
     if (_calculatedImt == null ||
         age == null ||
         _familyHistory == null ||
@@ -152,6 +171,60 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
       return;
     }
 
+    setState(() => _isLoading = true);
+
+    String? hasilPrediksi;
+
+    try {
+      // Kirim data ke Flask API
+      final response = await http
+          .post(
+            Uri.parse('$_kApiBaseUrl/predict'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'JK': _gender,                          // 'Laki-Laki' atau 'Perempuan'
+              'Usia': age,                             // integer — API yang kategorikan
+              'IMT': _calculatedImt,                  // double — API yang kategorikan
+              'Hipertensi': _hypertensionHistory,     // bool
+              'Riwayat Kardiovaskuler': _cardiovascularHistory, // bool
+              'Riwayat Merokok': _smokingHistory,     // bool
+              'Riwayat Keluarga': _familyHistory,     // bool
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        hasilPrediksi = body['hasil']?.toString();
+      } else {
+        final body = jsonDecode(response.body);
+        throw Exception(body['error'] ?? 'Server error ${response.statusCode}');
+      }
+    } catch (e) {
+      // Jika API tidak bisa dijangkau, tampilkan snackbar tapi tetap lanjut
+      // dengan kalkulasi manual (fallback)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Tidak dapat terhubung ke server ML. Menggunakan kalkulasi lokal.',
+              style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFE65100),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+
+    if (!mounted) return;
+
+    // Navigasi ke halaman detail dengan membawa hasil prediksi API
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -166,6 +239,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
           smokingHistory: _smokingHistory!,
           hypertensionHistory: _hypertensionHistory!,
           cardiovascularHistory: _cardiovascularHistory!,
+          hasilPrediksiApi: hasilPrediksi,
         ),
       ),
     );
@@ -626,7 +700,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
           width: double.infinity,
           height: 52,
           child: ElevatedButton(
-            onPressed: _calculateRiskScore,
+            onPressed: _isLoading ? null : _calculateRiskScore,
             style: ElevatedButton.styleFrom(
               backgroundColor: _primaryPink,
               foregroundColor: Colors.white,
@@ -635,20 +709,24 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Hitung Total Risiko >',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    letterSpacing: 0.3,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    'Hitung Total Risiko >',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      letterSpacing: 0.3,
+                    ),
                   ),
-                ),
-              ],
-            ),
           ),
         ),
       ],

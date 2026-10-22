@@ -7,6 +7,7 @@ import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/app_logo_badge.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/glossy_login_button.dart';
+import '../widgets/role_selector.dart';
 import '../widgets/stethoscope_watermark.dart';
 import 'forgot_password_screen.dart';
 import 'sign_up_screen.dart';
