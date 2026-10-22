@@ -545,10 +545,12 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    // Beralih ke tab Konsultasi Dokter (index 2) untuk memilih dokter atau melanjutkan chat yang sudah ada
-                    setState(() {
-                      _selectedTabIndex = 2;
-                    });
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RiskCheckScreen(),
+                      ),
+                    );
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(

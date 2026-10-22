@@ -14,6 +14,10 @@ class RealtimeChatMessage {
   final String time;
   final DateTime? timestamp;
   final bool isRead;
+  final String type; // 'text' | 'image' | 'document'
+  final String? attachmentData;
+  final String? attachmentName;
+  final String? attachmentSize;
 
   RealtimeChatMessage({
     required this.id,
@@ -24,10 +28,16 @@ class RealtimeChatMessage {
     required this.time,
     this.timestamp,
     this.isRead = false,
+    this.type = 'text',
+    this.attachmentData,
+    this.attachmentName,
+    this.attachmentSize,
   });
 
   bool get isPatient => senderRole == 'pasien';
   bool get isDoctor => senderRole == 'doctor';
+  bool get isImage => type == 'image';
+  bool get isDocument => type == 'document';
 
   factory RealtimeChatMessage.fromFirestore(DocumentSnapshot doc) {
     final data = (doc.data() as Map<String, dynamic>?) ?? {};
@@ -46,6 +56,10 @@ class RealtimeChatMessage {
       time: timeStr,
       timestamp: dt,
       isRead: data['isRead'] as bool? ?? false,
+      type: data['type']?.toString() ?? 'text',
+      attachmentData: data['attachmentData']?.toString(),
+      attachmentName: data['attachmentName']?.toString(),
+      attachmentSize: data['attachmentSize']?.toString(),
     );
   }
 
@@ -57,6 +71,10 @@ class RealtimeChatMessage {
       'senderId': senderId,
       'timestamp': FieldValue.serverTimestamp(),
       'isRead': isRead,
+      'type': type,
+      if (attachmentData != null) 'attachmentData': attachmentData,
+      if (attachmentName != null) 'attachmentName': attachmentName,
+      if (attachmentSize != null) 'attachmentSize': attachmentSize,
     };
   }
 }
@@ -297,29 +315,46 @@ class ChatService {
     required String senderRole, // 'pasien' | 'doctor'
     required String senderName,
     String? senderId,
+    String type = 'text',
+    String? attachmentData,
+    String? attachmentName,
+    String? attachmentSize,
   }) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty && attachmentData == null) return;
 
     final actualSenderId = senderId ?? currentUid ?? '';
 
     // 1. Tambah dokumen pesan ke subcollection messages
-    await _db
-        .collection('consultation_chats')
-        .doc(chatId)
-        .collection('messages')
-        .add({
+    final messageDoc = <String, dynamic>{
       'text': trimmed,
       'senderRole': senderRole,
       'senderName': senderName,
       'senderId': actualSenderId,
       'timestamp': FieldValue.serverTimestamp(),
       'isRead': false,
-    });
+      'type': type,
+    };
+    if (attachmentData != null) messageDoc['attachmentData'] = attachmentData;
+    if (attachmentName != null) messageDoc['attachmentName'] = attachmentName;
+    if (attachmentSize != null) messageDoc['attachmentSize'] = attachmentSize;
+
+    await _db
+        .collection('consultation_chats')
+        .doc(chatId)
+        .collection('messages')
+        .add(messageDoc);
 
     // 2. Perbarui ringkasan dokumen chat utama
+    String summary = trimmed;
+    if (type == 'image') {
+      summary = trimmed.isNotEmpty ? '📷 Foto: $trimmed' : '📷 Foto';
+    } else if (type == 'document') {
+      summary = '📄 ${attachmentName ?? "Dokumen"}';
+    }
+
     final updateData = <String, dynamic>{
-      'lastMessage': trimmed,
+      'lastMessage': summary.isEmpty ? 'Kirim lampiran' : summary,
       'lastMessageTime': FieldValue.serverTimestamp(),
       'lastSenderRole': senderRole,
       'updatedAt': FieldValue.serverTimestamp(),

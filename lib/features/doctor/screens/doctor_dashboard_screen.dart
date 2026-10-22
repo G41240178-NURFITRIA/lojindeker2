@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -2851,6 +2852,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     'isDoctor': m.isDoctor,
                     'time': m.time,
                     'read': m.isRead,
+                    'type': m.type,
+                    'attachmentData': m.attachmentData,
+                    'attachmentName': m.attachmentName,
+                    'attachmentSize': m.attachmentSize,
                   })
               .toList();
         });
@@ -2875,11 +2880,19 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     super.dispose();
   }
 
-  void _sendMessage() async {
-    final text = _msgController.text.trim();
-    if (text.isEmpty) return;
+  void _sendMessage({
+    String? customText,
+    String type = 'text',
+    String? attachmentData,
+    String? attachmentName,
+    String? attachmentSize,
+  }) async {
+    final text = (customText ?? _msgController.text).trim();
+    if (text.isEmpty && attachmentData == null) return;
 
-    _msgController.clear();
+    if (customText == null) {
+      _msgController.clear();
+    }
 
     if (widget.chatId != null && widget.chatId!.isNotEmpty) {
       try {
@@ -2888,11 +2901,628 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           text: text,
           senderRole: 'doctor',
           senderName: widget.doctorName,
+          type: type,
+          attachmentData: attachmentData,
+          attachmentName: attachmentName,
+          attachmentSize: attachmentSize,
         );
       } catch (e) {
         debugPrint('⚠️ Error sending doctor message: $e');
       }
     }
+  }
+
+  /// Tampilkan Bottom Sheet Lampiran ala WhatsApp
+  void _showAttachmentBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          margin: const EdgeInsets.only(left: 12, right: 12, bottom: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildAttachmentOption(
+                    icon: Icons.camera_alt_rounded,
+                    label: 'Kamera',
+                    colors: const [Color(0xFFFF5252), Color(0xFFFF1744)],
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickAndSendImage(ImageSource.camera);
+                    },
+                  ),
+                  _buildAttachmentOption(
+                    icon: Icons.photo_library_rounded,
+                    label: 'Galeri',
+                    colors: const [Color(0xFFAB47BC), Color(0xFF7B1FA2)],
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _pickAndSendImage(ImageSource.gallery);
+                    },
+                  ),
+                  _buildAttachmentOption(
+                    icon: Icons.insert_drive_file_rounded,
+                    label: 'Dokumen',
+                    colors: const [Color(0xFF42A5F5), Color(0xFF1976D2)],
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showDocumentPickerSheet();
+                    },
+                  ),
+                  _buildAttachmentOption(
+                    icon: Icons.medical_services_rounded,
+                    label: 'Hasil Lab',
+                    colors: const [Color(0xFF26A69A), Color(0xFF00897B)],
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _sendLabSummaryAttachment();
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAttachmentOption({
+    required IconData icon,
+    required String label,
+    required List<Color> colors,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: colors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.last.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: 26),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF424242),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndSendImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 65,
+      );
+      if (picked == null) return;
+
+      final bytes = await picked.readAsBytes();
+      final base64String = base64Encode(bytes);
+      final sizeKb = (bytes.lengthInBytes / 1024).round();
+      final sizeStr = sizeKb > 1024
+          ? '${(sizeKb / 1024).toStringAsFixed(1)} MB'
+          : '$sizeKb KB';
+
+      if (!mounted) return;
+      _showImagePreviewDialog(
+        bytes: bytes,
+        base64String: base64String,
+        fileName: picked.name,
+        fileSize: sizeStr,
+      );
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengambil foto: $e', style: GoogleFonts.poppins()),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showImagePreviewDialog({
+    required Uint8List bytes,
+    required String base64String,
+    required String fileName,
+    required String fileSize,
+  }) {
+    final captionController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.photo_rounded, color: AppColors.primary, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Kirim Foto ($fileSize)',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    width: double.infinity,
+                    color: Colors.black12,
+                    child: Image.memory(bytes, fit: BoxFit.cover),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5F5),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: TextField(
+                    controller: captionController,
+                    style: GoogleFonts.poppins(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Tambah keterangan foto...',
+                      hintStyle: GoogleFonts.poppins(fontSize: 12.5, color: Colors.grey),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(
+                          'Batal',
+                          style: GoogleFonts.poppins(color: Colors.grey.shade700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        onPressed: () {
+                          final caption = captionController.text.trim();
+                          Navigator.pop(ctx);
+                          _sendMessage(
+                            customText: caption,
+                            type: 'image',
+                            attachmentData: base64String,
+                            attachmentName: fileName,
+                            attachmentSize: fileSize,
+                          );
+                        },
+                        icon: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                        label: Text(
+                          'Kirim',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDocumentPickerSheet() {
+    final docs = [
+      {
+        'title': 'Hasil_Pemeriksaan_Lab_Glukosa.pdf',
+        'desc': 'Hasil tes gula darah puasa & HbA1c resmi laboratorium',
+        'size': '245 KB',
+        'icon': Icons.picture_as_pdf_rounded,
+        'color': const Color(0xFFE53935),
+      },
+      {
+        'title': 'Surat_Rujukan_Klinis_SpPD.pdf',
+        'desc': 'Rujukan konsultasi lanjutan poli penyakit dalam',
+        'size': '180 KB',
+        'icon': Icons.description_rounded,
+        'color': const Color(0xFF1E88E5),
+      },
+      {
+        'title': 'Resep_Obat_Resmi_D-Care.pdf',
+        'desc': 'Salinan resep metformin & glimepiride elektronik',
+        'size': '120 KB',
+        'icon': Icons.medication_rounded,
+        'color': const Color(0xFF43A047),
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.softPinkCard,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.insert_drive_file_rounded,
+                        color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pilih Dokumen Medis',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: const Color(0xFF212121),
+                        ),
+                      ),
+                      Text(
+                        'Kirim berkas PDF atau rekam medis',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...docs.map((d) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9F9FB),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: (d['color'] as Color).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        d['icon'] as IconData,
+                        color: d['color'] as Color,
+                        size: 24,
+                      ),
+                    ),
+                    title: Text(
+                      d['title'] as String,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF212121),
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${d['desc']} • ${d['size']}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.send_rounded,
+                        color: AppColors.primary, size: 18),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _sendMessage(
+                        customText: 'Lampiran: ${d['title']}',
+                        type: 'document',
+                        attachmentName: d['title'] as String,
+                        attachmentSize: d['size'] as String,
+                        attachmentData: 'mock_pdf_content',
+                      );
+                    },
+                  ),
+                );
+              }),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndSendImage(ImageSource.camera);
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      style: BorderStyle.solid,
+                    ),
+                    color: AppColors.softPinkCard.withValues(alpha: 0.35),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.document_scanner_rounded,
+                          color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Foto / Scan Dokumen Fisik',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _sendLabSummaryAttachment() {
+    final note = widget.glucoseNote.isNotEmpty
+        ? widget.glucoseNote
+        : 'Gula Darah: 110 mg/dL (Terkontrol)';
+    _sendMessage(
+      customText: '📊 Ringkasan Hasil Lab:\n$note\nTanggal: Hari ini\nStatus: Terverifikasi oleh Dokter',
+      type: 'document',
+      attachmentName: 'Ringkasan_Hasil_Lab_${widget.patientName.replaceAll(' ', '_')}.pdf',
+      attachmentSize: '95 KB',
+      attachmentData: 'mock_lab_pdf',
+    );
+  }
+
+  void _openFullScreenImage(Uint8List bytes, String? name) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: Text(
+              name ?? 'Foto',
+              style: GoogleFonts.poppins(color: Colors.white, fontSize: 15),
+            ),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              boundaryMargin: const EdgeInsets.all(20),
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image.memory(bytes),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDocumentDetailModal(Map<String, dynamic> m) {
+    final name = (m['attachmentName'] as String?) ?? 'Dokumen.pdf';
+    final size = (m['attachmentSize'] as String?) ?? '150 KB';
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.picture_as_pdf_rounded,
+                    color: Color(0xFFE53935), size: 32),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                name,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: const Color(0xFF212121),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Ukuran: $size • Format Dokumen PDF Terenkripsi',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.check_circle_rounded,
+                                color: Colors.white, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Dokumen "$name" berhasil dibuka / diunduh.',
+                                style: GoogleFonts.poppins(fontSize: 12.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: const Color(0xFF2E7D32),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.file_download_rounded, color: Colors.white),
+                  label: Text(
+                    'Unduh & Buka Dokumen',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _openPatientHistory() {
@@ -3040,15 +3670,28 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 
   Widget _buildMessageBubble(Map<String, dynamic> m, bool isDoctor) {
     final bool isRead = (m['read'] as bool?) ?? false;
+    final String type = (m['type'] as String?) ?? 'text';
+    final String? attachmentData = m['attachmentData'] as String?;
+    final String? attachmentName = m['attachmentName'] as String?;
+    final String? attachmentSize = m['attachmentSize'] as String?;
+    final String text = (m['text'] as String?) ?? '';
+
+    Uint8List? imageBytes;
+    if (type == 'image' && attachmentData != null && attachmentData.isNotEmpty) {
+      try {
+        imageBytes = base64Decode(attachmentData);
+      } catch (_) {}
+    }
+
     return Align(
       alignment: isDoctor ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: EdgeInsets.only(
           bottom: 10,
-          left: isDoctor ? 60 : 0,
-          right: isDoctor ? 0 : 60,
+          left: isDoctor ? 50 : 0,
+          right: isDoctor ? 0 : 50,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isDoctor ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.only(
@@ -3072,14 +3715,120 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           crossAxisAlignment:
               isDoctor ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            Text(
-              m['text'] as String,
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                color: isDoctor ? Colors.white : const Color(0xFF212121),
-                height: 1.45,
+            // Lampiran Foto
+            if (type == 'image' && imageBytes != null) ...[
+              GestureDetector(
+                onTap: () => _openFullScreenImage(imageBytes!, attachmentName),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      maxHeight: 200,
+                      maxWidth: 240,
+                    ),
+                    color: Colors.black12,
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        Image.memory(imageBytes, fit: BoxFit.cover),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          margin: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(Icons.fullscreen_rounded,
+                              color: Colors.white, size: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 6),
+            ],
+
+            // Lampiran Dokumen
+            if (type == 'document') ...[
+              InkWell(
+                onTap: () => _showDocumentDetailModal(m),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDoctor
+                        ? Colors.white.withValues(alpha: 0.18)
+                        : const Color(0xFFF5F5F7),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isDoctor
+                          ? Colors.white.withValues(alpha: 0.3)
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE53935).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.picture_as_pdf_rounded,
+                          color: Color(0xFFE53935),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              attachmentName ?? 'Dokumen.pdf',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isDoctor
+                                    ? Colors.white
+                                    : const Color(0xFF212121),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${attachmentSize ?? "PDF"} • Ketuk untuk buka',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color: isDoctor
+                                    ? Colors.white.withValues(alpha: 0.8)
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+            ],
+
+            // Pesan Teks
+            if (text.isNotEmpty)
+              Text(
+                text,
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: isDoctor ? Colors.white : const Color(0xFF212121),
+                  height: 1.45,
+                ),
+              ),
+
             const SizedBox(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -3133,14 +3882,18 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       child: SafeArea(
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.softPinkCard,
-                shape: BoxShape.circle,
+            InkWell(
+              onTap: _showAttachmentBottomSheet,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: AppColors.softPinkCard,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 22),
               ),
-              child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 22),
             ),
             const SizedBox(width: 10),
             Expanded(
