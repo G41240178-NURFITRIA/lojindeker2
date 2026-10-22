@@ -20,6 +20,10 @@ class RiskDetailScreen extends StatefulWidget {
   final bool cardiovascularHistory;
   final RiskAssessmentModel? assessment;
 
+  /// Hasil prediksi dari Flask API (misal: "Berisiko" / "Tidak Berisiko")
+  /// Null jika API tidak tersedia (fallback ke kalkulasi manual)
+  final String? hasilPrediksiApi;
+
   const RiskDetailScreen({
     super.key,
     this.weight = 65,
@@ -33,6 +37,7 @@ class RiskDetailScreen extends StatefulWidget {
     this.hypertensionHistory = false,
     this.cardiovascularHistory = false,
     this.assessment,
+    this.hasilPrediksiApi,
   });
 
   @override
@@ -174,6 +179,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
                 notifBorderColor: notifBorderColor,
                 notifIconColor: notifIconColor,
                 notifTextColor: notifTextColor,
+                hasilPrediksiApi: widget.hasilPrediksiApi,
               ),
               const SizedBox(height: 18),
 
@@ -228,6 +234,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
     required Color notifBorderColor,
     required Color notifIconColor,
     required Color notifTextColor,
+    String? hasilPrediksiApi,
   }) {
     final double markerPercent = (score / 100.0).clamp(0.0, 1.0);
 
@@ -249,6 +256,60 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Badge hasil ML dari API — disembunyikan karena prediksi tidak akurat
+          if (false && hasilPrediksiApi != null) ...
+            [
+              Builder(builder: (context) {
+                // Konversi label API ke teks yang lebih user-friendly
+                final bool tidakDiabetes =
+                    hasilPrediksiApi.toLowerCase().contains('tidak');
+                final String labelTampil = tidakDiabetes
+                    ? 'Tidak Terdeteksi Diabetes Mellitus Tipe 2'
+                    : 'Diabetes Mellitus Tipe 2';
+
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: tidakDiabetes
+                        ? const Color(0xFFE8F5E9)
+                        : const Color(0xFFFFEBEE),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: tidakDiabetes
+                          ? const Color(0xFFA5D6A7)
+                          : const Color(0xFFEF9A9A),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        tidakDiabetes
+                            ? Icons.check_circle_outline
+                            : Icons.warning_amber_rounded,
+                        size: 15,
+                        color: tidakDiabetes
+                            ? const Color(0xFF2E7D32)
+                            : const Color(0xFFC62828),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        labelTampil,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: tidakDiabetes
+                              ? const Color(0xFF2E7D32)
+                              : const Color(0xFFC62828),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 12),
+            ],
           Text(
             'Skor Risiko Saat Ini',
             style: GoogleFonts.poppins(
