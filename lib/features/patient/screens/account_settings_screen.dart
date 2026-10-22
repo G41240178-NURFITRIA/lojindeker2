@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'password_manager_screen.dart';
+import '../../../services/auth_service.dart';
 import '../../auth/screens/landing_screen.dart';
 
 class AccountSettingsScreen extends StatelessWidget {
@@ -38,12 +39,15 @@ class AccountSettingsScreen extends StatelessWidget {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LandingScreen()),
-                (route) => false,
-              );
+              await AuthService.instance.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LandingScreen()),
+                  (route) => false,
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFC62828),

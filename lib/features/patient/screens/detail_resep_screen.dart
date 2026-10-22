@@ -14,7 +14,7 @@ class DetailResepScreen extends StatefulWidget {
 
   const DetailResepScreen({
     super.key,
-    this.date = '18 Mei 2024',
+    this.date = '18 Mei 2026',
     this.status = 'Aktif',
     this.doctorName = 'dr. Andini Putri',
     this.doctorSpecialty = 'Sp. Penyakit Dalam',
@@ -196,7 +196,7 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFBA171E),
+        backgroundColor: const Color(0xFFF06292),
         elevation: 0,
         centerTitle: true,
         leading: IconButton(

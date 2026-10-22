@@ -1,28 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/services/notification_service.dart';
-
-class MedicationReminder {
-  final String id;
-  String medicineName;
-  String dosage;
-  String schedule;
-  String time;
-  bool isActive;
-  bool isTakenToday;
-  IconData iconData;
-
-  MedicationReminder({
-    required this.id,
-    required this.medicineName,
-    required this.dosage,
-    required this.schedule,
-    required this.time,
-    this.isActive = true,
-    this.isTakenToday = false,
-    this.iconData = Icons.medication_rounded,
-  });
-}
+import '../../../core/services/patient_activity_service.dart';
+import '../models/medication_reminder_model.dart';
+export '../models/medication_reminder_model.dart';
 
 class MedicationReminderScreen extends StatefulWidget {
   const MedicationReminderScreen({super.key});
@@ -41,22 +21,15 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   @override
   void initState() {
     super.initState();
-    _reminders = [];
+    _reminders = List.from(PatientActivityService.instance.reminders);
   }
 
   void _toggleReminder(MedicationReminder rem, bool value) {
     setState(() {
       rem.isActive = value;
     });
-
-    if (value) {
-      NotificationService().showMedicationNotification(
-        id: rem.id.hashCode,
-        medicineName: rem.medicineName,
-        dosage: rem.dosage,
-        time: rem.time,
-      );
-    }
+    // Menjadwalkan atau membatalkan alarm harian otomatis di HP
+    PatientActivityService.instance.toggleReminderActive(rem.id, value);
 
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -87,150 +60,6 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     );
   }
 
-  void _triggerSimulatedAlarm(MedicationReminder item) {
-    // Tembakkan notifikasi HP sungguhan ke status bar
-    NotificationService().showMedicationNotification(
-      id: item.id.hashCode,
-      medicineName: item.medicineName,
-      dosage: item.dosage,
-      time: item.time,
-    );
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFCE4EC),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.alarm_on_rounded, color: _darkRose, size: 24),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'WAKTU MINUM OBAT!',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: _darkRose,
-                    ),
-                  ),
-                  Text(
-                    'Pengingat Notifikasi D-Care',
-                    style: GoogleFonts.poppins(
-                      fontSize: 10.5,
-                      color: const Color(0xFF757575),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF0F5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFF8BBD0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.medicineName,
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF141414),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.dosage,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12.5,
-                      color: const Color(0xFF555555),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time_filled_rounded, size: 14, color: _primaryPink),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Jadwal: ${item.time} (${item.schedule})',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _primaryPink,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Pastikan minum obat sesuai dosis dan anjuran dokter untuk menjaga kadar gula darah tetap stabil.',
-              style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF666666)),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Nanti (5 Menit)',
-              style: GoogleFonts.poppins(color: const Color(0xFF757575), fontWeight: FontWeight.w500),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                item.isTakenToday = true;
-              });
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Hebat! Anda telah mencatat minum obat ${item.medicineName}',
-                    style: GoogleFonts.poppins(fontSize: 12, color: Colors.white),
-                  ),
-                  backgroundColor: const Color(0xFF2E7D32),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _darkRose,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Text(
-              'Sudah Minum',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showAddReminderSheet() {
     final nameController = TextEditingController();
@@ -632,14 +461,8 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                               setState(() {
                                 _reminders.insert(0, newRem);
                               });
-
-                              // Notifikasi HP saat jadwal disimpan
-                              NotificationService().showMedicationNotification(
-                                id: newRem.id.hashCode,
-                                medicineName: newRem.medicineName,
-                                dosage: newRem.dosage,
-                                time: newRem.time,
-                              );
+                              PatientActivityService.instance.addReminder(newRem);
+                              // ✅ Alarm harian otomatis dijadwalkan oleh addReminder()
 
                               Navigator.pop(sheetContext);
 
@@ -815,6 +638,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                   setState(() {
                     rem.isTakenToday = !rem.isTakenToday;
                   });
+                  PatientActivityService.instance.toggleReminderTaken(rem.id, rem.isTakenToday);
                   Navigator.pop(sheetContext);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -830,34 +654,6 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                 },
               ),
 
-              // Opsi 2: Tes Simulasi Alarm
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFCE4EC),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.alarm_on_rounded, color: _darkRose, size: 22),
-                ),
-                title: Text(
-                  'Tes Simulasi Alarm Notifikasi',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF212121),
-                  ),
-                ),
-                subtitle: Text(
-                  'Coba tampilan bunyi alarm notifikasi obat',
-                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
-                ),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _triggerSimulatedAlarm(rem);
-                },
-              ),
 
               // Opsi 3: Ubah Waktu
               ListTile(
@@ -910,6 +706,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                     setState(() {
                       rem.time = formatted;
                     });
+                    PatientActivityService.instance.updateReminderTime(rem.id, formatted);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -954,6 +751,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                   setState(() {
                     _reminders.remove(rem);
                   });
+                  PatientActivityService.instance.removeReminder(rem.id);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
@@ -967,6 +765,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                           setState(() {
                             _reminders.insert(removedIndex, rem);
                           });
+                          PatientActivityService.instance.addReminder(rem);
                         },
                       ),
                     ),
@@ -1065,26 +864,23 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                         fontSize: 11.5,
                         color: const Color(0xFF616161),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 5),
                     Row(
                       children: [
                         const Icon(Icons.repeat_rounded, size: 13, color: _primaryPink),
                         const SizedBox(width: 4),
-                        Text(
-                          rem.schedule,
-                          style: GoogleFonts.poppins(
-                            fontSize: 10.5,
-                            color: const Color(0xFF757575),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '• Tekan opsi',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            color: const Color(0xFF9E9E9E),
-                            fontStyle: FontStyle.italic,
+                        Expanded(
+                          child: Text(
+                            rem.schedule,
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              color: const Color(0xFF757575),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -1092,6 +888,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1235,28 +1032,31 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
 
               // Section Header
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Jadwal Obat Harian',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF212121),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Jadwal Obat Harian',
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF212121),
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Atur waktu dan notifikasi agar tidak terlewat',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: const Color(0xFF757575),
+                        Text(
+                          'Atur waktu dan notifikasi agar tidak terlewat',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: const Color(0xFF757575),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: _showAddReminderSheet,
                     icon: const Icon(Icons.add, size: 16, color: Colors.white),

@@ -2,7 +2,9 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/services/auth_service.dart';
+import '../../../models/app_user.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/user_repository.dart';
 import '../../../core/services/profile_image_service.dart';
 import 'consultation_list_screen.dart';
 
@@ -52,6 +54,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = AuthService.instance.currentUser;
     if (user != null) {
       try {
+        final appUser = await UserRepository.instance.findByUid(user.uid);
+        if (appUser != null && mounted) {
+          setState(() {
+            _accountUsername = appUser.username;
+            if (_phoneController.text.isEmpty && appUser.phoneNumber.isNotEmpty) {
+              _phoneController.text = appUser.phoneNumber;
+            }
+            if (_emailController.text.isEmpty) {
+              _emailController.text = appUser.email.isNotEmpty ? appUser.email : user.email ?? '';
+            }
+            if (_dobController.text.isEmpty && appUser.dob.isNotEmpty) {
+              _dobController.text = appUser.dob;
+            }
+            if (appUser.fullName.isNotEmpty) {
+              _nameController.text = appUser.fullName;
+            }
+          });
+          return;
+        }
+
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data() != null && mounted) {
           final data = doc.data()!;
@@ -263,8 +285,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           updateData['dob'] = _dobController.text.trim();
         }
 
+        final appUser = await UserRepository.instance.findByUid(currentUser.uid);
+        final collection = appUser?.role.collection ?? 'users';
+
         await FirebaseFirestore.instance
-            .collection('users')
+            .collection(collection)
             .doc(currentUser.uid)
             .set(updateData, SetOptions(merge: true));
 

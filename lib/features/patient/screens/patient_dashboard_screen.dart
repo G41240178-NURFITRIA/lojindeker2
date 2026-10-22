@@ -5,14 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/profile_image_service.dart';
-import '../models/risk_assessment_model.dart';
+import '../../../core/services/patient_chat_notification_service.dart';
 import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
-import 'glucose_history_screen.dart';
 import 'medical_records_screen.dart';
 import 'nearest_facility_screen.dart';
 import 'live_chat_screen.dart';
+import '../../../core/widgets/doctor_avatar_widget.dart';
 import 'patient_profile_screen.dart';
 import 'article_detail_screen.dart';
 import 'when_to_see_doctor_screen.dart';
@@ -44,6 +45,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   void _loadCurrentProfile() async {
     final user = AuthService.instance.currentUser;
     if (user != null) {
+      PatientActivityService.instance.loadUserDataFromFirestore();
       try {
         final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (doc.exists && doc.data() != null && mounted) {
@@ -543,10 +545,10 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LiveChatScreen()),
-                    );
+                    // Beralih ke tab Konsultasi Dokter (index 2) untuk memilih dokter atau melanjutkan chat yang sudah ada
+                    setState(() {
+                      _selectedTabIndex = 2;
+                    });
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -561,13 +563,13 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.chat_rounded,
+                          Icons.health_and_safety_rounded,
                           size: 15,
                           color: Colors.white,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Tanya Dokter',
+                          'Skrining',
                           style: GoogleFonts.poppins(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w600,
@@ -585,11 +587,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => MedicalRecordsScreen(
-                          patientName: _currentPatientName,
-                        ),
-                      ),
+                      MaterialPageRoute(builder: (_) => const LiveChatScreen()),
                     );
                   },
                   borderRadius: BorderRadius.circular(12),
@@ -607,13 +605,13 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.history_edu_rounded,
+                          Icons.chat_rounded,
                           size: 15,
                           color: Color(0xFFD81B60),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'Lihat Riwayat',
+                          'Tanya Dokter',
                           style: GoogleFonts.poppins(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w600,
@@ -680,15 +678,22 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _buildServiceCard(
-                  icon: const _DoctorOutlineIcon(color: Colors.white, size: 28),
-                  title: 'Konsultasi',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ConsultationListScreen(),
-                      ),
+                child: ValueListenableBuilder<int>(
+                  valueListenable:
+                      PatientChatNotificationService.instance.unreadTotalNotifier,
+                  builder: (context, unreadCount, _) {
+                    return _buildServiceCard(
+                      icon: const _DoctorOutlineIcon(color: Colors.white, size: 28),
+                      title: 'Konsultasi',
+                      showBadge: unreadCount > 0,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ConsultationListScreen(),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -807,57 +812,126 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 ),
               ],
             ),
-            child: Builder(builder: (context) {
-              // Ambil data risiko terbaru secara otomatis
-              final latestRisk = dummyRiskAssessments.isNotEmpty
-                  ? dummyRiskAssessments.first
-                  : null;
-              final riskLabel = latestRisk?.level.label ?? 'Belum ada data';
-              final riskColor = latestRisk?.level.color ?? const Color(0xFF757575);
-              final riskDate = latestRisk?.date ?? '-';
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
-                      text: 'Resiko Diabetes : ',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF141414),
-                      ),
-                      children: [
-                        TextSpan(
-                          text: riskLabel,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: riskColor,
+            child: ValueListenableBuilder<PatientRiskRecord?>(
+              valueListenable: PatientActivityService.instance.latestRiskNotifier,
+              builder: (context, latestRisk, _) {
+                if (latestRisk == null) {
+                  // Empty state — belum pernah cek risiko
+                  return InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const RiskCheckScreen()),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF0F5),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.health_and_safety_outlined,
+                              color: Color(0xFFD81B60),
+                              size: 22,
+                            ),
                           ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Belum ada data risiko',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF141414),
+                                  ),
+                                ),
+                                Text(
+                                  'Lakukan cek risiko pertama Anda sekarang',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: const Color(0xFF757575),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD81B60),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Cek Sekarang',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                // Ada data — tampilkan status risiko
+                final riskLabel = latestRisk.status;
+                final riskColor = latestRisk.statusColor;
+                final riskDate = latestRisk.date;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        text: 'Resiko Diabetes : ',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF141414),
                         ),
-                      ],
+                        children: [
+                          TextSpan(
+                            text: riskLabel,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: riskColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Berdasarkan hasil pengecekan terakhir',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      color: const Color(0xFF757575),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Berdasarkan hasil pengecekan terakhir',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        color: const Color(0xFF757575),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    riskDate,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF424242),
+                    const SizedBox(height: 2),
+                    Text(
+                      riskDate,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF424242),
+                      ),
                     ),
-                  ),
-                ],
-              );
-            }),
+                  ],
+                );
+              },
+            ),
           ),
 
           const SizedBox(height: 24),
@@ -873,164 +947,124 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // 1. Cek Risiko Diabetes
-                _buildAktivitasItem(
-                  iconWidget: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.health_and_safety_outlined,
-                      color: Color(0xFFE56A6F),
-                      size: 21,
-                    ),
-                  ),
-                  title: 'Cek Risiko Diabetes',
-                  subtitleWidget: RichText(
-                    text: TextSpan(
-                      text: 'Hasil terakhir: ',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: const Color(0xFF757575),
-                      ),
-                      children: [
-                        TextSpan(
-                          text: 'Risiko Rendah',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF2E7D32),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  trailingIcon: Icons.calendar_today_outlined,
-                  trailingText: '20 Mei 2026',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RiwayatRisikoScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(
-                  height: 1,
-                  thickness: 0.8,
-                  color: Color(0xFFF2F2F2),
-                  indent: 16,
-                  endIndent: 16,
-                ),
+          ValueListenableBuilder<List<PatientRiskRecord>>(
+            valueListenable: PatientActivityService.instance.riskHistoryNotifier,
+            builder: (context, riskHistory, _) {
+              return ValueListenableBuilder<PatientConsultationActivity?>(
+                valueListenable: PatientActivityService.instance.latestConsultationNotifier,
+                builder: (context, latestConsultation, _) {
+                  return ValueListenableBuilder<List<MedicationReminder>>(
+                    valueListenable: PatientActivityService.instance.remindersNotifier,
+                    builder: (context, reminders, _) {
+                      final nextReminder = PatientActivityService.instance.getNextReminderInfo();
+                      final hasRisk = riskHistory.isNotEmpty;
+                      final hasConsultation = latestConsultation != null;
+                      final hasReminder = reminders.isNotEmpty;
 
-                // 2. Konsultasi Dokter
-                _buildAktivitasItem(
-                  iconWidget: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Center(
-                      child: _DoctorOutlineIcon(
-                        color: Color(0xFFE56A6F),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  title: 'Konsultasi Dokter',
-                  subtitleWidget: Text(
-                    'Konsultasi terakhir dengan dr. Koko',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: const Color(0xFF757575),
-                    ),
-                  ),
-                  trailingIcon: Icons.calendar_today_outlined,
-                  trailingText: '18 Mei 2026',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ConsultationListScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(
-                  height: 1,
-                  thickness: 0.8,
-                  color: Color(0xFFF2F2F2),
-                  indent: 16,
-                  endIndent: 16,
-                ),
-
-                // 3. Pengingat Obat
-                _buildAktivitasItem(
-                  iconWidget: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Center(
-                      child: _buildPillCapsuleIcon(),
-                    ),
-                  ),
-                  title: 'Pengingat Obat',
-                  subtitleWidget: RichText(
-                    text: TextSpan(
-                      text: 'Pengingat obat berikutnya: ',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: const Color(0xFF757575),
-                      ),
-                      children: [
-                        TextSpan(
-                          text: '19.00',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF141414),
+                      // Jika semua kosong — tampilkan empty state yang informatif
+                      if (!hasRisk && !hasConsultation && !hasReminder) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFFF0F5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.history_edu_rounded,
+                                  color: Color(0xFFD81B60),
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Belum ada aktivitas',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF141414),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Mulai gunakan layanan untuk melihat aktivitas Anda di sini',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: const Color(0xFF757575),
+                                  height: 1.4,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.04),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  trailingIcon: Icons.access_time_rounded,
-                  trailingText: 'Hari ini, 19.00',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const MedicationReminderScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+                        child: Column(
+                          children: [
+                            // 1. Cek Risiko Diabetes
+                            if (hasRisk) ..._buildCekRisikoItem(riskHistory.first),
+
+                            if (hasRisk && (hasConsultation || hasReminder))
+                              const Divider(
+                                height: 1,
+                                thickness: 0.8,
+                                color: Color(0xFFF2F2F2),
+                                indent: 16,
+                                endIndent: 16,
+                              ),
+
+                            // 2. Konsultasi Dokter
+                            if (hasConsultation)
+                              ..._buildKonsultasiItem(latestConsultation),
+
+                            if (hasConsultation && hasReminder)
+                              const Divider(
+                                height: 1,
+                                thickness: 0.8,
+                                color: Color(0xFFF2F2F2),
+                                indent: 16,
+                                endIndent: 16,
+                              ),
+
+                            // 3. Pengingat Obat
+                            if (hasReminder) ..._buildPengingatItem(nextReminder),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
           ),
 
           const SizedBox(height: 26),
@@ -1069,7 +1103,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
           // Horizontal List of Educational Articles (Clickable)
           SizedBox(
-            height: 245,
+            height: 295,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -1229,7 +1263,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 98,
+                height: 145,
                 decoration: BoxDecoration(
                   color: article.imageBgColor,
                   borderRadius: const BorderRadius.vertical(
@@ -1238,13 +1272,34 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 ),
                 child: Stack(
                   children: [
-                    Center(
-                      child: Icon(
-                        article.iconData,
-                        color: article.categoryColor.withValues(alpha: 0.5),
-                        size: 46,
+                    if (article.imagePath != null)
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(15),
+                          ),
+                          child: Image.asset(
+                            article.imagePath!,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                            errorBuilder: (_, _, _) => Center(
+                              child: Icon(
+                                article.iconData,
+                                color: article.categoryColor.withValues(alpha: 0.5),
+                                size: 46,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Center(
+                        child: Icon(
+                          article.iconData,
+                          color: article.categoryColor.withValues(alpha: 0.5),
+                          size: 46,
+                        ),
                       ),
-                    ),
                     Positioned(
                       top: 8,
                       right: 8,
@@ -1275,12 +1330,22 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      article.category,
-                      style: GoogleFonts.poppins(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                        color: article.categoryColor,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: article.categoryColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        article.category,
+                        style: GoogleFonts.poppins(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: article.categoryColor,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1340,6 +1405,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     required Widget icon,
     required String title,
     VoidCallback? onTap,
+    bool showBadge = false,
   }) {
     return Material(
       color: Colors.transparent,
@@ -1365,28 +1431,160 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              SizedBox(height: 32, child: Center(child: icon)),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  height: 1.2,
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(height: 32, child: Center(child: icon)),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        height: 1.2,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
+              if (showBadge)
+                Positioned(
+                  top: -2,
+                  right: 2,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53935),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 1.8,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Helper: Item Cek Risiko Diabetes
+  List<Widget> _buildCekRisikoItem(PatientRiskRecord risk) {
+    return [
+      _buildAktivitasItem(
+        iconWidget: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF0F2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.health_and_safety_outlined,
+            color: Color(0xFFE56A6F),
+            size: 21,
+          ),
+        ),
+        title: 'Cek Risiko Diabetes',
+        subtitleWidget: RichText(
+          text: TextSpan(
+            text: 'Hasil terakhir: ',
+            style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+            children: [
+              TextSpan(
+                text: 'Risiko ${risk.status}',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: risk.statusColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+        trailingIcon: Icons.calendar_today_outlined,
+        trailingText: risk.date,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const RiwayatRisikoScreen()),
+          );
+        },
+      ),
+    ];
+  }
+
+  /// Helper: Item Konsultasi Dokter
+  List<Widget> _buildKonsultasiItem(PatientConsultationActivity consultation) {
+    return [
+      _buildAktivitasItem(
+        iconWidget: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF0F2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Center(
+            child: _DoctorOutlineIcon(color: Color(0xFFE56A6F), size: 20),
+          ),
+        ),
+        title: 'Konsultasi Dokter',
+        subtitleWidget: Text(
+          'Terakhir dengan ${consultation.doctorName}',
+          style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+        ),
+        trailingIcon: Icons.calendar_today_outlined,
+        trailingText: consultation.date,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
+          );
+        },
+      ),
+    ];
+  }
+
+  /// Helper: Item Pengingat Obat
+  List<Widget> _buildPengingatItem(NextReminderInfo nextReminder) {
+    return [
+      _buildAktivitasItem(
+        iconWidget: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF0F2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(child: _buildPillCapsuleIcon()),
+        ),
+        title: 'Pengingat Obat',
+        subtitleWidget: Text(
+          nextReminder.subtitleText,
+          style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+        ),
+        trailingIcon: Icons.access_time_rounded,
+        trailingText: nextReminder.labelText,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MedicationReminderScreen()),
+          );
+        },
+      ),
+    ];
   }
 
   /// Aktivitas Terbaru Item
@@ -1497,74 +1695,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  /// History Tile
-  Widget _buildHistoryTile({
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    required String value,
-    required Color valueColor,
-    VoidCallback? onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: iconColor, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF424242),
-                  ),
-                ),
-              ),
-              RichText(
-                text: TextSpan(
-                  text: value,
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: valueColor,
-                  ),
-                  children: [
-                    if (value != '-')
-                      TextSpan(
-                        text: ' mg/dL',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w400,
-                          color: const Color(0xFF757575),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   /// Bottom Navigation Bar
   Widget _buildBottomNavigationBar() {
@@ -1588,6 +1718,42 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     final color = isSelected
         ? const Color(0xFFD81B60)
         : const Color(0xFFF48FB1);
+
+    Widget iconWidget = Icon(icon, size: 26, color: color);
+
+    // Titik merah (red dot) pada tab Chat (index 1) jika ada pesan dokter baru
+    if (index == 1) {
+      iconWidget = ValueListenableBuilder<int>(
+        valueListenable:
+            PatientChatNotificationService.instance.unreadTotalNotifier,
+        builder: (context, unreadCount, child) {
+          if (unreadCount <= 0) return child!;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              child!,
+              Positioned(
+                right: -3,
+                top: -3,
+                child: Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE53935),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+        child: iconWidget,
+      );
+    }
 
     return InkWell(
       onTap: () {
@@ -1613,7 +1779,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(10),
-        child: Icon(icon, size: 26, color: color),
+        child: iconWidget,
       ),
     );
   }
@@ -1655,20 +1821,70 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildDoctorCard(
-            name: 'Dr. Kaka',
-            speciality: 'Spesialis Penyakit Dalam',
-            hospital: 'RS D-Care Sejahtera',
-            status: 'Online',
-            statusColor: const Color(0xFF2E7D32),
-          ),
-          const SizedBox(height: 12),
-          _buildDoctorCard(
-            name: 'Dr. Ika',
-            speciality: 'Spesialis Penyakit Dalam',
-            hospital: 'RS D-Care Sejahtera',
-            status: 'Offline',
-            statusColor: const Color(0xFF757575),
+
+          // Stream daftar dokter terdaftar dari Firestore
+          StreamBuilder<QuerySnapshot>(
+            stream:
+                FirebaseFirestore.instance.collection('doctors').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFD81B60),
+                    ),
+                  ),
+                );
+              }
+
+              final docs = snapshot.data?.docs ?? [];
+              if (docs.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Belum ada dokter yang terdaftar saat ini.',
+                      style: GoogleFonts.poppins(color: Colors.grey),
+                    ),
+                  ),
+                );
+              }
+
+              return Column(
+                children: docs.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final doctor = AppUser.fromMap(data, doc.id);
+                  final isOnline = doctor.isActive;
+                  final doctorName = doctor.fullName.isNotEmpty
+                      ? doctor.fullName
+                      : doctor.username;
+                  final specialty = (doctor.specialization != null &&
+                          doctor.specialization!.isNotEmpty)
+                      ? doctor.specialization!
+                      : 'Spesialis Penyakit Dalam';
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildDoctorCard(
+                      name: doctorName,
+                      speciality: specialty,
+                      hospital: 'RS D-Care Sejahtera',
+                      status: isOnline ? 'Online' : 'Offline',
+                      statusColor: isOnline
+                          ? const Color(0xFF2E7D32)
+                          : const Color(0xFF757575),
+                      doctorId: doctor.uid,
+                      photoUrl: doctor.photoUrl,
+                    ),
+                  );
+                }).toList(),
+              );
+            },
           ),
         ],
       ),
@@ -1681,99 +1897,160 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     required String hospital,
     required String status,
     required Color statusColor,
+    String? doctorId,
+    String? photoUrl,
   }) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                LiveChatScreen(doctorName: name, specialty: speciality),
+    return ValueListenableBuilder<Map<String, int>>(
+      valueListenable:
+          PatientChatNotificationService.instance.unreadDoctorMapNotifier,
+      builder: (context, unreadMap, _) {
+        final unread = (doctorId != null ? unreadMap[doctorId] ?? 0 : 0) +
+            (unreadMap[name.toLowerCase().trim()] ?? 0);
+        final hasUnread = unread > 0;
+
+        return InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LiveChatScreen(
+                  doctorName: name,
+                  specialty: speciality,
+                  doctorId: doctorId,
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: hasUnread
+                  ? Border.all(
+                      color: const Color(0xFFE53935),
+                      width: 1.5,
+                    )
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Avatar dengan titik merah jika ada balasan belum dibaca
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    DoctorAvatarWidget(
+                      photoUrl: photoUrl,
+                      size: 48,
+                      isCircle: false,
+                      borderRadius: BorderRadius.circular(14),
+                      iconColor: const Color(0xFFD81B60),
+                    ),
+                    if (hasUnread)
+                      Positioned(
+                        top: -3,
+                        right: -3,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE53935),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF141414),
+                              ),
+                            ),
+                          ),
+                          if (hasUnread)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE53935),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'Pesan Baru',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      Text(
+                        speciality,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          color: const Color(0xFFD81B60),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        hospital,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: const Color(0xFF757575),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          status,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: statusColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFCE4EC),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: Color(0xFFD81B60),
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF141414),
-                    ),
-                  ),
-                  Text(
-                    speciality,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      color: const Color(0xFFD81B60),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    hospital,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: const Color(0xFF757575),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      status,
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: statusColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

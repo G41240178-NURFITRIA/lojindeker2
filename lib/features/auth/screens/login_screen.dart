@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/services/auth_service.dart';
+import '../../../models/app_user.dart';
+import '../../../services/auth_service.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
+import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
 import '../widgets/app_logo_badge.dart';
 import '../widgets/custom_text_field.dart';
@@ -10,10 +12,13 @@ import '../widgets/glossy_login_button.dart';
 import '../widgets/role_selector.dart';
 import '../widgets/stethoscope_watermark.dart';
 import 'forgot_password_screen.dart';
+import 'landing_screen.dart';
 import 'sign_up_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? sessionExpiredMessage;
+
+  const LoginScreen({super.key, this.sessionExpiredMessage});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -25,21 +30,55 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.sessionExpiredMessage != null &&
+        widget.sessionExpiredMessage!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.sessionExpiredMessage!,
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFFBA171E),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _userController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  void _handleBack() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LandingScreen()),
+      );
+    }
+  }
+
   void _handleLogin() async {
-    final username = _userController.text.trim();
+    final identifier = _userController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
+    if (identifier.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Silakan masukkan email / username dan password Anda.',
+            'Silakan masukkan email / username / No. HP dan password Anda.',
             style: GoogleFonts.poppins(color: Colors.white),
           ),
           backgroundColor: Colors.black87,
@@ -53,40 +92,43 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Login tanpa memilih role — role dibaca otomatis dari Firestore
-      final user = await AuthService.instance.loginAutoRole(
-        identifier: username,
+      final appUser = await AuthService.instance.login(
+        identifier: identifier,
         password: password,
       );
 
       if (!mounted) return;
 
-      // Routing otomatis berdasarkan role yang tersimpan di database
-      switch (user.role) {
-        case UserRole.admin:
+      // Routing otomatis berdasarkan role
+      switch (appUser.role) {
+        case AppRole.admin:
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
             (route) => false,
           );
-          break;
-        case UserRole.dokter:
-          // Dokter diarahkan ke AdminDashboardScreen (tab Dokter)
-          // Ganti dengan DokterDashboardScreen bila tersedia
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-            (route) => false,
-          );
-          break;
-        case UserRole.pasien:
+        case AppRole.doctor:
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (_) => PatientDashboardScreen(
-                patientName: user.fullName.isNotEmpty ? user.fullName : 'Pasien',
+              builder: (_) => DoctorDashboardScreen(
+                doctorName: appUser.fullName.isNotEmpty
+                    ? appUser.fullName
+                    : 'Dokter',
+                doctorId: appUser.uid,
               ),
             ),
             (route) => false,
           );
-          break;
+        case AppRole.pasien:
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => PatientDashboardScreen(
+                patientName: appUser.fullName.isNotEmpty
+                    ? appUser.fullName
+                    : 'Pasien',
+              ),
+            ),
+            (route) => false,
+          );
       }
     } catch (e) {
       if (!mounted) return;
@@ -110,7 +152,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -139,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Padding(
                 padding: const EdgeInsets.only(left: 12, top: 8),
                 child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _handleBack,
                   icon: const Icon(
                     Icons.arrow_back_ios_rounded,
                     color: Colors.white,
@@ -228,12 +276,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: InkWell(
                             onTap: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                                MaterialPageRoute(
+                                    builder: (_) => const ForgotPasswordScreen()),
                               );
                             },
                             borderRadius: BorderRadius.circular(8),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               child: Text(
                                 'Lupa password?',
                                 style: GoogleFonts.poppins(
@@ -252,7 +302,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: GestureDetector(
                             onTap: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const SignUpScreen()),
+                                MaterialPageRoute(
+                                    builder: (_) => const SignUpScreen()),
                               );
                             },
                             child: RichText(
@@ -271,7 +322,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       fontWeight: FontWeight.w700,
                                       color: const Color(0xFFFCEAEA),
                                       decoration: TextDecoration.underline,
-                                      decorationColor: const Color(0xFFFCEAEA),
+                                      decorationColor:
+                                          const Color(0xFFFCEAEA),
                                     ),
                                   ),
                                 ],
@@ -290,6 +342,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'consultation_list_screen.dart';
 
 class EducationArticle {
   final String id;
@@ -12,6 +11,7 @@ class EducationArticle {
   final Color imageBgColor;
   final Color categoryColor;
   final IconData iconData;
+  final String? imagePath;
   final String summary;
   final List<String> keyPoints;
   final List<ArticleSection> sections;
@@ -28,6 +28,7 @@ class EducationArticle {
     required this.imageBgColor,
     required this.categoryColor,
     required this.iconData,
+    this.imagePath,
     required this.summary,
     required this.keyPoints,
     required this.sections,
@@ -60,6 +61,7 @@ final List<EducationArticle> educationalArticles = [
     imageBgColor: Color(0xFFFBE9E7),
     categoryColor: Color(0xFFB81018),
     iconData: Icons.restaurant_menu_rounded,
+    imagePath: 'assets/images/pola_makan.png',
     summary:
         'Pola makan merupakan kunci utama dalam mengontrol kadar glukosa darah penderita diabetes. Menerapkan prinsip 3J (Jadwal, Jumlah, dan Jenis) membantu menjaga gula darah tetap stabil tanpa lonjakan drastis.',
     keyPoints: [
@@ -110,6 +112,7 @@ final List<EducationArticle> educationalArticles = [
     imageBgColor: Color(0xFFF3E5F5),
     categoryColor: Color(0xFF8E24AA),
     iconData: Icons.directions_run_rounded,
+    imagePath: 'assets/images/aktivitas_fisik.png',
     summary:
         'Aktivitas fisik teratur meningkatkan sensitivitas insulin sehingga sel-sel tubuh lebih efektif menyerap glukosa dari peredaran darah. Ketahui jenis olahraga aman dan panduan proteksi diri selama berolahraga.',
     keyPoints: [
@@ -160,6 +163,7 @@ final List<EducationArticle> educationalArticles = [
     imageBgColor: Color(0xFFEFEBE9),
     categoryColor: Color(0xFF6D4C41),
     iconData: Icons.monitor_heart_rounded,
+    imagePath: 'assets/images/monitoring.png',
     summary:
         'Pemantauan Mandiri Glukosa Darah (SMBG) memberikan gambaran nyata pengaruh makanan, aktivitas fisik, dan obat terhadap tubuh Anda, sehingga komplikasi diabetes dapat dicegah sedini mungkin.',
     keyPoints: [
@@ -213,7 +217,6 @@ class ArticleDetailScreen extends StatefulWidget {
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
   bool _isBookmarked = false;
-  bool _isCompleted = false;
 
   @override
   Widget build(BuildContext context) {
@@ -291,21 +294,50 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               ),
               child: Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                  if (article.imagePath != null)
+                    Container(
+                      width: 165,
+                      height: 165,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.asset(
+                          article.imagePath!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Icon(
+                            article.iconData,
+                            color: article.categoryColor,
+                            size: 48,
+                          ),
                         ),
-                      ],
+                      ),
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(article.iconData, color: article.categoryColor, size: 48),
                     ),
-                    child: Icon(article.iconData, color: article.categoryColor, size: 48),
-                  ),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -663,76 +695,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                     ),
                   ],
 
-                  const SizedBox(height: 28),
-
-                  // Bottom Action Buttons
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        setState(() => _isCompleted = !_isCompleted);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              _isCompleted
-                                  ? 'Bagus! Anda telah menyelesaikan bacaan edukasi ini.'
-                                  : 'Status selesai dibatalkan.',
-                              style: GoogleFonts.poppins(fontSize: 12),
-                            ),
-                            backgroundColor: const Color(0xFF2E7D32),
-                          ),
-                        );
-                      },
-                      icon: Icon(
-                        _isCompleted ? Icons.check_circle_rounded : Icons.task_alt_rounded,
-                        color: Colors.white,
-                      ),
-                      label: Text(
-                        _isCompleted ? 'Sudah Selesai Dibaca ✓' : 'Tandai Selesai Dibaca',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isCompleted ? const Color(0xFF2E7D32) : const Color(0xFFB81018),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 46,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ConsultationListScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.chat_outlined, color: Color(0xFFB81018), size: 18),
-                      label: Text(
-                        'Konsultasikan Topik Ini ke Dokter',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFFB81018),
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFB81018), width: 1.2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),

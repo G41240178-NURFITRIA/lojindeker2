@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/services/auth_service.dart';
+import '../../../services/auth_service.dart';
 import '../widgets/figma_auth_field.dart';
 import '../widgets/figma_red_button.dart';
-import '../widgets/role_selector.dart';
+import 'login_screen.dart';
+import '../../patient/screens/patient_dashboard_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -22,7 +23,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   DateTime? _selectedDob;
   bool _isLoading = false;
-  UserRole _selectedRole = UserRole.pasien; // default role: pasien
 
   @override
   void dispose() {
@@ -32,6 +32,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _emailController.dispose();
     _mobileController.dispose();
     super.dispose();
+  }
+
+  void _handleBack() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
   }
 
   /// Format DateTime ke "dd MMMM yyyy" bahasa Indonesia
@@ -99,13 +109,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final mobile = _mobileController.text.trim();
-    final dob = _selectedDob != null ? _formatStorage(_selectedDob!) : '';
 
-    if (username.isEmpty || fullName.isEmpty || email.isEmpty || password.isEmpty) {
+    if (_selectedDob == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Silakan lengkapi username akun, username profil, email, dan password Anda.',
+            'Silakan pilih tanggal lahir Anda.',
             style: GoogleFonts.poppins(),
           ),
           backgroundColor: const Color(0xFFB51419),
@@ -114,30 +123,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    if (password.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Password minimal harus 6 karakter.',
-            style: GoogleFonts.poppins(),
-          ),
-          backgroundColor: const Color(0xFFB51419),
-        ),
-      );
-      return;
-    }
+    final dob = _formatStorage(_selectedDob!);
 
     setState(() => _isLoading = true);
 
     try {
-      await AuthService.instance.signUp(
-        email: email,
-        password: password,
+      final appUser = await AuthService.instance.signUpPatient(
         username: username,
         fullName: fullName,
+        email: email,
+        password: password,
         phoneNumber: mobile,
         dob: dob,
-        role: _selectedRole, // kirim role yang dipilih
       );
 
       if (!mounted) return;
@@ -145,14 +142,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Pendaftaran akun berhasil! Silakan login.',
+            'Pendaftaran berhasil! Selamat datang, ${appUser.fullName}.',
             style: GoogleFonts.poppins(),
           ),
           backgroundColor: const Color(0xFF2E7D32),
         ),
       );
 
-      Navigator.of(context).pop();
+      // Langsung ke PatientHome setelah daftar
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => PatientDashboardScreen(
+            patientName: appUser.fullName.isNotEmpty ? appUser.fullName : 'Pasien',
+          ),
+        ),
+        (route) => false,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -171,19 +176,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xfff06292),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
-            size: 20,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: const Color(0xfff06292),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: _handleBack,
           ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
         centerTitle: true,
         title: Text(
           'Daftar Akun',
@@ -200,34 +211,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── Pilih Role ───────────────────────────────────────────
-              Text(
-                'Daftar sebagai',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF333333),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFB51419), Color(0xFFE53935)],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: RoleSelector(
-                  selectedRole: _selectedRole,
-                  onRoleChanged: (role) => setState(() => _selectedRole = role),
-                ),
-              ),
-              const SizedBox(height: 14),
-              // ─────────────────────────────────────────────────────────
-
               // Username Akun
               FigmaAuthField(
                 label: 'Username Akun',
@@ -361,7 +344,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               // Already have an account?
               Center(
                 child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
+                  onTap: _handleBack,
                   child: RichText(
                     text: TextSpan(
                       text: 'Sudah punya akun? ',
@@ -388,6 +371,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

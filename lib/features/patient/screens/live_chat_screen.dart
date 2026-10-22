@@ -1,7 +1,13 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/admin_activity_service.dart';
+import '../../../core/services/chat_service.dart';
+import '../../../core/services/patient_activity_service.dart';
+import '../../../core/services/patient_chat_notification_service.dart';
+import '../../../core/widgets/doctor_avatar_widget.dart';
 
 /// Model pesan chat
 class ChatMessage {
@@ -14,6 +20,14 @@ class ChatMessage {
     required this.isUser,
     required this.time,
   });
+
+  factory ChatMessage.fromRealtime(RealtimeChatMessage rm) {
+    return ChatMessage(
+      text: rm.text,
+      isUser: rm.isPatient,
+      time: rm.time,
+    );
+  }
 }
 
 /// Layar Chat Konsultasi Interaktif (Tema Soft Pink)
@@ -21,12 +35,14 @@ class LiveChatScreen extends StatefulWidget {
   final String doctorName;
   final String specialty;
   final String initials;
+  final String? doctorId;
 
   const LiveChatScreen({
     super.key,
     this.doctorName = 'Dr. Kaka',
     this.specialty = 'Spesialis Penyakit Dalam',
     this.initials = 'DK',
+    this.doctorId,
   });
 
   @override
@@ -36,7 +52,12 @@ class LiveChatScreen extends StatefulWidget {
 class _LiveChatScreenState extends State<LiveChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isDoctorTyping = false;
+  String? _chatId;
+  bool _isLoading = true;
+  String? _doctorPhotoUrl;
+  StreamSubscription<List<RealtimeChatMessage>>? _messageSubscription;
+  StreamSubscription<DocumentSnapshot>? _doctorProfileSubscription;
+  StreamSubscription<DocumentSnapshot>? _chatDocSubscription;
 
   // Palette soft pink matching the app's brand theme
   static const Color _primaryPink = Color(0xFFF06292);       // Soft Pink Brand
@@ -47,7 +68,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   static const Color _inputBarBg = Color(0xFFFFF0F5);        // Soft Pink bar background
   static const Color _borderSoft = Color(0xFFF8BBD0);
 
-  late List<ChatMessage> _messages;
+  List<ChatMessage> _messages = [];
 
   final List<String> _quickPrompts = [
     'Gula darah puasa saya 108 mg/dL',
@@ -59,22 +80,136 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   @override
   void initState() {
     super.initState();
-    _messages = [
-      ChatMessage(
-        text: 'Selamat siang. Bagaimana perkembangan kadar gula darah Anda hari ini?',
-        isUser: false,
-        time: '12:30',
-      ),
-      ChatMessage(
-        text: 'Perkembangan kadar gula saya sangat baik hari ini, lebih baik sebelumnya.',
-        isUser: true,
-        time: '12:45',
-      ),
-    ];
+    _initDoctorPhotoSubscription();
+    _initChat();
+  }
+
+  void _initDoctorPhotoSubscription() {
+    final docId = widget.doctorId;
+    final docName = widget.doctorName.trim();
+
+    if (docId != null && docId.isNotEmpty) {
+      _subscribeDoctorDoc(docId);
+      return;
+    }
+
+    // Cari dokter berdasarkan nama di koleksi 'doctors'
+    FirebaseFirestore.instance
+        .collection('doctors')
+        .where('fullName', isEqualTo: docName)
+        .limit(1)
+        .get()
+        .then((snap) {
+      if (!mounted) return;
+      if (snap.docs.isNotEmpty) {
+        _subscribeDoctorDoc(snap.docs.first.id);
+      } else {
+        // Fallback: cari yang mendekati
+        FirebaseFirestore.instance
+            .collection('doctors')
+            .snapshots()
+            .listen((allSnap) {
+          if (!mounted) return;
+          for (final d in allSnap.docs) {
+            final data = d.data();
+            final fn = (data['fullName'] as String?)?.toLowerCase().trim() ?? '';
+            final target = docName.toLowerCase();
+            if (fn.isNotEmpty && (fn.contains(target) || target.contains(fn))) {
+              final photo = data['photoUrl'] as String?;
+              setState(() {
+                _doctorPhotoUrl = (photo != null && photo.trim().isNotEmpty) ? photo : null;
+              });
+              break;
+            }
+          }
+        });
+      }
+    }).catchError((e) {
+      debugPrint('⚠️ Error init doctor photo subscription: $e');
+    });
+  }
+
+  void _subscribeDoctorDoc(String doctorUid) {
+    _doctorProfileSubscription?.cancel();
+    _doctorProfileSubscription = FirebaseFirestore.instance
+        .collection('doctors')
+        .doc(doctorUid)
+        .snapshots()
+        .listen((doc) {
+      if (!mounted) return;
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final photo = data['photoUrl'] as String?;
+        setState(() {
+          _doctorPhotoUrl = (photo != null && photo.trim().isNotEmpty) ? photo : null;
+        });
+      }
+    });
+  }
+
+  Future<void> _initChat() async {
+    try {
+      final glucose = PatientActivityService.instance.latestRiskNotifier.value?.glucoseLevel;
+      final chatId = await ChatService.instance.getOrCreateChat(
+        doctorName: widget.doctorName,
+        doctorId: widget.doctorId,
+        doctorSpecialty: widget.specialty,
+        glucoseNote: glucose,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _chatId = chatId;
+        _isLoading = false;
+      });
+
+      _messageSubscription =
+          ChatService.instance.streamMessages(chatId).listen((items) {
+        if (!mounted) return;
+        setState(() {
+          _messages = items.map((m) => ChatMessage.fromRealtime(m)).toList();
+        });
+        _scrollToBottom();
+      });
+
+      // Pantau dokumen chat untuk foto dokter & ID dokter real-time
+      _chatDocSubscription = FirebaseFirestore.instance
+          .collection('consultation_chats')
+          .doc(chatId)
+          .snapshots()
+          .listen((chatDoc) {
+        if (!mounted) return;
+        if (chatDoc.exists && chatDoc.data() != null) {
+          final data = chatDoc.data()!;
+          final photo = data['doctorPhotoUrl'] as String?;
+          if (photo != null && photo.trim().isNotEmpty) {
+            setState(() {
+              _doctorPhotoUrl = photo;
+            });
+          }
+          final resolvedDocId = data['doctorId'] as String?;
+          if (resolvedDocId != null &&
+              resolvedDocId.isNotEmpty &&
+              _doctorProfileSubscription == null) {
+            _subscribeDoctorDoc(resolvedDocId);
+          }
+        }
+      });
+
+      PatientChatNotificationService.instance.activeChatId = chatId;
+      ChatService.instance.markAsReadByPatient(chatId);
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   void dispose() {
+    PatientChatNotificationService.instance.activeChatId = null;
+    _doctorProfileSubscription?.cancel();
+    _chatDocSubscription?.cancel();
+    _messageSubscription?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -92,73 +227,35 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     });
   }
 
-  void _sendMessage(String text) {
+  void _sendMessage(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty || _chatId == null) return;
 
-    final now = DateTime.now();
-    final timeStr =
-        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    _controller.clear();
 
-    setState(() {
-      _messages.add(ChatMessage(
+    PatientActivityService.instance.recordConsultation(
+      doctorName: widget.doctorName,
+      specialty: widget.specialty,
+      lastMessage: trimmed,
+    );
+
+    AdminActivityService.instance.logKonsultasi(
+      patientName: '',
+      doctorName: widget.doctorName,
+    );
+
+    try {
+      await ChatService.instance.sendMessage(
+        chatId: _chatId!,
         text: trimmed,
-        isUser: true,
-        time: timeStr,
-      ));
-      _controller.clear();
-      _isDoctorTyping = true;
-    });
+        senderRole: 'pasien',
+        senderName: 'Pasien',
+      );
+    } catch (e) {
+      debugPrint('⚠️ Error sending message: $e');
+    }
 
     _scrollToBottom();
-
-    // Simulasi respons dokter yang hidup & komunikatif
-    Timer(const Duration(milliseconds: 1400), () {
-      if (!mounted) return;
-
-      String reply;
-      final lower = trimmed.toLowerCase();
-      if (lower.contains('108') ||
-          lower.contains('gula darah') ||
-          lower.contains('normal') ||
-          lower.contains('baik')) {
-        reply =
-            'Bagus sekali! Angka dan perkembangan tersebut menunjukkan kondisi gula darah Anda terkontrol dengan sangat baik. Tetap pertahankan pola makan rendah gula ya!';
-      } else if (lower.contains('makan') ||
-          lower.contains('pantangan') ||
-          lower.contains('nasi')) {
-        reply =
-            'Untuk asupan makanan, utamakan karbohidrat kompleks seperti nasi merah atau oatmeal, perbanyak sayuran hijau, dan batasi konsumsi minuman manis kemasan.';
-      } else if (lower.contains('pusing') ||
-          lower.contains('obat') ||
-          lower.contains('metformin')) {
-        reply =
-            'Pusing ringan bisa terjadi penyesuaian tubuh. Pastikan obat diminum teratur sesaat setelah makan dan perbanyak minum air putih ya.';
-      } else if (lower.contains('jadwal') ||
-          lower.contains('evaluasi') ||
-          lower.contains('resep')) {
-        reply =
-            'Jadwal evaluasi kontrol rutin berikutnya pada 20 Juni 2026. Anda juga dapat memeriksa menu resep di aplikasi.';
-      } else {
-        reply =
-            'Baik, terima kasih atas informasinya. Kondisi Anda akan terus saya pantau. Segera kabari jika ada keluhan tambahan ya!';
-      }
-
-      final replyNow = DateTime.now();
-      final replyTime =
-          '${replyNow.hour.toString().padLeft(2, '0')}:${replyNow.minute.toString().padLeft(2, '0')}';
-
-      setState(() {
-        _isDoctorTyping = false;
-        _messages.add(ChatMessage(
-          text: reply,
-          isUser: false,
-          time: replyTime,
-        ));
-      });
-
-      _scrollToBottom();
-    });
   }
 
   @override
@@ -188,36 +285,13 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _doctorBubbleBorder,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: _doctorBubbleBg,
-                          child: Center(
-                            child: Text(
-                              widget.initials,
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: _darkRose,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                DoctorAvatarWidget(
+                  photoUrl: _doctorPhotoUrl,
+                  size: 40,
+                  initials: widget.initials,
+                  border: Border.all(
+                    color: _doctorBubbleBorder,
+                    width: 1.5,
                   ),
                 ),
                 Positioned(
@@ -299,11 +373,38 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   ),
                 ),
 
-                // Daftar pesan
-                ..._messages.map((msg) => _buildMessageBubble(msg)),
-
-                // Typing indicator dokter
-                if (_isDoctorTyping) _buildTypingIndicator(),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 36),
+                    child: Center(
+                      child: CircularProgressIndicator(color: _primaryPink, strokeWidth: 2.5),
+                    ),
+                  )
+                else if (_messages.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: _doctorBubbleBg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: _doctorBubbleBorder),
+                        ),
+                        child: Text(
+                          'Sesi konsultasi real-time terhubung dengan ${widget.doctorName}.\nSilakan kirim keluhan atau gunakan pertanyaan cepat di bawah.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: const Color(0xFF555555),
+                            height: 1.45,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ..._messages.map((msg) => _buildMessageBubble(msg)),
               ],
             ),
           ),
@@ -522,154 +623,65 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar Logo Dokter
-            Container(
-              width: 28,
-              height: 28,
-              margin: const EdgeInsets.only(top: 2, right: 8),
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-              ),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: _doctorBubbleBg,
-                      child: Center(
-                        child: Text(
-                          widget.initials,
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                            color: _darkRose,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+            // Avatar Foto Dokter
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: 8),
+              child: DoctorAvatarWidget(
+                photoUrl: _doctorPhotoUrl,
+                size: 28,
+                initials: widget.initials,
               ),
             ),
 
             // Konten Pesan & Waktu
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.74,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _doctorBubbleBg,
-                    border: Border.all(color: _doctorBubbleBorder, width: 1),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(6),
-                      topRight: Radius.circular(18),
-                      bottomLeft: Radius.circular(18),
-                      bottomRight: Radius.circular(18),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.74,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _doctorBubbleBg,
+                      border: Border.all(color: _doctorBubbleBorder, width: 1),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(6),
+                        topRight: Radius.circular(18),
+                        bottomLeft: Radius.circular(18),
+                        bottomRight: Radius.circular(18),
+                      ),
+                    ),
+                    child: Text(
+                      msg.text,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: const Color(0xFF1E1E1E),
+                        height: 1.45,
+                      ),
                     ),
                   ),
-                  child: Text(
-                    msg.text,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: const Color(0xFF1E1E1E),
-                      height: 1.45,
+                  const SizedBox(height: 3),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Text(
+                      msg.time,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: const Color(0xFF8E8E8E),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                Padding(
-                  padding: const EdgeInsets.only(left: 4),
-                  child: Text(
-                    msg.time,
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: const Color(0xFF8E8E8E),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
       );
     }
-  }
-
-  /// Typing indicator dokter: bubble tiga titik soft pink
-  Widget _buildTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            margin: const EdgeInsets.only(top: 2, right: 8),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/logo.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.person,
-                  size: 16,
-                  color: _darkRose,
-                ),
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: _doctorBubbleBg,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _doctorBubbleBorder, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: _primaryPink,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: _primaryPink,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: _primaryPink,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

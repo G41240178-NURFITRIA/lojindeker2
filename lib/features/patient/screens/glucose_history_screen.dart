@@ -12,18 +12,17 @@ class GlucoseHistoryScreen extends StatefulWidget {
 }
 
 class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
-  int _selectedTabIndex = 0;
+  final int _selectedTabIndex = 0;
   int _activePillIndex = 2; // Default: 'Monitoring' aktif
 
   static const Color _primaryPink = Color(0xFFF06292);
   static const Color _darkRose = Color(0xFFD81B60);
   static const Color _primaryRed = Color(0xFFF06292);
-  static const Color _darkRed = Color(0xFFD81B60);
   static const Color _greenDot = Color(0xFF1B5E20);
   static const Color _orangeDot = Color(0xFFE65100);
 
   final List<String> _pillTitles = [
-    'Cek Risiko AI',
+    'Cek Risiko',
     'Konsultasi',
     'Monitoring',
     'Resep',
@@ -86,8 +85,8 @@ class _GlucoseHistoryScreenState extends State<GlucoseHistoryScreen> {
               ]),
               const SizedBox(height: 18),
 
-              // 5. Riwayat: 17 Mei 2024
-              _buildSectionTitle('17 Mei 2024'),
+              // 5. Riwayat: 17 Mei 2026
+              _buildSectionTitle('17 Mei 2026'),
               const SizedBox(height: 8),
               _buildHistoryGroupCard([
                 _HistoryItemData(

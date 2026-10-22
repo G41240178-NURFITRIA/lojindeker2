@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'consultation_list_screen.dart';
-import 'medical_records_screen.dart';
-import 'riwayat_resep_screen.dart';
 
 class WhenToSeeDoctorScreen extends StatelessWidget {
   const WhenToSeeDoctorScreen({super.key});
@@ -160,7 +158,7 @@ class WhenToSeeDoctorScreen extends StatelessWidget {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFB81018),
+                    backgroundColor: const Color(0xFFF06292),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
@@ -179,7 +177,7 @@ class WhenToSeeDoctorScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFB81018),
+        backgroundColor: const Color(0xFFF06292),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
@@ -358,7 +356,7 @@ class WhenToSeeDoctorScreen extends StatelessWidget {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFB81018),
+                    backgroundColor: const Color(0xFFF06292),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
