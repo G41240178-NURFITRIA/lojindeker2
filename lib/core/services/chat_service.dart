@@ -372,6 +372,80 @@ class ChatService {
         .update(updateData);
   }
 
+  /// Hapus satu pesan dalam sesi chat (terhapus real-time untuk pasien dan dokter)
+  Future<void> deleteMessage({
+    required String chatId,
+    required String messageId,
+  }) async {
+    try {
+      final chatRef = _db.collection('consultation_chats').doc(chatId);
+      final msgRef = chatRef.collection('messages').doc(messageId);
+
+      // 1. Hapus dokumen pesan
+      await msgRef.delete();
+
+      // 2. Perbarui lastMessage di dokumen chat utama jika pesan yang dihapus adalah yang terakhir
+      final latestMsgSnap = await chatRef
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .get();
+
+      if (latestMsgSnap.docs.isNotEmpty) {
+        final lastDoc = latestMsgSnap.docs.first;
+        final lastData = lastDoc.data();
+        final text = lastData['text']?.toString() ?? '';
+        final type = lastData['type']?.toString() ?? 'text';
+        final attachmentName = lastData['attachmentName']?.toString();
+        String summary = text;
+        if (type == 'image') {
+          summary = text.isNotEmpty ? '📷 Foto: $text' : '📷 Foto';
+        } else if (type == 'document') {
+          summary = '📄 ${attachmentName ?? "Dokumen"}';
+        }
+        await chatRef.update({
+          'lastMessage': summary.isEmpty ? (text.isEmpty ? 'Kirim lampiran' : text) : summary,
+          'lastMessageTime': lastData['timestamp'] ?? FieldValue.serverTimestamp(),
+          'lastSenderRole': lastData['senderRole']?.toString() ?? '',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        // Jika semua pesan telah terhapus
+        await chatRef.update({
+          'lastMessage': '',
+          'lastSenderRole': '',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] Gagal menghapus pesan: $e');
+      rethrow;
+    }
+  }
+
+  /// Hapus seluruh riwayat pesan dalam sesi chat
+  Future<void> clearAllMessages(String chatId) async {
+    try {
+      final chatRef = _db.collection('consultation_chats').doc(chatId);
+      final messagesSnap = await chatRef.collection('messages').get();
+      final batch = _db.batch();
+      for (final doc in messagesSnap.docs) {
+        batch.delete(doc.reference);
+      }
+      batch.update(chatRef, {
+        'lastMessage': '',
+        'lastSenderRole': '',
+        'unreadCountForDoctor': 0,
+        'unreadCountForPatient': 0,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      await batch.commit();
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] Gagal membersihkan pesan: $e');
+      rethrow;
+    }
+  }
+
   /// Stream daftar percakapan untuk akun dokter (presisten dan tidak hilang saat logout/login)
   Stream<List<RealtimeConsultationChat>> streamDoctorChats({
     String? doctorId,

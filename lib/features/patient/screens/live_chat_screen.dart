@@ -13,6 +13,7 @@ import '../../../core/widgets/doctor_avatar_widget.dart';
 
 /// Model pesan chat
 class ChatMessage {
+  final String id;
   final String text;
   final bool isUser;
   final String time;
@@ -22,6 +23,7 @@ class ChatMessage {
   final String? attachmentSize;
 
   ChatMessage({
+    required this.id,
     required this.text,
     required this.isUser,
     required this.time,
@@ -33,6 +35,7 @@ class ChatMessage {
 
   factory ChatMessage.fromRealtime(RealtimeChatMessage rm) {
     return ChatMessage(
+      id: rm.id,
       text: rm.text,
       isUser: rm.isPatient,
       time: rm.time,
@@ -904,6 +907,252 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     );
   }
 
+  void _showMessageOptions(ChatMessage msg) {
+    final text = msg.text.isNotEmpty
+        ? msg.text
+        : (msg.attachmentName ?? (msg.type == 'image' ? 'Lampiran Foto' : 'Lampiran'));
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: _doctorBubbleBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _doctorBubbleBorder),
+                ),
+                child: Text(
+                  text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    color: const Color(0xFF424242),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+              if (msg.text.isNotEmpty)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.copy_rounded, color: Color(0xFF424242), size: 20),
+                  ),
+                  title: Text(
+                    'Salin Teks',
+                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Clipboard.setData(ClipboardData(text: msg.text));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Teks disalin ke clipboard', style: GoogleFonts.poppins()),
+                        backgroundColor: _darkRose,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              if (msg.text.isNotEmpty) const Divider(height: 1),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFEBEE),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                ),
+                title: Text(
+                  'Hapus Pesan untuk Semua',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.redAccent,
+                  ),
+                ),
+                subtitle: Text(
+                  'Pesan akan terhapus dari riwayat pasien dan dokter',
+                  style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _confirmDeleteMessage(msg.id);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteMessage(String messageId) {
+    if (messageId.isEmpty || _chatId == null) return;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              'Hapus Pesan?',
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Text(
+          'Pesan ini akan dihapus secara permanen untuk Anda dan dokter.',
+          style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF555555)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(
+              'Batal',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              try {
+                await ChatService.instance.deleteMessage(
+                  chatId: _chatId!,
+                  messageId: messageId,
+                );
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Pesan berhasil dihapus', style: GoogleFonts.poppins()),
+                    backgroundColor: const Color(0xFF333333),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Gagal menghapus pesan: $e', style: GoogleFonts.poppins()),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            child: Text('Hapus untuk Semua', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmClearAllMessages() {
+    if (_chatId == null) return;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              'Bersihkan Percakapan?',
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Text(
+          'Semua riwayat percakapan akan dihapus untuk Anda dan dokter. Tindakan ini tidak dapat dibatalkan.',
+          style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF555555)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(
+              'Batal',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              try {
+                await ChatService.instance.clearAllMessages(_chatId!);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Seluruh percakapan berhasil dibersihkan', style: GoogleFonts.poppins()),
+                    backgroundColor: const Color(0xFF333333),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Gagal membersihkan percakapan: $e', style: GoogleFonts.poppins()),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+            child: Text('Bersihkan Semua', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -983,6 +1232,36 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             ),
           ],
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF1E1E1E)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            onSelected: (val) {
+              if (val == 'clear') {
+                _confirmClearAllMessages();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Bersihkan Percakapan',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -1211,140 +1490,144 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.78,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [_softPinkLight, _primaryPink],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            GestureDetector(
+              onLongPress: () => _showMessageOptions(msg),
+              onSecondaryTap: () => _showMessageOptions(msg),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.78,
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(18),
-                  topRight: Radius.circular(6),
-                  bottomLeft: Radius.circular(18),
-                  bottomRight: Radius.circular(18),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryPink.withValues(alpha: 0.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_softPinkLight, _primaryPink],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Lampiran Gambar Pasien
-                  if (isImage && imageBytes != null) ...[
-                    GestureDetector(
-                      onTap: () => _openFullScreenImage(imageBytes!, msg.attachmentName),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          constraints: const BoxConstraints(
-                            maxHeight: 200,
-                            maxWidth: 240,
-                          ),
-                          color: Colors.black12,
-                          child: Stack(
-                            alignment: Alignment.bottomRight,
-                            children: [
-                              Image.memory(imageBytes, fit: BoxFit.cover),
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                margin: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(18),
+                    topRight: Radius.circular(6),
+                    bottomLeft: Radius.circular(18),
+                    bottomRight: Radius.circular(18),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _primaryPink.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Lampiran Gambar Pasien
+                    if (isImage && imageBytes != null) ...[
+                      GestureDetector(
+                        onTap: () => _openFullScreenImage(imageBytes!, msg.attachmentName),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              maxHeight: 200,
+                              maxWidth: 240,
+                            ),
+                            color: Colors.black12,
+                            child: Stack(
+                              alignment: Alignment.bottomRight,
+                              children: [
+                                Image.memory(imageBytes, fit: BoxFit.cover),
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  margin: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Icon(Icons.fullscreen_rounded,
+                                      color: Colors.white, size: 16),
                                 ),
-                                child: const Icon(Icons.fullscreen_rounded,
-                                    color: Colors.white, size: 16),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+
+                    // Lampiran Dokumen Pasien
+                    if (isDocument) ...[
+                      InkWell(
+                        onTap: () => _showDocumentDetailModal(msg),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE53935).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.picture_as_pdf_rounded,
+                                  color: Color(0xFFE53935),
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      msg.attachmentName ?? 'Dokumen.pdf',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      '${msg.attachmentSize ?? "PDF"} • Ketuk untuk buka',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 10,
+                                        color: Colors.white.withValues(alpha: 0.85),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                  ],
+                      const SizedBox(height: 6),
+                    ],
 
-                  // Lampiran Dokumen Pasien
-                  if (isDocument) ...[
-                    InkWell(
-                      onTap: () => _showDocumentDetailModal(msg),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE53935).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.picture_as_pdf_rounded,
-                                color: Color(0xFFE53935),
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    msg.attachmentName ?? 'Dokumen.pdf',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    '${msg.attachmentSize ?? "PDF"} • Ketuk untuk buka',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 10,
-                                      color: Colors.white.withValues(alpha: 0.85),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                    if (msg.text.isNotEmpty)
+                      Text(
+                        msg.text,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.white,
+                          height: 1.45,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
                   ],
-
-                  if (msg.text.isNotEmpty)
-                    Text(
-                      msg.text,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: Colors.white,
-                        height: 1.45,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
             const SizedBox(height: 3),
@@ -1365,6 +1648,19 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     Icons.done_all_rounded,
                     size: 14,
                     color: _primaryPink,
+                  ),
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: () => _showMessageOptions(msg),
+                    borderRadius: BorderRadius.circular(10),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 2),
+                      child: Icon(
+                        Icons.more_horiz_rounded,
+                        size: 14,
+                        color: Color(0xFFBDBDBD),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1394,141 +1690,163 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.74,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _doctorBubbleBg,
-                      border: Border.all(color: _doctorBubbleBorder, width: 1),
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(6),
-                        topRight: Radius.circular(18),
-                        bottomLeft: Radius.circular(18),
-                        bottomRight: Radius.circular(18),
+                  GestureDetector(
+                    onLongPress: () => _showMessageOptions(msg),
+                    onSecondaryTap: () => _showMessageOptions(msg),
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.74,
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Lampiran Gambar Dokter
-                        if (isImage && imageBytes != null) ...[
-                          GestureDetector(
-                            onTap: () => _openFullScreenImage(imageBytes!, msg.attachmentName),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                constraints: const BoxConstraints(
-                                  maxHeight: 200,
-                                  maxWidth: 240,
-                                ),
-                                color: Colors.black12,
-                                child: Stack(
-                                  alignment: Alignment.bottomRight,
-                                  children: [
-                                    Image.memory(imageBytes, fit: BoxFit.cover),
-                                    Container(
-                                      padding: const EdgeInsets.all(4),
-                                      margin: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black54,
-                                        borderRadius: BorderRadius.circular(6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _doctorBubbleBg,
+                        border: Border.all(color: _doctorBubbleBorder, width: 1),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(6),
+                          topRight: Radius.circular(18),
+                          bottomLeft: Radius.circular(18),
+                          bottomRight: Radius.circular(18),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Lampiran Gambar Dokter
+                          if (isImage && imageBytes != null) ...[
+                            GestureDetector(
+                              onTap: () => _openFullScreenImage(imageBytes!, msg.attachmentName),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 200,
+                                    maxWidth: 240,
+                                  ),
+                                  color: Colors.black12,
+                                  child: Stack(
+                                    alignment: Alignment.bottomRight,
+                                    children: [
+                                      Image.memory(imageBytes, fit: BoxFit.cover),
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        margin: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black54,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Icon(Icons.fullscreen_rounded,
+                                            color: Colors.white, size: 16),
                                       ),
-                                      child: const Icon(Icons.fullscreen_rounded,
-                                          color: Colors.white, size: 16),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                          ],
+
+                          // Lampiran Dokumen Dokter
+                          if (isDocument) ...[
+                            InkWell(
+                              onTap: () => _showDocumentDetailModal(msg),
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F5F7),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE53935).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.picture_as_pdf_rounded,
+                                        color: Color(0xFFE53935),
+                                        size: 22,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            msg.attachmentName ?? 'Dokumen.pdf',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF212121),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            '${msg.attachmentSize ?? "PDF"} • Ketuk untuk buka',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 10,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                        ],
+                            const SizedBox(height: 6),
+                          ],
 
-                        // Lampiran Dokumen Dokter
-                        if (isDocument) ...[
-                          InkWell(
-                            onTap: () => _showDocumentDetailModal(msg),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F5F7),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE53935).withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.picture_as_pdf_rounded,
-                                      color: Color(0xFFE53935),
-                                      size: 22,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          msg.attachmentName ?? 'Dokumen.pdf',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF212121),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          '${msg.attachmentSize ?? "PDF"} • Ketuk untuk buka',
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 10,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                          if (msg.text.isNotEmpty)
+                            Text(
+                              msg.text,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: const Color(0xFF1E1E1E),
+                                height: 1.45,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
                         ],
-
-                        if (msg.text.isNotEmpty)
-                          Text(
-                            msg.text,
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              color: const Color(0xFF1E1E1E),
-                              height: 1.45,
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 3),
                   Padding(
                     padding: const EdgeInsets.only(left: 4),
-                    child: Text(
-                      msg.time,
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        color: const Color(0xFF8E8E8E),
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          msg.time,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: const Color(0xFF8E8E8E),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        InkWell(
+                          onTap: () => _showMessageOptions(msg),
+                          borderRadius: BorderRadius.circular(10),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 2),
+                            child: Icon(
+                              Icons.more_horiz_rounded,
+                              size: 14,
+                              color: Color(0xFFBDBDBD),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
