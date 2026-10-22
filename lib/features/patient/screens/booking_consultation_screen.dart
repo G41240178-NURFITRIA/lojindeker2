@@ -3,10 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/consultation_booking_service.dart';
 import '../../../models/app_user.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/user_repository.dart';
 import '../models/consultation_booking_model.dart';
-import 'live_chat_screen.dart';
+import 'booking_summary_screen.dart';
 
 /// Layar Booking Konsultasi Jadwal Dokter
 /// Menampilkan kalender, pilihan jam konsultasi real-time, dan input keluhan
@@ -866,7 +864,7 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Lanjutkan',
+                      'Selanjutnya',
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -900,252 +898,76 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final user = AuthService.instance.currentUser;
-      final patientUid = user?.uid ?? 'guest_patient';
-      String patientName = 'Pasien';
+      final isBooked = await ConsultationBookingService.instance.isSlotBooked(
+        doctorId: _effectiveDoctorId,
+        dateKey: _formatDateKey(_selectedDate),
+        timeSlot: _selectedSlot!,
+      );
 
-      if (user != null) {
-        if (user.displayName != null && user.displayName!.trim().isNotEmpty) {
-          patientName = user.displayName!.trim();
-        } else {
-          final profile = await UserRepository.instance.findByUid(user.uid);
-          if (profile != null && profile.fullName.isNotEmpty) {
-            patientName = profile.fullName;
-          }
-        }
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      if (isBooked) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Slot jam $_selectedSlot sudah dibooking oleh pasien lain. Silakan pilih jam lain.',
+              style: GoogleFonts.poppins(fontSize: 12.5),
+            ),
+            backgroundColor: const Color(0xFFD32F2F),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
       }
 
       final dateKey = _formatDateKey(_selectedDate);
       final dateText = _formatFullIndonesianDate(_selectedDate);
       final complaint = _complaintController.text.trim();
 
-      final booking = ConsultationBookingModel(
-        id: '',
-        doctorId: _effectiveDoctorId,
-        doctorName: _effectiveDoctorName,
-        doctorSpecialty: _effectiveSpecialty,
-        patientId: patientUid,
-        patientName: patientName,
-        date: dateText,
-        dateKey: dateKey,
-        timeSlot: _selectedSlot!,
-        complaint: complaint.isNotEmpty ? complaint : 'Konsultasi rutin diabetes',
-      );
-
-      // Simpan ke Firestore secara real-time
-      await ConsultationBookingService.instance.createBooking(booking);
-
-      if (!mounted) return;
-      setState(() => _isSubmitting = false);
-
-      // Tampilkan dialog konfirmasi sukses
-      _showBookingSuccessModal(
-        doctorName: _effectiveDoctorName,
-        specialty: _effectiveSpecialty,
-        dateText: dateText,
-        timeSlot: _selectedSlot!,
-        complaint: complaint,
+      // Navigasi ke Ringkasan Booking & Pembayaran (Tampilan 1)
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BookingSummaryScreen(
+            doctor: widget.doctor,
+            doctorId: _effectiveDoctorId,
+            doctorName: _effectiveDoctorName,
+            specialty: _effectiveSpecialty,
+            initials: _effectiveInitials,
+            selectedDate: _selectedDate,
+            dateKey: dateKey,
+            dateText: dateText,
+            timeSlot: _selectedSlot!,
+            complaint: complaint,
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.toString().replaceAll('Exception: ', ''),
-            style: GoogleFonts.poppins(fontSize: 12.5),
+      final dateKey = _formatDateKey(_selectedDate);
+      final dateText = _formatFullIndonesianDate(_selectedDate);
+      final complaint = _complaintController.text.trim();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BookingSummaryScreen(
+            doctor: widget.doctor,
+            doctorId: _effectiveDoctorId,
+            doctorName: _effectiveDoctorName,
+            specialty: _effectiveSpecialty,
+            initials: _effectiveInitials,
+            selectedDate: _selectedDate,
+            dateKey: dateKey,
+            dateText: dateText,
+            timeSlot: _selectedSlot!,
+            complaint: complaint,
           ),
-          backgroundColor: const Color(0xFFD32F2F),
-          behavior: SnackBarBehavior.floating,
         ),
       );
     }
-  }
-
-  void _showBookingSuccessModal({
-    required String doctorName,
-    required String specialty,
-    required String dateText,
-    required String timeSlot,
-    required String complaint,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0E0E0),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFD4F7E7),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check_circle_rounded,
-                  color: Color(0xFF00B074),
-                  size: 38,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'Jadwal Berhasil Dibooking!',
-                style: GoogleFonts.poppins(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: _textDark,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Jadwal Anda telah tercatat dan tersinkronisasi secara real-time.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 12.5,
-                  color: _textGrey,
-                ),
-              ),
-              const SizedBox(height: 18),
-
-              // Rangkuman Booking
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFAF7F9),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _borderPink, width: 1),
-                ),
-                child: Column(
-                  children: [
-                    _buildSummaryRow('Dokter', doctorName),
-                    const Divider(height: 16),
-                    _buildSummaryRow('Spesialisasi', specialty),
-                    const Divider(height: 16),
-                    _buildSummaryRow('Tanggal', dateText),
-                    const Divider(height: 16),
-                    _buildSummaryRow('Waktu Sesi', '$timeSlot WIB (25 menit)'),
-                    if (complaint.isNotEmpty) ...[
-                      const Divider(height: 16),
-                      _buildSummaryRow('Keluhan', complaint),
-                    ],
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
-              // Tombol Buka Chat Konsultasi
-              InkWell(
-                onTap: () {
-                  Navigator.pop(ctx); // Tutup modal
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LiveChatScreen(
-                        doctorName: doctorName,
-                        specialty: specialty,
-                        initials: _effectiveInitials,
-                        doctorId: _effectiveDoctorId,
-                      ),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: double.infinity,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: _headerPink,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x33E5406C),
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Buka Chat Konsultasi',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // Tombol Kembali
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context); // Kembali ke daftar konsultasi
-                },
-                child: Text(
-                  'Selesai & Kembali',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _textGrey,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSummaryRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: _textGrey,
-          ),
-        ),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: GoogleFonts.poppins(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: _textDark,
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }

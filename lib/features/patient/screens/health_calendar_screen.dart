@@ -35,7 +35,14 @@ class HealthEvent {
 }
 
 class HealthCalendarScreen extends StatefulWidget {
-  const HealthCalendarScreen({super.key});
+  final DateTime? initialDate;
+  final HealthEvent? newEvent;
+
+  const HealthCalendarScreen({
+    super.key,
+    this.initialDate,
+    this.newEvent,
+  });
 
   @override
   State<HealthCalendarScreen> createState() => _HealthCalendarScreenState();
@@ -58,8 +65,9 @@ class _HealthCalendarScreenState extends State<HealthCalendarScreen> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _selectedDate = DateTime(now.year, now.month, now.day);
-    _currentMonth = DateTime(now.year, now.month, 1);
+    final targetDate = widget.initialDate ?? now;
+    _selectedDate = DateTime(targetDate.year, targetDate.month, targetDate.day);
+    _currentMonth = DateTime(targetDate.year, targetDate.month, 1);
 
     _events = [
       HealthEvent(
@@ -118,6 +126,10 @@ class _HealthCalendarScreenState extends State<HealthCalendarScreen> {
         type: HealthEventType.medication,
       ),
     ];
+
+    if (widget.newEvent != null) {
+      _events.insert(0, widget.newEvent!);
+    }
   }
 
   void _previousMonth() {

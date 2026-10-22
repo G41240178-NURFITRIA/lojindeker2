@@ -79,6 +79,9 @@ class ConsultationBookingService {
       complaint: booking.complaint,
       status: 'booked',
       createdAt: DateTime.now(),
+      transactionId: booking.transactionId,
+      paymentMethod: booking.paymentMethod,
+      totalAmount: booking.totalAmount,
     );
 
     await docRef.set(newBooking.toMap());
