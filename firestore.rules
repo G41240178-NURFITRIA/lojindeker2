@@ -70,6 +70,11 @@ service cloud.firestore {
         allow read, write: if isSignedIn();
       }
     }
+
+    // 6. Consultation Bookings Collection (Real-time Booking Jadwal Dokter)
+    match /consultation_bookings/{bookingId} {
+      allow read, write: if isSignedIn();
+    }
     
     // Default fallback deny
     match /{document=**} {

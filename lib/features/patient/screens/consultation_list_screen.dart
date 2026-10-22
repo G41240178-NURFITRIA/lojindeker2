@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../models/app_user.dart';
 import '../../../core/services/patient_chat_notification_service.dart';
 import 'live_chat_screen.dart';
+import 'booking_consultation_screen.dart';
 
 class ConsultationListScreen extends StatelessWidget {
   const ConsultationListScreen({super.key});
@@ -72,28 +73,50 @@ class ConsultationListScreen extends StatelessWidget {
 
           final docs = snapshot.data?.docs ?? [];
 
-          if (docs.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text(
-                  'Belum ada dokter yang tersedia saat ini.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(color: Colors.grey),
-                ),
+          List<AppUser> doctorList = [];
+          if (docs.isNotEmpty) {
+            doctorList = docs
+                .map((d) => AppUser.fromMap(
+                      d.data() as Map<String, dynamic>,
+                      d.id,
+                    ))
+                .toList();
+          } else {
+            // Default dokter terdaftar jika Firestore belum diisi dokter manual
+            doctorList = const [
+              AppUser(
+                uid: 'doctor_yosua',
+                fullName: 'dr. Yosua',
+                username: 'yosua',
+                email: 'yosua@dcare.id',
+                phoneNumber: '081234567891',
+                dob: '1988-09-12',
+                role: AppRole.doctor,
+                specialization: 'Sp.A',
+                isActive: true,
+                schedule: 'Senin – Jumat (09:00 – 17:00)',
               ),
-            );
+              AppUser(
+                uid: 'doctor_kaka',
+                fullName: 'Dr. Kaka Pratama',
+                username: 'kakapratama',
+                email: 'kaka@dcare.id',
+                phoneNumber: '081234567892',
+                dob: '1985-04-20',
+                role: AppRole.doctor,
+                specialization: 'Spesialis Penyakit Dalam',
+                isActive: true,
+                schedule: 'Senin – Jumat (08:30 – 16:30)',
+              ),
+            ];
           }
 
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             physics: const BouncingScrollPhysics(),
-            itemCount: docs.length,
+            itemCount: doctorList.length,
             itemBuilder: (context, index) {
-              final doctor = AppUser.fromMap(
-                docs[index].data() as Map<String, dynamic>,
-                docs[index].id,
-              );
+              final doctor = doctorList[index];
               return _buildDoctorCard(context, doctor);
             },
           );
@@ -394,53 +417,100 @@ class ConsultationListScreen extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          // Tombol Chat
-          InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => LiveChatScreen(
-                    doctorName: displayName,
-                    specialty: specialty,
-                    initials: initials,
-                    doctorId: doctor.uid,
-                  ),
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              width: double.infinity,
-              height: 46,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFFE8E8E8),
-                  width: 1.2,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.chat_bubble_outline_rounded,
-                    size: 18,
-                    color: Color(0xFF333333),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Booking konsultasi',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF333333),
+          // Tombol Aksi: Booking Konsultasi & Chat Langsung
+          Row(
+            children: [
+              // Tombol Utama: Booking Konsultasi
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BookingConsultationScreen(
+                          doctor: doctor,
+                          doctorId: doctor.uid,
+                          doctorName: displayName,
+                          specialty: specialty,
+                          initials: initials,
+                          schedule: doctor.schedule?.isNotEmpty == true
+                              ? doctor.schedule!
+                              : 'Senin – Jumat (09:00 – 17:00)',
+                        ),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFE8E8E8),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.calendar_month_rounded,
+                          size: 18,
+                          color: Color(0xFF333333),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Booking konsultasi',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF333333),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              // Tombol Chat Langsung
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LiveChatScreen(
+                        doctorName: displayName,
+                        specialty: specialty,
+                        initials: initials,
+                        doctorId: doctor.uid,
+                      ),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: _avatarBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFFF3D2DF),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 20,
+                      color: _avatarText,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
