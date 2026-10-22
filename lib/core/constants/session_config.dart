@@ -4,8 +4,8 @@ class SessionConfig {
   SessionConfig._();
 
   /// Waktu maksimal aplikasi berada di latar belakang (minimize, pindah app, layar mati, app di-kill).
-  /// Melebihi durasi ini, sesi user akan berakhir otomatis.
-  static const Duration backgroundTimeout = Duration(minutes: 5);
+  /// Sesuai ketentuan: 2 menit (120 detik). Melebihi durasi ini, sesi user akan berakhir otomatis.
+  static const Duration backgroundTimeout = Duration(seconds: 120);
 
   /// Waktu ketidakaktifan (user tidak menyentuh layar saat app terbuka).
   /// Setelah durasi ini terlewati, dialog peringatan akan dimunculkan.
