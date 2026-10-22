@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -1153,7 +1154,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               icon: Icons.badge_outlined,
               title: 'Informasi Praktik & SIP',
               subtitle: 'Data verifikasi medis dan lisensi dokter',
-              onTap: () {},
+              onTap: _showPracticeInfoBottomSheet,
             ),
             _buildProfileMenuItem(
               icon: Icons.schedule_outlined,
@@ -1165,13 +1166,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               icon: Icons.security_outlined,
               title: 'Keamanan & Kata Sandi',
               subtitle: 'Ganti password dan keamanan akun',
-              onTap: () {},
+              onTap: _showSecurityBottomSheet,
             ),
             _buildProfileMenuItem(
               icon: Icons.help_outline_rounded,
               title: 'Pusat Bantuan & Panduan Medis',
               subtitle: 'Pedoman penanganan pasien diabetes D-Care',
-              onTap: () {},
+              onTap: _showHelpCenterBottomSheet,
             ),
 
             const SizedBox(height: 14),
@@ -1782,6 +1783,1095 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           },
         );
       },
+    );
+  }
+
+  /// Bottom Sheet untuk Informasi Praktik & SIP
+  void _showPracticeInfoBottomSheet() {
+    final doctorName = _doctorDisplayName.isNotEmpty
+        ? _doctorDisplayName
+        : widget.doctorName;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return Container(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 16,
+            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 24,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle Bar
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E0E0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.softPinkCard,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.badge_rounded,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Informasi Praktik & SIP',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF212121),
+                            ),
+                          ),
+                          Text(
+                            'Data verifikasi medis dan lisensi dokter',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              color: const Color(0xFF757575),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Verified Status Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.verified_rounded,
+                        color: Color(0xFF2E7D32),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Dokter terverifikasi & lisensi aktif',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF2E7D32),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Info Items
+                _buildPracticeInfoItem(
+                  icon: Icons.person_rounded,
+                  label: 'Nama Lengkap',
+                  value: doctorName,
+                ),
+                _buildPracticeInfoItem(
+                  icon: Icons.medical_services_rounded,
+                  label: 'Spesialisasi',
+                  value: _doctorSpecialty,
+                ),
+                _buildPracticeInfoItem(
+                  icon: Icons.assignment_rounded,
+                  label: 'Nomor SIP',
+                  value: '446.1/128/SIP-D/2022',
+                ),
+                _buildPracticeInfoItem(
+                  icon: Icons.local_hospital_rounded,
+                  label: 'Tempat Praktik',
+                  value: 'RS D-Care Sejahtera',
+                ),
+                _buildPracticeInfoItem(
+                  icon: Icons.calendar_today_rounded,
+                  label: 'Masa Berlaku SIP',
+                  value: '01 Januari 2022 - 31 Desember 2027',
+                ),
+                _buildPracticeInfoItem(
+                  icon: Icons.school_rounded,
+                  label: 'Pendidikan Terakhir',
+                  value: 'Fakultas Kedokteran Universitas Indonesia',
+                ),
+                _buildPracticeInfoItem(
+                  icon: Icons.work_history_rounded,
+                  label: 'Pengalaman',
+                  value: '8+ Tahun Praktik Klinis',
+                ),
+
+                const SizedBox(height: 20),
+
+                // Close Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(bottomSheetContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      'Tutup',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPracticeInfoItem({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.softPinkCard,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF9E9E9E),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF212121),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bottom Sheet untuk Keamanan & Kata Sandi
+  void _showSecurityBottomSheet() {
+    final TextEditingController currentPasswordController =
+        TextEditingController();
+    final TextEditingController newPasswordController =
+        TextEditingController();
+    final TextEditingController confirmPasswordController =
+        TextEditingController();
+    bool isChangingPassword = false;
+    bool showCurrentPassword = false;
+    bool showNewPassword = false;
+    bool showConfirmPassword = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle Bar
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.softPinkCard,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.shield_rounded,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Keamanan & Kata Sandi',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF212121),
+                                ),
+                              ),
+                              Text(
+                                'Ganti password untuk keamanan akun',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  color: const Color(0xFF757575),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Security Info Card
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF3E0),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              const Color(0xFFFF9800).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            color: Color(0xFFE65100),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Gunakan password minimal 8 karakter dengan kombinasi huruf dan angka',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                color: const Color(0xFFE65100),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Current Password
+                    Text(
+                      'Password Saat Ini',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF333333),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: currentPasswordController,
+                      obscureText: !showCurrentPassword,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF212121),
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFFF9F9FA),
+                        hintText: 'Masukkan password saat ini',
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          color: const Color(0xFFBDBDBD),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            showCurrentPassword
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                            color: const Color(0xFF9E9E9E),
+                            size: 20,
+                          ),
+                          onPressed: () => setModalState(() =>
+                              showCurrentPassword = !showCurrentPassword),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // New Password
+                    Text(
+                      'Password Baru',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF333333),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: newPasswordController,
+                      obscureText: !showNewPassword,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF212121),
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFFF9F9FA),
+                        hintText: 'Masukkan password baru',
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          color: const Color(0xFFBDBDBD),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.lock_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            showNewPassword
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                            color: const Color(0xFF9E9E9E),
+                            size: 20,
+                          ),
+                          onPressed: () => setModalState(
+                              () => showNewPassword = !showNewPassword),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Confirm Password
+                    Text(
+                      'Konfirmasi Password Baru',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF333333),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: confirmPasswordController,
+                      obscureText: !showConfirmPassword,
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF212121),
+                      ),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0xFFF9F9FA),
+                        hintText: 'Masukkan ulang password baru',
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          color: const Color(0xFFBDBDBD),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.lock_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            showConfirmPassword
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                            color: const Color(0xFF9E9E9E),
+                            size: 20,
+                          ),
+                          onPressed: () => setModalState(() =>
+                              showConfirmPassword = !showConfirmPassword),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: isChangingPassword
+                                ? null
+                                : () => Navigator.pop(bottomSheetContext),
+                            style: OutlinedButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              side: const BorderSide(
+                                color: Color(0xFFD0D0D0),
+                              ),
+                            ),
+                            child: Text(
+                              'Batal',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF616161),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: isChangingPassword
+                                ? null
+                                : () async {
+                                    final currentPassword =
+                                        currentPasswordController.text.trim();
+                                    final newPassword =
+                                        newPasswordController.text.trim();
+                                    final confirmPassword =
+                                        confirmPasswordController.text.trim();
+
+                                    if (currentPassword.isEmpty ||
+                                        newPassword.isEmpty ||
+                                        confirmPassword.isEmpty) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Semua field harus diisi.',
+                                            style: GoogleFonts.poppins(
+                                                fontSize: 12.5),
+                                          ),
+                                          backgroundColor: Colors.orange,
+                                          behavior:
+                                              SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          margin:
+                                              const EdgeInsets.all(16),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    if (newPassword.length < 8 ||
+                                        !newPassword.contains(
+                                            RegExp(r'[a-zA-Z]')) ||
+                                        !newPassword.contains(
+                                            RegExp(r'[0-9]'))) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Password baru minimal 8 karakter, kombinasi huruf dan angka.',
+                                            style: GoogleFonts.poppins(
+                                                fontSize: 12.5),
+                                          ),
+                                          backgroundColor: Colors.orange,
+                                          behavior:
+                                              SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          margin:
+                                              const EdgeInsets.all(16),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    if (newPassword != confirmPassword) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Konfirmasi password tidak cocok.',
+                                            style: GoogleFonts.poppins(
+                                                fontSize: 12.5),
+                                          ),
+                                          backgroundColor: Colors.orange,
+                                          behavior:
+                                              SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          margin:
+                                              const EdgeInsets.all(16),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    setModalState(
+                                        () => isChangingPassword = true);
+
+                                    try {
+                                      final user = AuthService
+                                          .instance.currentUser;
+                                      if (user == null ||
+                                          user.email == null) {
+                                        throw Exception(
+                                            'User tidak ditemukan.');
+                                      }
+
+                                      // Re-authenticate
+                                      final credential =
+                                          EmailAuthProvider.credential(
+                                        email: user.email!,
+                                        password: currentPassword,
+                                      );
+                                      await user
+                                          .reauthenticateWithCredential(
+                                              credential);
+
+                                      // Update password
+                                      await user
+                                          .updatePassword(newPassword);
+
+                                      if (bottomSheetContext.mounted) {
+                                        Navigator.pop(bottomSheetContext);
+                                      }
+
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons
+                                                      .check_circle_rounded,
+                                                  color: Colors.white,
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Text(
+                                                    'Password berhasil diubah.',
+                                                    style:
+                                                        GoogleFonts.poppins(
+                                                            fontSize:
+                                                                12.5),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            backgroundColor:
+                                                const Color(0xFF2E7D32),
+                                            behavior:
+                                                SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      12),
+                                            ),
+                                            margin:
+                                                const EdgeInsets.all(16),
+                                          ),
+                                        );
+                                      }
+                                    } on FirebaseAuthException catch (e) {
+                                      setModalState(() =>
+                                          isChangingPassword = false);
+                                      String errorMsg;
+                                      switch (e.code) {
+                                        case 'wrong-password':
+                                          errorMsg =
+                                              'Password saat ini salah.';
+                                          break;
+                                        case 'weak-password':
+                                          errorMsg =
+                                              'Password baru terlalu lemah.';
+                                          break;
+                                        case 'requires-recent-login':
+                                          errorMsg =
+                                              'Silakan logout dan login kembali, lalu coba lagi.';
+                                          break;
+                                        default:
+                                          errorMsg =
+                                              'Gagal mengubah password: ${e.message}';
+                                      }
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              errorMsg,
+                                              style: GoogleFonts.poppins(
+                                                  fontSize: 12.5),
+                                            ),
+                                            backgroundColor: Colors.red,
+                                            behavior:
+                                                SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      12),
+                                            ),
+                                            margin:
+                                                const EdgeInsets.all(16),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      setModalState(() =>
+                                          isChangingPassword = false);
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Gagal mengubah password: $e',
+                                              style: GoogleFonts.poppins(
+                                                  fontSize: 12.5),
+                                            ),
+                                            backgroundColor: Colors.red,
+                                            behavior:
+                                                SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      12),
+                                            ),
+                                            margin:
+                                                const EdgeInsets.all(16),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              elevation: 0,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: isChangingPassword
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Ubah Password',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Bottom Sheet untuk Pusat Bantuan & Panduan Medis
+  void _showHelpCenterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return Container(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 16,
+            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 24,
+          ),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(bottomSheetContext).size.height * 0.85,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle Bar
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE0E0E0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.softPinkCard,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.menu_book_rounded,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pusat Bantuan & Panduan',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF212121),
+                            ),
+                          ),
+                          Text(
+                            'Pedoman penanganan pasien diabetes',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              color: const Color(0xFF757575),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Section: Panduan Medis
+                Text(
+                  'Panduan Medis Diabetes',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF212121),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                _buildHelpItem(
+                  icon: Icons.bloodtype_rounded,
+                  title: 'Target Gula Darah',
+                  description:
+                      'Gula darah puasa: 80–130 mg/dL\nGula darah 2 jam setelah makan: <180 mg/dL\nHbA1c target: <7%',
+                  color: const Color(0xFFE53935),
+                ),
+                _buildHelpItem(
+                  icon: Icons.medication_rounded,
+                  title: 'Panduan Pemberian Obat',
+                  description:
+                      'Metformin: Dosis awal 500mg 1-2x/hari\nGlimepiride: 1-2mg 1x/hari sebelum makan\nInsulin: Sesuaikan dosis berdasarkan HbA1c',
+                  color: const Color(0xFF1E88E5),
+                ),
+                _buildHelpItem(
+                  icon: Icons.restaurant_rounded,
+                  title: 'Panduan Nutrisi Pasien',
+                  description:
+                      'Karbohidrat: 45-65% dari total kalori\nProtein: 15-20% dari total kalori\nLemak: 20-25% dari total kalori\nSerat: Minimal 25g/hari',
+                  color: const Color(0xFF43A047),
+                ),
+                _buildHelpItem(
+                  icon: Icons.warning_amber_rounded,
+                  title: 'Tanda Bahaya Hipoglikemia',
+                  description:
+                      'Gula darah <70 mg/dL\nGejala: Gemetar, berkeringat, pusing, bingung\nPenanganan: Berikan 15-20g glukosa cepat',
+                  color: const Color(0xFFFF9800),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Section: Bantuan Aplikasi
+                Text(
+                  'Bantuan Aplikasi D-Care',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF212121),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                _buildHelpItem(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  title: 'Konsultasi Online',
+                  description:
+                      'Gunakan fitur chat untuk konsultasi real-time dengan pasien. Rekam medis akan otomatis tersedia di sidebar chat.',
+                  color: AppColors.primary,
+                ),
+                _buildHelpItem(
+                  icon: Icons.description_outlined,
+                  title: 'Resep & Catatan Medis',
+                  description:
+                      'Buat resep dan catatan medis melalui ikon resep di halaman chat. Data otomatis tersimpan di rekam medis pasien.',
+                  color: const Color(0xFF7B1FA2),
+                ),
+                _buildHelpItem(
+                  icon: Icons.support_agent_rounded,
+                  title: 'Hubungi Tim Support',
+                  description:
+                      'Email: support@dcare.co.id\nWhatsApp: +62 812-3456-7890\nJam operasional: Senin - Jumat (08:00 - 17:00)',
+                  color: const Color(0xFF00897B),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Close Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(bottomSheetContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      'Tutup',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHelpItem({
+    required IconData icon,
+    required String title,
+    required String description,
+    required Color color,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: color.withValues(alpha: 0.15),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF212121),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    height: 1.5,
+                    color: const Color(0xFF616161),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
