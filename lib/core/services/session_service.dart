@@ -20,8 +20,10 @@ class SessionService with WidgetsBindingObserver {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   static const String _kLastActiveAt = 'dcare_session_last_active_at';
+  static const String _kBackgroundEnteredAt = 'dcare_session_background_entered_at';
 
   DateTime? _lastActiveTime;
+  DateTime? _backgroundEnteredTime;
   Timer? _inactivityTimer;
   Timer? _warningCountdownTimer;
 
@@ -53,11 +55,13 @@ class SessionService with WidgetsBindingObserver {
   }
 
   /// Mulai pelacakan sesi saat pengguna telah login.
-  /// Jika [isNewLogin] bernilai true, timestamp lastActiveAt akan langsung di-reset ke waktu sekarang.
+  /// Jika [isNewLogin] bernilai true, timestamp akan di-reset bersih ke waktu sekarang.
   /// Jika false (misal cold start / pemulihan sesi), baca data lama agar cold start check akurat.
   Future<void> startSession({bool isNewLogin = false}) async {
     _isTracking = true;
     _isLoggingOut = false;
+    _backgroundEnteredTime = null;
+    await clearBackgroundEnteredAt();
 
     if (isNewLogin) {
       final now = DateTime.now();
@@ -81,7 +85,49 @@ class SessionService with WidgetsBindingObserver {
     _dismissWarningDialog();
     _stopInactivityTimer();
     _stopWarningTimer();
+    await clearBackgroundEnteredAt();
     await clearLastActive();
+  }
+
+  /// Simpan timestamp saat aplikasi masuk ke background
+  Future<void> saveBackgroundEnteredAt([DateTime? time]) async {
+    final t = time ?? DateTime.now();
+    _backgroundEnteredTime = t;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_kBackgroundEnteredAt, t.millisecondsSinceEpoch);
+    } catch (e) {
+      debugPrint('⚠️ [SessionService] Gagal menyimpan backgroundEnteredAt: $e');
+    }
+  }
+
+  /// Ambil timestamp saat aplikasi masuk ke background
+  Future<DateTime?> getBackgroundEnteredAt() async {
+    if (_backgroundEnteredTime != null) {
+      return _backgroundEnteredTime;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final ms = prefs.getInt(_kBackgroundEnteredAt);
+      if (ms != null) {
+        _backgroundEnteredTime = DateTime.fromMillisecondsSinceEpoch(ms);
+        return _backgroundEnteredTime;
+      }
+    } catch (e) {
+      debugPrint('⚠️ [SessionService] Gagal membaca backgroundEnteredAt: $e');
+    }
+    return null;
+  }
+
+  /// Hapus timestamp masuk background
+  Future<void> clearBackgroundEnteredAt() async {
+    _backgroundEnteredTime = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kBackgroundEnteredAt);
+    } catch (e) {
+      debugPrint('⚠️ [SessionService] Gagal menghapus backgroundEnteredAt: $e');
+    }
   }
 
   /// Simpan timestamp aktivitas terakhir ke SharedPreferences
@@ -122,27 +168,35 @@ class SessionService with WidgetsBindingObserver {
   }
 
   /// Pemeriksaan saat Cold Start di AuthGate:
-  /// Mengembalikan true jika sesi user telah melebihi backgroundTimeout.
+  /// Mengembalikan true jika sesi user telah melebihi backgroundTimeout (2 menit / 120 detik)
+  /// sejak aplikasi masuk background atau ditutup.
   Future<bool> isSessionExpiredOnColdStart() async {
+    final bgTime = await getBackgroundEnteredAt();
     final lastActive = await getLastActive();
-    if (lastActive == null) {
+    final referenceTime = bgTime ?? lastActive;
+
+    if (referenceTime == null) {
       // Jika belum ada data tersimpan, set sekarang sebagai acuan
       await saveLastActive();
       return false;
     }
 
     final now = DateTime.now();
-    final diff = now.difference(lastActive);
+    final diff = now.difference(referenceTime);
+    final timeoutLimit = SessionConfig.backgroundTimeout;
 
-    // Timeout jika selisih > 5 menit ATAU selisih negatif (jam perangkat diubah mundur)
-    if (diff > SessionConfig.backgroundTimeout || diff.isNegative) {
+    // Timeout jika selisih >= 120 detik ATAU selisih negatif (jam perangkat diubah mundur)
+    if (diff >= timeoutLimit || diff.isNegative) {
       debugPrint(
-        '⏳ [SessionService] Cold start timeout: diff=${diff.inSeconds}s (maks: ${SessionConfig.backgroundTimeout.inSeconds}s)',
+        '⏳ [SessionService] Cold start timeout: diff=${diff.inSeconds}s (maks: ${timeoutLimit.inSeconds}s)',
       );
+      await clearBackgroundEnteredAt();
+      await clearLastActive();
       return true;
     }
 
-    // Masih dalam batas waktu sesi (< 5 menit): perbarui ke waktu sekarang
+    // Masih dalam batas waktu sesi (< 2 menit): bersihkan mark background dan perbarui last active
+    await clearBackgroundEnteredAt();
     await saveLastActive(now);
     return false;
   }
@@ -179,19 +233,27 @@ class SessionService with WidgetsBindingObserver {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
-        // Saat aplikasi masuk ke latar belakang, simpan waktu presisi dan hentikan timer UI
-        saveLastActive();
+        // Ketentuan 1: Ketika pengguna menekan tombol Home atau berpindah ke aplikasi lain,
+        // catat waktu aplikasi masuk ke background.
+        if (_backgroundEnteredTime == null) {
+          final now = DateTime.now();
+          _backgroundEnteredTime = now;
+          saveBackgroundEnteredAt(now);
+          debugPrint('📱 [SessionService] App masuk background pada: $now');
+        }
         _stopInactivityTimer();
         _dismissWarningDialog();
         break;
 
       case AppLifecycleState.resumed:
-        // Saat aplikasi dibuka kembali, periksa background timeout
+        // Saat aplikasi dibuka kembali, periksa background timeout 2 menit (120 detik)
         _handleAppResumed();
         break;
 
       case AppLifecycleState.detached:
-        saveLastActive();
+        if (_backgroundEnteredTime == null) {
+          saveBackgroundEnteredAt();
+        }
         break;
     }
   }
@@ -200,25 +262,35 @@ class SessionService with WidgetsBindingObserver {
   Future<void> _handleAppResumed() async {
     if (!_isTracking || _isLoggingOut) return;
 
-    final lastActive = await getLastActive();
+    final bgTime = await getBackgroundEnteredAt();
     final now = DateTime.now();
 
-    if (lastActive != null) {
-      final diff = now.difference(lastActive);
+    if (bgTime != null) {
+      final diff = now.difference(bgTime);
+      final timeoutLimit = SessionConfig.backgroundTimeout;
 
-      // Jika melebihi 5 menit atau jam dimundurkan
-      if (diff > SessionConfig.backgroundTimeout || diff.isNegative) {
+      debugPrint(
+        '📱 [SessionService] App resumed. Waktu di background: ${diff.inSeconds} detik (Batas: ${timeoutLimit.inSeconds} detik)',
+      );
+
+      // Ketentuan 3 & 4: Jika pengguna kembali setelah 2 menit atau lebih (>= 120 detik)
+      // sejak aplikasi masuk background, otomatis logout dan arahkan ke halaman Login.
+      // (Juga jika selisih negatif akibat jam diubah mundur)
+      if (diff >= timeoutLimit || diff.isNegative) {
         debugPrint(
-          '⏳ [SessionService] Background timeout tercapai: diff=${diff.inSeconds}s',
+          '⏳ [SessionService] Background timeout tercapai: diff=${diff.inSeconds}s (maks: ${timeoutLimit.inSeconds}s)',
         );
+        await clearBackgroundEnteredAt();
         await handleTimeout(
-          message: 'Sesi Anda telah berakhir, silakan login kembali.',
+          message: 'Sesi Anda telah berakhir (tidak aktif lebih dari 2 menit). Silakan login kembali.',
         );
         return;
       }
     }
 
-    // Masih dalam rentang aman: perbarui lastActive dan aktifkan kembali timer inaktivitas
+    // Ketentuan 2: Jika pengguna kembali sebelum 2 menit, tetap tampilkan halaman terakhir tanpa login ulang.
+    debugPrint('✅ [SessionService] Kembali dalam rentang aman (< 2 menit). Sesi dipertahankan.');
+    await clearBackgroundEnteredAt();
     await saveLastActive(now);
     _resetInactivityTimer();
   }
@@ -423,7 +495,7 @@ class SessionService with WidgetsBindingObserver {
 
   /// Eksekusi logout akibat timeout sesi, bersihkan stack navigasi, dan kembali ke halaman Login.
   Future<void> handleTimeout({
-    String message = 'Sesi Anda telah berakhir, silakan login kembali.',
+    String message = 'Sesi Anda telah berakhir (tidak aktif lebih dari 2 menit). Silakan login kembali.',
   }) async {
     if (_isLoggingOut) return;
     _isLoggingOut = true;
@@ -433,8 +505,10 @@ class SessionService with WidgetsBindingObserver {
     _stopWarningTimer();
     _isTracking = false;
 
+    await clearBackgroundEnteredAt();
     await clearLastActive();
 
+    // Hapus sesi autentikasi secara aman
     try {
       await FirebaseAuth.instance.signOut();
     } catch (e) {
@@ -443,6 +517,8 @@ class SessionService with WidgetsBindingObserver {
 
     _isLoggingOut = false;
 
+    // Bersihkan seluruh history/stack navigasi agar pengguna tidak bisa
+    // kembali ke halaman dashboard dengan tombol Back sistem
     final nav = navigatorKey.currentState;
     if (nav != null) {
       nav.pushAndRemoveUntil(
