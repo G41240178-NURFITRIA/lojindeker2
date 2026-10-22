@@ -159,7 +159,7 @@ class _PaymentQrisScreenState extends State<PaymentQrisScreen> {
           totalAmount: widget.totalAmount,
         );
 
-        await ConsultationBookingService.instance.createBooking(booking);
+        final savedBooking = await ConsultationBookingService.instance.createBooking(booking);
 
         if (!mounted) return;
 
@@ -173,12 +173,14 @@ class _PaymentQrisScreenState extends State<PaymentQrisScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => PaymentSuccessScreen(
+              bookingId: savedBooking.id,
               doctor: widget.doctor,
               doctorId: widget.doctorId,
               doctorName: widget.doctorName,
               specialty: widget.specialty,
               initials: widget.initials,
               selectedDate: widget.selectedDate,
+              dateKey: widget.dateKey,
               dateText: widget.dateText,
               timeSlot: widget.timeSlot,
               complaint: widget.complaint,
@@ -207,6 +209,7 @@ class _PaymentQrisScreenState extends State<PaymentQrisScreen> {
               specialty: widget.specialty,
               initials: widget.initials,
               selectedDate: widget.selectedDate,
+              dateKey: widget.dateKey,
               dateText: widget.dateText,
               timeSlot: widget.timeSlot,
               complaint: widget.complaint,

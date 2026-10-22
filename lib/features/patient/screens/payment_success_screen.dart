@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../models/app_user.dart';
-import 'health_calendar_screen.dart';
+import 'patient_schedule_screen.dart';
 
 /// Layar Konfirmasi Pembayaran Berhasil (Tampilan 3)
 /// Menampilkan ikon sukses, rincian booking & transaksi, serta tombol ke jadwal pasien
 class PaymentSuccessScreen extends StatelessWidget {
+  final String? bookingId;
   final AppUser? doctor;
   final String doctorId;
   final String doctorName;
   final String specialty;
   final String initials;
   final DateTime selectedDate;
+  final String? dateKey;
   final String dateText;
   final String timeSlot;
   final String complaint;
@@ -21,12 +23,14 @@ class PaymentSuccessScreen extends StatelessWidget {
 
   const PaymentSuccessScreen({
     super.key,
+    this.bookingId,
     this.doctor,
     required this.doctorId,
     required this.doctorName,
     required this.specialty,
     required this.initials,
     required this.selectedDate,
+    this.dateKey,
     required this.dateText,
     required this.timeSlot,
     required this.complaint,
@@ -298,30 +302,26 @@ class PaymentSuccessScreen extends StatelessWidget {
               // 5. Tombol "Lihat jadwal saya"
               InkWell(
                 onTap: () {
-                  // Buat health event untuk dimasukkan ke jadwal kalender
-                  final newEvent = HealthEvent(
-                    id: transactionId,
-                    title: 'Konsultasi: $doctorName',
-                    subtitle: complaint.isNotEmpty
-                        ? complaint
-                        : 'Konsultasi dokter spesialis',
-                    time: '$timeSlot WIB (25 menit)',
-                    date: selectedDate,
-                    type: HealthEventType.doctorAppointment,
-                    doctorName: doctorName,
-                    location: 'Telekonsultasi D-Care',
-                  );
-
-                  // Navigasi ke HealthCalendarScreen dengan initialDate dan newEvent
-                  Navigator.pushAndRemoveUntil(
+                  // Navigasi ke Tampilan Jadwal Saya (Real-time Status Booking)
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => HealthCalendarScreen(
-                        initialDate: selectedDate,
-                        newEvent: newEvent,
+                      builder: (_) => PatientScheduleScreen(
+                        bookingId: bookingId,
+                        doctor: doctor,
+                        doctorId: doctorId,
+                        doctorName: doctorName,
+                        specialty: specialty,
+                        initials: initials,
+                        selectedDate: selectedDate,
+                        dateKey: dateKey ?? '',
+                        dateText: dateText,
+                        timeSlot: timeSlot,
+                        complaint: complaint,
+                        transactionId: transactionId,
+                        totalAmount: totalAmount,
                       ),
                     ),
-                    (route) => route.isFirst,
                   );
                 },
                 borderRadius: BorderRadius.circular(14),

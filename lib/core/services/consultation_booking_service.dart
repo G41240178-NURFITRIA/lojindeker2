@@ -30,6 +30,34 @@ class ConsultationBookingService {
     });
   }
 
+  /// Stream single booking by id secara real-time
+  Stream<ConsultationBookingModel?> streamBookingById(String bookingId) {
+    if (bookingId.isEmpty) return Stream.value(null);
+    return _db
+        .collection('consultation_bookings')
+        .doc(bookingId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return null;
+      return ConsultationBookingModel.fromFirestore(doc);
+    });
+  }
+
+  /// Stream daftar booking aktif pasien secara real-time
+  Stream<List<ConsultationBookingModel>> streamPatientBookings(String patientId) {
+    if (patientId.isEmpty) return Stream.value([]);
+    return _db
+        .collection('consultation_bookings')
+        .where('patientId', isEqualTo: patientId)
+        .where('status', isEqualTo: 'booked')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => ConsultationBookingModel.fromFirestore(doc))
+          .toList();
+    });
+  }
+
   /// Mengecek apakah suatu slot jam sudah dibooking secara real-time
   Future<bool> isSlotBooked({
     required String doctorId,
