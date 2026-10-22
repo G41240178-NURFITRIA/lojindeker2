@@ -1,15 +1,28 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../models/app_user.dart';
 import '../../../core/services/patient_chat_notification_service.dart';
+import '../../../core/services/consultation_booking_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
+import '../models/consultation_booking_model.dart';
 import 'live_chat_screen.dart';
 import 'booking_consultation_screen.dart';
 
-class ConsultationListScreen extends StatelessWidget {
+class ConsultationListScreen extends StatefulWidget {
   const ConsultationListScreen({super.key});
+
+  @override
+  State<ConsultationListScreen> createState() => _ConsultationListScreenState();
+}
+
+class _ConsultationListScreenState extends State<ConsultationListScreen> {
+  /// Daftar booking aktif pasien saat ini (real-time dari Firestore)
+  List<ConsultationBookingModel> _activeBookings = [];
+  StreamSubscription? _bookingsSub;
 
   // Warna sesuai tema Soft Pink
   static const Color _primaryPink = Color(0xFFF06292);
@@ -21,6 +34,76 @@ class ConsultationListScreen extends StatelessWidget {
   static const Color _greenText = Color(0xFF00B074);
   static const Color _navIconActive = Color(0xFFE56A6F);
   static const Color _navIconInactive = Color(0xFFEFB3B5);
+
+  // Timer real-time untuk update status jam booking
+  Timer? _clockTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenPatientBookings();
+    // Timer setiap detik untuk update status waktu booking
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _bookingsSub?.cancel();
+    _clockTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Subscribe ke stream booking pasien secara real-time
+  void _listenPatientBookings() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    _bookingsSub = ConsultationBookingService.instance
+        .streamPatientBookings(uid)
+        .listen((bookings) {
+      if (mounted) {
+        setState(() {
+          _activeBookings = bookings;
+        });
+      }
+    });
+  }
+
+  /// Mendapatkan booking aktif untuk dokter tertentu (status = 'booked')
+  ConsultationBookingModel? _getActiveBookingForDoctor(String doctorId) {
+    try {
+      return _activeBookings.firstWhere((b) => b.doctorId == doctorId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Cek apakah waktu booking sudah tiba
+  bool _isBookingTimeArrived(ConsultationBookingModel booking) {
+    try {
+      final parts = booking.timeSlot.split(':');
+      final hour = int.tryParse(parts[0]) ?? 9;
+      final minute = int.tryParse(
+            parts.length > 1 ? parts[1].replaceAll(RegExp(r'[^0-9]'), '') : '0',
+          ) ?? 0;
+
+      // Parse dateKey (YYYY-MM-DD)
+      final dateParts = booking.dateKey.split('-');
+      final year = int.tryParse(dateParts[0]) ?? DateTime.now().year;
+      final month = int.tryParse(dateParts[1]) ?? 1;
+      final day = int.tryParse(dateParts[2]) ?? 1;
+
+      final scheduleStart = DateTime(year, month, day, hour, minute);
+      final sessionEnd = scheduleStart.add(const Duration(minutes: 55));
+      final now = DateTime.now();
+
+      return (now.isAfter(scheduleStart) || now.isAtSameMomentAs(scheduleStart)) &&
+          now.isBefore(sessionEnd);
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Membuat 2 huruf inisial dari nama lengkap
   String _initials(String fullName) {
@@ -134,6 +217,11 @@ class ConsultationListScreen extends StatelessWidget {
         : 'Spesialis Penyakit Dalam';
     final initials = _initials(doctor.fullName.isNotEmpty ? doctor.fullName : doctor.username);
     final displayName = doctor.fullName.isNotEmpty ? doctor.fullName : doctor.username;
+
+    // Cek apakah ada booking aktif untuk dokter ini
+    final activeBooking = _getActiveBookingForDoctor(doctor.uid);
+    final hasBooking = activeBooking != null;
+    final isChatUnlocked = hasBooking && _isBookingTimeArrived(activeBooking);
 
     return ValueListenableBuilder<Map<String, int>>(
       valueListenable:
@@ -409,7 +497,7 @@ class ConsultationListScreen extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          // Tombol Aksi: Booking Konsultasi & Chat Langsung
+          // Tombol Aksi: Booking Konsultasi & Chat
           Row(
             children: [
               // Tombol Utama: Booking Konsultasi
@@ -466,38 +554,98 @@ class ConsultationListScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              // Tombol Chat Langsung
+              // Tombol Chat — Terkunci jika belum booking / belum tiba waktunya
               InkWell(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => LiveChatScreen(
-                        doctorName: displayName,
-                        specialty: specialty,
-                        initials: initials,
-                        doctorId: doctor.uid,
+                  if (!hasBooking) {
+                    // Belum ada booking: tampilkan info bahwa harus booking dulu
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.lock_outline_rounded, color: Colors.white, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Silakan booking konsultasi terlebih dahulu untuk menggunakan fitur chat.',
+                                style: GoogleFonts.poppins(fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: const Color(0xFF2C2C2C),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        duration: const Duration(seconds: 3),
                       ),
-                    ),
-                  );
+                    );
+                  } else if (!isChatUnlocked) {
+                    // Sudah booking tapi belum tiba waktunya: beri info jadwal
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.lock_clock_rounded, color: Colors.white, size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Chat Belum Tersedia',
+                                  style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Fitur chat akan otomatis terbuka saat jam booking Anda tiba (${activeBooking.timeSlot} WIB, ${activeBooking.date}).',
+                              style: GoogleFonts.poppins(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: const Color(0xFF2C2C2C),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        duration: const Duration(seconds: 4),
+                      ),
+                    );
+                  } else {
+                    // Booking ada & waktu sudah tiba: buka chat!
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LiveChatScreen(
+                          doctorName: displayName,
+                          specialty: specialty,
+                          initials: initials,
+                          doctorId: doctor.uid,
+                        ),
+                      ),
+                    );
+                  }
                 },
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: _avatarBg,
+                    color: isChatUnlocked ? _avatarBg : const Color(0xFFF0F0F0),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: const Color(0xFFF3D2DF),
+                      color: isChatUnlocked ? const Color(0xFFF3D2DF) : const Color(0xFFE0E0E0),
                       width: 1.2,
                     ),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
-                      Icons.chat_bubble_outline_rounded,
+                      isChatUnlocked
+                          ? Icons.chat_bubble_outline_rounded
+                          : Icons.lock_outline_rounded,
                       size: 20,
-                      color: _avatarText,
+                      color: isChatUnlocked ? _avatarText : const Color(0xFFBBBBBB),
                     ),
                   ),
                 ),

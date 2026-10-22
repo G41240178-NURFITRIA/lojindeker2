@@ -6,6 +6,7 @@ import '../../../core/services/consultation_booking_service.dart';
 import '../../../models/app_user.dart';
 import '../models/consultation_booking_model.dart';
 import 'live_chat_screen.dart';
+import 'consultation_list_screen.dart';
 
 /// Layar Jadwal Saya Pasien (Real-time Status Booking & Kunci Chat Konsultasi)
 /// Sesuai referensi gambar:
@@ -294,7 +295,14 @@ class _PatientScheduleScreenState extends State<PatientScheduleScreen> {
                 children: [
                   // Back button lingkaran putih transparan
                   InkWell(
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: () {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => const ConsultationListScreen(),
+                        ),
+                        (route) => false,
+                      );
+                    },
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       width: 36,
