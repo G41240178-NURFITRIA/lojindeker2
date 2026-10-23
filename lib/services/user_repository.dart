@@ -190,6 +190,39 @@ class UserRepository {
     });
   }
 
+  /// Hapus akun pasien secara permanen dari Firestore.
+  /// Menghapus: profil di users/{uid}, loginLookup/{username},
+  /// loginLookup/{email}, dan loginLookup/{phoneNumber} (jika ada).
+  Future<void> deletePatient(AppUser patient) async {
+    final batch = _db.batch();
+
+    // 1. Hapus dokumen profil
+    batch.delete(_db.collection('users').doc(patient.uid));
+
+    // 2. Hapus loginLookup berdasarkan username
+    if (patient.username.trim().isNotEmpty) {
+      batch.delete(
+        _db.collection('loginLookup').doc(patient.username.toLowerCase()),
+      );
+    }
+
+    // 3. Hapus loginLookup berdasarkan email
+    if (patient.email.trim().isNotEmpty) {
+      batch.delete(
+        _db.collection('loginLookup').doc(patient.email.toLowerCase()),
+      );
+    }
+
+    // 4. Hapus loginLookup berdasarkan nomor HP (jika ada)
+    if (patient.phoneNumber.trim().isNotEmpty) {
+      batch.delete(
+        _db.collection('loginLookup').doc(patient.phoneNumber.trim()),
+      );
+    }
+
+    await batch.commit();
+  }
+
   // ─── Validasi keunikan ────────────────────────────────────────────
   Future<bool> isUsernameAvailable(String username) async {
     final doc = await _db
