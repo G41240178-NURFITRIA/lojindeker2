@@ -18,8 +18,9 @@ class ChatMessage {
   final String id;
   final String text;
   final bool isUser;
+  final bool isSystem;
   final String time;
-  final String type; // 'text' | 'image' | 'document'
+  final String type; // 'text' | 'image' | 'document' | 'system'
   final String? attachmentData;
   final String? attachmentName;
   final String? attachmentSize;
@@ -28,6 +29,7 @@ class ChatMessage {
     required this.id,
     required this.text,
     required this.isUser,
+    this.isSystem = false,
     required this.time,
     this.type = 'text',
     this.attachmentData,
@@ -40,6 +42,7 @@ class ChatMessage {
       id: rm.id,
       text: rm.text,
       isUser: rm.isPatient,
+      isSystem: rm.isSystem,
       time: rm.time,
       type: rm.type,
       attachmentData: rm.attachmentData,
@@ -77,6 +80,13 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   StreamSubscription<List<RealtimeChatMessage>>? _messageSubscription;
   StreamSubscription<DocumentSnapshot>? _doctorProfileSubscription;
   StreamSubscription<DocumentSnapshot>? _chatDocSubscription;
+
+  // Manajemen Timer Konsultasi 25 Menit
+  Timer? _countdownTimer;
+  DateTime? _expiresAt;
+  Duration _remainingDuration = const Duration(minutes: 25);
+  bool _isConsultationEnded = false;
+  bool _hasShownEndedDialog = false;
 
   // Palette soft pink matching the app's brand theme
   static const Color _primaryPink = Color(0xFFF06292);       // Soft Pink Brand
@@ -192,7 +202,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         _scrollToBottom();
       });
 
-      // Pantau dokumen chat untuk foto dokter & ID dokter real-time
+      // Pantau dokumen chat untuk foto dokter & ID dokter real-time serta status durasi 25 menit
       _chatDocSubscription = FirebaseFirestore.instance
           .collection('consultation_chats')
           .doc(chatId)
@@ -213,6 +223,35 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               _doctorProfileSubscription == null) {
             _subscribeDoctorDoc(resolvedDocId);
           }
+
+          // Sinkronisasi status sesi konsultasi & batas waktu 25 menit
+          final status = data['status']?.toString() ?? 'active';
+          final expTs = data['expiresAt'] as Timestamp?;
+          final createdTs = data['createdAt'] as Timestamp?;
+          DateTime? expDt = expTs?.toDate();
+          if (expDt == null && createdTs != null) {
+            expDt = createdTs.toDate().add(const Duration(minutes: 25));
+          }
+
+          if (expDt != null) {
+            _expiresAt = expDt;
+            final isTimeExpired = DateTime.now().isAfter(expDt);
+            final ended = (status == 'ended' || isTimeExpired);
+
+            if (ended != _isConsultationEnded) {
+              setState(() {
+                _isConsultationEnded = ended;
+              });
+            }
+
+            if (ended) {
+              _remainingDuration = Duration.zero;
+              _countdownTimer?.cancel();
+              _showConsultationEndedNotification();
+            } else {
+              _startCountdownTimer();
+            }
+          }
         }
       });
 
@@ -223,8 +262,119 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     }
   }
 
+  void _startCountdownTimer() {
+    _countdownTimer?.cancel();
+    if (_expiresAt == null || _isConsultationEnded) return;
+
+    void updateRemaining() {
+      if (!mounted) return;
+      final now = DateTime.now();
+      final diff = _expiresAt!.difference(now);
+      if (diff.isNegative || diff.inSeconds <= 0) {
+        _countdownTimer?.cancel();
+        setState(() {
+          _remainingDuration = Duration.zero;
+          _isConsultationEnded = true;
+        });
+        if (_chatId != null) {
+          ChatService.instance.endConsultation(_chatId!);
+        }
+        _showConsultationEndedNotification();
+      } else {
+        setState(() {
+          _remainingDuration = diff;
+        });
+      }
+    }
+
+    updateRemaining();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      updateRemaining();
+    });
+  }
+
+  void _showConsultationEndedNotification() {
+    if (_hasShownEndedDialog || !mounted) return;
+    _hasShownEndedDialog = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          contentPadding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFCE4EC),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFF8BBD0), width: 2),
+                ),
+                child: const Icon(
+                  Icons.timer_off_rounded,
+                  color: Color(0xFFD81B60),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Waktu Konsultasi Berakhir',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF212121),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Durasi konsultasi selama 25 menit bersama ${widget.doctorName} telah selesai. Ruang percakapan telah ditutup secara otomatis.\n\nAnda tetap dapat melihat seluruh riwayat percakapan ini.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 12.5,
+                  color: const Color(0xFF616161),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF06292),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Mengerti',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     PatientChatNotificationService.instance.activeChatId = null;
     _doctorProfileSubscription?.cancel();
     _chatDocSubscription?.cancel();
@@ -253,6 +403,18 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     String? attachmentName,
     String? attachmentSize,
   }) async {
+    if (_isConsultationEnded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Sesi konsultasi 25 menit telah berakhir. Anda tidak dapat mengirim pesan lagi.',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: const Color(0xFFD81B60),
+        ),
+      );
+      return;
+    }
     final trimmed = text.trim();
     if (trimmed.isEmpty && attachmentData == null) return;
     if (_chatId == null) return;
@@ -1297,6 +1459,9 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         children: [
           const Divider(height: 1, color: _borderSoft),
 
+          // Banner Penghitung Waktu Konsultasi 25 Menit
+          _buildConsultationTimerBanner(),
+
           // Message list
           Expanded(
             child: ListView(
@@ -1364,135 +1529,111 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             ),
           ),
 
-          // Quick action chips (Pertanyaan Cepat Soft Pink)
-          Container(
-            height: 36,
-            margin: const EdgeInsets.only(bottom: 6),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              itemCount: _quickPrompts.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final prompt = _quickPrompts[index];
-                return ActionChip(
-                  backgroundColor: _inputBarBg,
-                  side: const BorderSide(color: _borderSoft),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  label: Text(
-                    prompt,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: _darkRose,
-                      fontWeight: FontWeight.w500,
+          // Quick action chips (Pertanyaan Cepat Soft Pink) - Sembunyikan jika sesi telah berakhir
+          if (!_isConsultationEnded)
+            Container(
+              height: 36,
+              margin: const EdgeInsets.only(bottom: 6),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                itemCount: _quickPrompts.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final prompt = _quickPrompts[index];
+                  return ActionChip(
+                    backgroundColor: _inputBarBg,
+                    side: const BorderSide(color: _borderSoft),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ),
-                  onPressed: () => _sendMessage(prompt),
-                );
-              },
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    label: Text(
+                      prompt,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: _darkRose,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    onPressed: () => _sendMessage(prompt),
+                  );
+                },
+              ),
             ),
+
+          // Input area soft pink bar ATAU Banner Terkunci jika sesi berakhir
+          if (_isConsultationEnded)
+            _buildLockedInputBanner()
+          else
+            _buildActiveInputBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConsultationTimerBanner() {
+    final minutes = _remainingDuration.inMinutes;
+    final seconds = _remainingDuration.inSeconds % 60;
+    final timeStr =
+        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    final isWarning = !_isConsultationEnded && _remainingDuration.inMinutes < 5;
+
+    if (_isConsultationEnded) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFCE4EC),
+          border: Border(bottom: BorderSide(color: Color(0xFFF8BBD0), width: 1)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.timer_off_rounded, size: 16, color: Color(0xFFD81B60)),
+            const SizedBox(width: 8),
+            Text(
+              'Sesi Konsultasi Berakhir (Batas 25 Menit)',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF880E4F),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isWarning ? const Color(0xFFFFF3E0) : const Color(0xFFFFF0F5),
+        border: Border(
+          bottom: BorderSide(
+            color: isWarning ? const Color(0xFFFFCC80) : const Color(0xFFF8BBD0),
+            width: 1,
           ),
-
-          // Input area soft pink bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: const BoxDecoration(
-              color: _inputBarBg,
-              border: Border(
-                top: BorderSide(color: _borderSoft, width: 1),
-              ),
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  // Tombol Plus (+) Soft Pink Gradient
-                  InkWell(
-                    onTap: _showAttachmentBottomSheet,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_softPinkLight, _primaryPink],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.add_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 10),
-
-                  // Text Field Tulis pesan...
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: _borderSoft,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: TextField(
-                        controller: _controller,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: const Color(0xFF1E1E1E),
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Tulis pesan...',
-                          hintStyle: GoogleFonts.poppins(
-                            fontSize: 12.5,
-                            color: const Color(0xFF9E9E9E),
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 10,
-                          ),
-                        ),
-                        onSubmitted: _sendMessage,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 10),
-
-                  // Tombol Kirim Soft Pink Gradient
-                  InkWell(
-                    onTap: () => _sendMessage(_controller.text),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_softPinkLight, _primaryPink],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.send_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isWarning ? Icons.warning_amber_rounded : Icons.timer_outlined,
+            size: 16,
+            color: isWarning ? const Color(0xFFE65100) : const Color(0xFFD81B60),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isWarning
+                ? 'Sisa Waktu Konsultasi: $timeStr (Hampir Habis)'
+                : 'Sisa Waktu Konsultasi: $timeStr',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isWarning ? const Color(0xFFE65100) : const Color(0xFF880E4F),
             ),
           ),
         ],
@@ -1500,8 +1641,202 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     );
   }
 
-  /// Bubble Pesan: Dokter (Soft Pink Card), Pasien (Soft Pink Gradient)
+  Widget _buildLockedInputBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: const BoxDecoration(
+        color: _inputBarBg,
+        border: Border(top: BorderSide(color: _borderSoft, width: 1)),
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFCE4EC),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF48FB1)),
+              ),
+              child: const Icon(
+                Icons.lock_rounded,
+                color: Color(0xFFD81B60),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Sesi Konsultasi Telah Selesai',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF880E4F),
+                    ),
+                  ),
+                  Text(
+                    'Waktu konsultasi 25 menit telah habis. Anda tidak dapat mengirim pesan lagi pada sesi ini.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: const Color(0xFFAD1457),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveInputBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: const BoxDecoration(
+        color: _inputBarBg,
+        border: Border(
+          top: BorderSide(color: _borderSoft, width: 1),
+        ),
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            // Tombol Plus (+) Soft Pink Gradient
+            InkWell(
+              onTap: _showAttachmentBottomSheet,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_softPinkLight, _primaryPink],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            // Text Field Tulis pesan...
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: _borderSoft,
+                  ),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _controller,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: const Color(0xFF1E1E1E),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Tulis pesan...',
+                    hintStyle: GoogleFonts.poppins(
+                      fontSize: 12.5,
+                      color: const Color(0xFF9E9E9E),
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                    ),
+                  ),
+                  onSubmitted: _sendMessage,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            // Tombol Kirim Soft Pink Gradient
+            InkWell(
+              onTap: () => _sendMessage(_controller.text),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_softPinkLight, _primaryPink],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.send_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Bubble Pesan: Dokter (Soft Pink Card), Pasien (Soft Pink Gradient), System
   Widget _buildMessageBubble(ChatMessage msg) {
+    if (msg.isSystem) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.85,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFCE4EC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFF8BBD0)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    size: 16, color: Color(0xFFD81B60)),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    msg.text,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: const Color(0xFF880E4F),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final isUser = msg.isUser;
     final isImage = msg.type == 'image';
     final isDocument = msg.type == 'document';
