@@ -10,6 +10,7 @@ import '../../../core/services/chat_service.dart';
 import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/patient_chat_notification_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
+import '../../../core/widgets/in_app_camera_screen.dart';
 import '../../../core/widgets/medical_document_viewer_screen.dart';
 
 /// Model pesan chat
@@ -333,9 +334,27 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     icon: Icons.camera_alt_rounded,
                     label: 'Kamera',
                     colors: const [Color(0xFFFF5252), Color(0xFFFF1744)],
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(ctx);
-                      _pickAndSendImage(ImageSource.camera);
+                      final resultBase64 = await Navigator.push<String>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const InAppCameraScreen(
+                            title: 'Kamera Pasien D-Care',
+                            subtitle: 'Arahkan kamera ke resep atau kondisi fisik Anda',
+                          ),
+                        ),
+                      );
+                      if (resultBase64 != null && resultBase64.isNotEmpty) {
+                        _sendMessage(
+                          '',
+                          type: 'image',
+                          attachmentData: resultBase64,
+                          attachmentName:
+                              'Foto_Medis_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                          attachmentSize: '120 KB',
+                        );
+                      }
                     },
                   ),
                   _buildAttachmentOption(
@@ -722,9 +741,27 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               }),
               const SizedBox(height: 6),
               InkWell(
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(ctx);
-                  _pickAndSendImage(ImageSource.camera);
+                  final resultBase64 = await Navigator.push<String>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const InAppCameraScreen(
+                        title: 'Pindai Berkas Medis',
+                        subtitle: 'Posisikan dokumen atau resep medis di dalam bingkai',
+                      ),
+                    ),
+                  );
+                  if (resultBase64 != null && resultBase64.isNotEmpty) {
+                    _sendMessage(
+                      '',
+                      type: 'image',
+                      attachmentData: resultBase64,
+                      attachmentName:
+                          'Dokumen_Scan_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                      attachmentSize: '120 KB',
+                    );
+                  }
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
