@@ -9,7 +9,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
-import '../../../core/widgets/in_app_camera_screen.dart';
 import '../../../core/widgets/medical_document_viewer_screen.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
@@ -2870,8 +2869,12 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           .streamMessages(widget.chatId!)
           .listen((items) {
         if (!mounted) return;
+        final currentUid = ChatService.instance.currentUid ?? '';
         setState(() {
           _messages = items
+              .where((m) =>
+                  !m.isDeletedFor('doctor') &&
+                  (currentUid.isEmpty || !m.isDeletedFor(currentUid)))
               .map((m) => {
                     'id': m.id,
                     'text': m.text,
@@ -2978,26 +2981,9 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     icon: Icons.camera_alt_rounded,
                     label: 'Kamera',
                     colors: const [Color(0xFFFF5252), Color(0xFFFF1744)],
-                    onTap: () async {
+                    onTap: () {
                       Navigator.pop(ctx);
-                      final resultBase64 = await Navigator.push<String>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const InAppCameraScreen(
-                            title: 'Kamera Dokter D-Care',
-                            subtitle: 'Arahkan kamera ke resep atau dokumen medis',
-                          ),
-                        ),
-                      );
-                      if (resultBase64 != null && resultBase64.isNotEmpty) {
-                        _sendMessage(
-                          type: 'image',
-                          attachmentData: resultBase64,
-                          attachmentName:
-                              'Foto_Resep_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                          attachmentSize: '120 KB',
-                        );
-                      }
+                      _pickAndSendImage(ImageSource.camera);
                     },
                   ),
                   _buildAttachmentOption(
@@ -3384,26 +3370,9 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
               }),
               const SizedBox(height: 6),
               InkWell(
-                onTap: () async {
+                onTap: () {
                   Navigator.pop(ctx);
-                  final resultBase64 = await Navigator.push<String>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const InAppCameraScreen(
-                        title: 'Pindai Berkas Medis',
-                        subtitle: 'Posisikan dokumen atau resep di dalam bingkai',
-                      ),
-                    ),
-                  );
-                  if (resultBase64 != null && resultBase64.isNotEmpty) {
-                    _sendMessage(
-                      type: 'image',
-                      attachmentData: resultBase64,
-                      attachmentName:
-                          'Dokumen_Scan_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                      attachmentSize: '120 KB',
-                    );
-                  }
+                  _pickAndSendImage(ImageSource.camera);
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
@@ -3686,7 +3655,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   child: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
                 ),
                 title: Text(
-                  'Hapus Pesan untuk Semua',
+                  'Hapus Pesan',
                   style: GoogleFonts.poppins(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
@@ -3694,7 +3663,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   ),
                 ),
                 subtitle: Text(
-                  'Pesan akan terhapus dari riwayat dokter dan pasien',
+                  'Hapus pesan ini dari percakapan',
                   style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
                 ),
                 onTap: () {
@@ -3710,23 +3679,30 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   }
 
   void _confirmDeleteMessage(String messageId) {
-    if (messageId.isEmpty || widget.chatId == null) return;
+    if (messageId.isEmpty) return;
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 24),
-            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFEBEE),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 22),
+            ),
+            const SizedBox(width: 12),
             Text(
               'Hapus Pesan?',
-              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ],
         ),
         content: Text(
-          'Pesan ini akan dihapus secara permanen untuk Anda dan pasien.',
+          'Apakah Anda yakin ingin menghapus pesan ini?',
           style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF555555)),
         ),
         actions: [
@@ -3742,34 +3718,34 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
               elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
               Navigator.pop(dialogCtx);
-              try {
-                await ChatService.instance.deleteMessage(
-                  chatId: widget.chatId!,
-                  messageId: messageId,
-                );
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Pesan berhasil dihapus', style: GoogleFonts.poppins()),
-                    backgroundColor: const Color(0xFF333333),
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Gagal menghapus pesan: $e', style: GoogleFonts.poppins()),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
+              setState(() {
+                _messages.removeWhere((m) => m['id'] == messageId);
+              });
+              if (widget.chatId != null && widget.chatId!.isNotEmpty) {
+                try {
+                  await ChatService.instance.deleteMessage(
+                    chatId: widget.chatId!,
+                    messageId: messageId,
+                  );
+                } catch (e) {
+                  debugPrint('Error delete message: $e');
+                }
               }
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Pesan berhasil dihapus', style: GoogleFonts.poppins()),
+                  backgroundColor: const Color(0xFF333333),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
             },
-            child: Text('Hapus untuk Semua', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+            child: Text('Hapus', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
           ),
         ],
       ),

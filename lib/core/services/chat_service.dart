@@ -32,7 +32,15 @@ class RealtimeChatMessage {
     this.attachmentData,
     this.attachmentName,
     this.attachmentSize,
+    this.deletedFor = const [],
   });
+
+  final List<String> deletedFor;
+
+  bool isDeletedFor(String? identifier) {
+    if (identifier == null || identifier.isEmpty) return false;
+    return deletedFor.contains(identifier);
+  }
 
   bool get isPatient => senderRole == 'pasien';
   bool get isDoctor => senderRole == 'doctor';
@@ -60,6 +68,7 @@ class RealtimeChatMessage {
       attachmentData: data['attachmentData']?.toString(),
       attachmentName: data['attachmentName']?.toString(),
       attachmentSize: data['attachmentSize']?.toString(),
+      deletedFor: List<String>.from(data['deletedFor'] as List? ?? []),
     );
   }
 
@@ -389,6 +398,33 @@ class ChatService {
         .collection('consultation_chats')
         .doc(chatId)
         .update(updateData);
+  }
+
+  /// Hapus satu pesan hanya untuk pengguna saat ini (dokter atau pasien)
+  Future<void> deleteMessageForMe({
+    required String chatId,
+    required String messageId,
+    required String userIdentifier,
+  }) async {
+    try {
+      final chatRef = _db.collection('consultation_chats').doc(chatId);
+      final msgRef = chatRef.collection('messages').doc(messageId);
+
+      await msgRef.update({
+        'deletedFor': FieldValue.arrayUnion([userIdentifier]),
+      });
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] Gagal menghapus pesan untuk saya: $e');
+      rethrow;
+    }
+  }
+
+  /// Hapus satu pesan untuk semua orang (real-time untuk pasien dan dokter)
+  Future<void> deleteMessageForEveryone({
+    required String chatId,
+    required String messageId,
+  }) async {
+    return deleteMessage(chatId: chatId, messageId: messageId);
   }
 
   /// Hapus satu pesan dalam sesi chat (terhapus real-time untuk pasien dan dokter)
