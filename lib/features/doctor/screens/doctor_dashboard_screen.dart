@@ -2857,6 +2857,14 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<List<RealtimeChatMessage>>? _msgSubscription;
+  StreamSubscription<DocumentSnapshot>? _chatDocSubscription;
+
+  // Manajemen Timer Konsultasi 25 Menit
+  Timer? _countdownTimer;
+  DateTime? _expiresAt;
+  Duration _remainingDuration = const Duration(minutes: 25);
+  bool _isConsultationEnded = false;
+  bool _hasShownEndedDialog = false;
 
   List<Map<String, dynamic>> _messages = [];
 
@@ -2879,6 +2887,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     'id': m.id,
                     'text': m.text,
                     'isDoctor': m.isDoctor,
+                    'isSystem': m.isSystem,
                     'time': m.time,
                     'read': m.isRead,
                     'type': m.type,
@@ -2898,11 +2907,162 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           }
         });
       });
+
+      // Pantau dokumen chat untuk status konsultasi & batas durasi 25 menit
+      _chatDocSubscription = FirebaseFirestore.instance
+          .collection('consultation_chats')
+          .doc(widget.chatId!)
+          .snapshots()
+          .listen((chatDoc) {
+        if (!mounted) return;
+        if (chatDoc.exists && chatDoc.data() != null) {
+          final data = chatDoc.data()!;
+          final status = data['status']?.toString() ?? 'active';
+          final expTs = data['expiresAt'] as Timestamp?;
+          final createdTs = data['createdAt'] as Timestamp?;
+          DateTime? expDt = expTs?.toDate();
+          if (expDt == null && createdTs != null) {
+            expDt = createdTs.toDate().add(const Duration(minutes: 25));
+          }
+
+          if (expDt != null) {
+            _expiresAt = expDt;
+            final isTimeExpired = DateTime.now().isAfter(expDt);
+            final ended = (status == 'ended' || isTimeExpired);
+
+            if (ended != _isConsultationEnded) {
+              setState(() {
+                _isConsultationEnded = ended;
+              });
+            }
+
+            if (ended) {
+              _remainingDuration = Duration.zero;
+              _countdownTimer?.cancel();
+              _showConsultationEndedNotification();
+            } else {
+              _startCountdownTimer();
+            }
+          }
+        }
+      });
     }
+  }
+
+  void _startCountdownTimer() {
+    _countdownTimer?.cancel();
+    if (_expiresAt == null || _isConsultationEnded) return;
+
+    void updateRemaining() {
+      if (!mounted) return;
+      final now = DateTime.now();
+      final diff = _expiresAt!.difference(now);
+      if (diff.isNegative || diff.inSeconds <= 0) {
+        _countdownTimer?.cancel();
+        setState(() {
+          _remainingDuration = Duration.zero;
+          _isConsultationEnded = true;
+        });
+        if (widget.chatId != null && widget.chatId!.isNotEmpty) {
+          ChatService.instance.endConsultation(widget.chatId!);
+        }
+        _showConsultationEndedNotification();
+      } else {
+        setState(() {
+          _remainingDuration = diff;
+        });
+      }
+    }
+
+    updateRemaining();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      updateRemaining();
+    });
+  }
+
+  void _showConsultationEndedNotification() {
+    if (_hasShownEndedDialog || !mounted) return;
+    _hasShownEndedDialog = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          contentPadding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFCE4EC),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFF8BBD0), width: 2),
+                ),
+                child: const Icon(
+                  Icons.timer_off_rounded,
+                  color: Color(0xFFD81B60),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Waktu Konsultasi Berakhir',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF212121),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Durasi konsultasi 25 menit dengan pasien ${widget.patientName} telah selesai. Ruang percakapan otomatis ditutup.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 12.5,
+                  color: const Color(0xFF616161),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(
+                    'Mengerti',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
+    _chatDocSubscription?.cancel();
     _msgSubscription?.cancel();
     _msgController.dispose();
     _scrollController.dispose();
@@ -2916,6 +3076,18 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     String? attachmentName,
     String? attachmentSize,
   }) async {
+    if (_isConsultationEnded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Sesi konsultasi 25 menit telah berakhir. Anda tidak dapat mengirim pesan lagi.',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
     final text = (customText ?? _msgController.text).trim();
     if (text.isEmpty && attachmentData == null) return;
 
@@ -3918,6 +4090,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       ),
       body: Column(
         children: [
+          _buildDoctorTimerBanner(),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -3942,12 +4115,14 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   );
                 }
                 final m = _messages[idx - 1];
-                final isDoctor = m['isDoctor'] as bool;
+                final isDoctor = (m['isDoctor'] as bool?) ?? false;
                 return _buildMessageBubble(m, isDoctor);
               },
             ),
           ),
-          _buildInputBar(),
+          _isConsultationEnded
+              ? _buildLockedDoctorInputBanner()
+              : _buildInputBar(),
         ],
       ),
     );
@@ -3977,12 +4152,52 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   }
 
   Widget _buildMessageBubble(Map<String, dynamic> m, bool isDoctor) {
-    final bool isRead = (m['read'] as bool?) ?? false;
     final String type = (m['type'] as String?) ?? 'text';
+    final bool isSystem = (m['isSystem'] as bool?) ?? (type == 'system');
+    final String text = (m['text'] as String?) ?? '';
+
+    if (isSystem) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.85,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFCE4EC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFF8BBD0)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.info_outline_rounded,
+                    size: 16, color: Color(0xFFD81B60)),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    text,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: const Color(0xFF880E4F),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final bool isRead = (m['read'] as bool?) ?? false;
     final String? attachmentData = m['attachmentData'] as String?;
     final String? attachmentName = m['attachmentName'] as String?;
     final String? attachmentSize = m['attachmentSize'] as String?;
-    final String text = (m['text'] as String?) ?? '';
 
     Uint8List? imageBytes;
     if (type == 'image' && attachmentData != null && attachmentData.isNotEmpty) {
@@ -4273,6 +4488,142 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   ],
                 ),
                 child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDoctorTimerBanner() {
+    final minutes = _remainingDuration.inMinutes;
+    final seconds = _remainingDuration.inSeconds % 60;
+    final timeStr =
+        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    final isWarning = !_isConsultationEnded && _remainingDuration.inMinutes < 5;
+
+    if (_isConsultationEnded) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: const BoxDecoration(
+          color: Color(0xFFFCE4EC),
+          border: Border(bottom: BorderSide(color: Color(0xFFF8BBD0), width: 1)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.timer_off_rounded, size: 16, color: Color(0xFFD81B60)),
+            const SizedBox(width: 8),
+            Text(
+              'Sesi Konsultasi Berakhir (Batas 25 Menit)',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF880E4F),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isWarning ? const Color(0xFFFFF3E0) : const Color(0xFFFFF0F5),
+        border: Border(
+          bottom: BorderSide(
+            color: isWarning ? const Color(0xFFFFCC80) : const Color(0xFFF8BBD0),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isWarning ? Icons.warning_amber_rounded : Icons.timer_outlined,
+            size: 16,
+            color: isWarning ? const Color(0xFFE65100) : AppColors.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isWarning
+                ? 'Sisa Waktu Konsultasi: $timeStr (Hampir Habis)'
+                : 'Sisa Waktu Konsultasi: $timeStr',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isWarning ? const Color(0xFFE65100) : const Color(0xFF880E4F),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLockedDoctorInputBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: AppColors.softPinkBorder.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFCE4EC),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFF48FB1)),
+              ),
+              child: const Icon(
+                Icons.lock_rounded,
+                color: Color(0xFFD81B60),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Sesi Konsultasi Telah Selesai',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF880E4F),
+                    ),
+                  ),
+                  Text(
+                    'Waktu konsultasi 25 menit bersama pasien telah habis.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      color: const Color(0xFFAD1457),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
