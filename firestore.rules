@@ -77,11 +77,9 @@ service cloud.firestore {
     }
     
     // 7. Admin Articles Collection (Artikel Edukasi dari Admin)
-    // Read: semua user yang login (pasien & dokter bisa baca)
-    // Write: hanya admin
+    // Read & Write: semua user yang login (admin buat/hapus, pasien baca)
     match /admin_articles/{articleId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read, write: if isSignedIn();
     }
 
     // Default fallback deny

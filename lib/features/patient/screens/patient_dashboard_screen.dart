@@ -48,9 +48,14 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   }
 
   void _subscribeToAdminArticles() {
-    _articleSub = ArticleService.instance.streamArticles().listen((articles) {
-      if (mounted) setState(() => _adminArticles = articles);
-    });
+    _articleSub = ArticleService.instance.streamArticles().listen(
+      (articles) {
+        if (mounted) setState(() => _adminArticles = articles);
+      },
+      onError: (e) {
+        debugPrint('⚠️ [PatientDashboard] Gagal memuat artikel admin: $e');
+      },
+    );
   }
 
   void _loadCurrentProfile() async {
