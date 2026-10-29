@@ -56,12 +56,15 @@ class ArticleService {
 
   final _col = FirebaseFirestore.instance.collection('admin_articles');
 
-  /// Stream real-time semua artikel admin, diurutkan terbaru
+  /// Stream real-time semua artikel admin, diurutkan terbaru (sort di client)
   Stream<List<AdminArticleModel>> streamArticles() {
     return _col
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map(AdminArticleModel.fromFirestore).toList());
+        .map((snap) {
+          final list = snap.docs.map(AdminArticleModel.fromFirestore).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   /// Tambah artikel baru ke Firestore
