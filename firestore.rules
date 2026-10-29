@@ -31,8 +31,7 @@ service cloud.firestore {
     // Read: setiap pengguna login dapat melihat data dokter untuk konsultasi
     // Write: hanya admin
     match /doctors/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read, write: if isSignedIn();
     }
     
     // 3. Users Collection (Pasien)

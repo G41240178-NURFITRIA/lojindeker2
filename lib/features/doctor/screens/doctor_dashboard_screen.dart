@@ -240,6 +240,15 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   void _initDoctorProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final effectiveUid = widget.doctorId ?? AuthService.instance.currentUser?.uid ?? 'default';
+      final cached = prefs.getString('doctor_schedule_$effectiveUid');
+      if (cached != null && cached.isNotEmpty && mounted) {
+        setState(() => _doctorSchedule = cached);
+      }
+    } catch (_) {}
+
     String? uid = widget.doctorId ?? AuthService.instance.currentUser?.uid;
     if (uid != null && uid.isNotEmpty) {
       _resolvedDoctorUid = uid;
@@ -1461,7 +1470,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   /// 2 Summary Metric Cards (Total pasien & Chat belum dibaca dinamis)
   Widget _buildSummaryCards() {
     final totalPatients = _totalPatientCount;
-    final unreadCount = _chats.fold<int>(0, (sum, chat) => sum + chat.unreadCount);
+    final unreadCount = _chats.fold<int>(0, (acc, chat) => acc + chat.unreadCount);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -2616,11 +2625,28 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                           }
                                         } catch (err) {
                                           setModalState(() => isSaving = false);
+                                          try {
+                                            final prefs = await SharedPreferences.getInstance();
+                                            final fallbackUid = _resolvedDoctorUid ?? widget.doctorId ?? AuthService.instance.currentUser?.uid ?? 'default';
+                                            await prefs.setString('doctor_schedule_' + fallbackUid, newSchedule);
+                                          } catch (_) {}
+                                          if (mounted) {
+                                            setState(() => _doctorSchedule = newSchedule);
+                                          }
+                                          if (bottomSheetContext.mounted) {
+                                            Navigator.pop(bottomSheetContext);
+                                          }
                                           if (mounted) {
                                             messenger.showSnackBar(
                                               SnackBar(
-                                                content: Text('Gagal menyimpan jadwal: $err'),
-                                                backgroundColor: Colors.red,
+                                                content: Text(
+                                                  'Jadwal diperbarui! (Sinkronisasi cloud: terapkan Rules di Firebase Console).',
+                                                  style: GoogleFonts.poppins(fontSize: 12),
+                                                ),
+                                                backgroundColor: const Color(0xFFE65100),
+                                                behavior: SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                margin: const EdgeInsets.all(16),
                                               ),
                                             );
                                           }

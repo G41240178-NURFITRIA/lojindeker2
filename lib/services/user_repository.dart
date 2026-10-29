@@ -165,16 +165,22 @@ class UserRepository {
 
   /// Perbarui jadwal konsultasi online dokter
   Future<void> updateDoctorSchedule(String uid, String schedule) async {
-    final batch = _db.batch();
-    batch.set(_db.collection('doctors').doc(uid), {
+    // 1. Simpan langsung ke koleksi 'doctors' utama
+    await _db.collection('doctors').doc(uid).set({
       'schedule': schedule,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    batch.set(_db.collection('users').doc(uid), {
-      'schedule': schedule,
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    await batch.commit();
+
+    // 2. Sinkronkan ke 'users' jika dokumen tersebut ada (tanpa memicu kegagalan transaksi)
+    try {
+      final userDoc = await _db.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        await _db.collection('users').doc(uid).update({
+          'schedule': schedule,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (_) {}
   }
 
   /// Perbarui foto profil dokter

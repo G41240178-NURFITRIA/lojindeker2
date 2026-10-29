@@ -413,7 +413,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                               Text(
                                 _isLoading
                                     ? 'Sedang menghubungkan ke sensor kamera perangkat Anda'
-                                    : 'Gunakan kamera bawaan HP atau pilih dari galeri untuk mengambil berkas medis Anda',
+                                    : (_initError ?? 'Gunakan kamera bawaan HP atau pilih dari galeri untuk mengambil berkas medis Anda'),
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.poppins(
                                   color: Colors.white70,
