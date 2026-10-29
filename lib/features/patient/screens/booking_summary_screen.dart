@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../models/app_user.dart';
 import 'payment_qris_screen.dart';
+import 'payment_va_screen.dart';
+import 'payment_gopay_screen.dart';
 
 /// Layar Ringkasan Booking & Pemilihan Metode Pembayaran (Tampilan 1)
 class BookingSummaryScreen extends StatefulWidget {
@@ -48,8 +50,14 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   static const Color _textGrey = Color(0xFF757575);
   static const Color _dividerColor = Color(0xFFF1E3E7);
 
-  // Default metode pembayaran: 'qris', opsi lain: 'bca_va', 'gopay'
+  // Metode pembayaran: 'qris', 'va', 'gopay'
   String _selectedPaymentMethod = 'qris';
+
+  // Bank terpilih untuk Virtual Account: 'mandiri', 'bri', 'bni', 'bca'
+  String _selectedBank = 'mandiri';
+
+  // Saldo GoPay pengguna (Tersedia & bisa digunakan)
+  final int _gopayBalance = 150000;
 
   int get _totalAmount => widget.consultationFee + widget.serviceFee;
 
@@ -96,6 +104,21 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
     return 'Rp $buffer';
   }
 
+  String get _bankDisplayName {
+    switch (_selectedBank) {
+      case 'mandiri':
+        return 'Mandiri';
+      case 'bri':
+        return 'BRI';
+      case 'bni':
+        return 'BNI';
+      case 'bca':
+        return 'BCA';
+      default:
+        return 'Mandiri';
+    }
+  }
+
   void _handlePay() {
     if (_selectedPaymentMethod == 'qris') {
       Navigator.push(
@@ -116,20 +139,44 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
           ),
         ),
       );
-    } else {
-      // Jika pengguna memilih metode selain QRIS, berikan opsi beralih ke QRIS
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Silakan pilih QRIS untuk melanjutkan pembayaran otomatis.',
-            style: GoogleFonts.poppins(fontSize: 12.5),
+    } else if (_selectedPaymentMethod == 'va') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentVaScreen(
+            doctor: widget.doctor,
+            doctorId: widget.doctorId,
+            doctorName: widget.doctorName,
+            specialty: widget.specialty,
+            initials: widget.initials,
+            selectedDate: widget.selectedDate,
+            dateKey: widget.dateKey,
+            dateText: widget.dateText,
+            timeSlot: widget.timeSlot,
+            complaint: widget.complaint,
+            totalAmount: _totalAmount,
+            bankId: _selectedBank,
           ),
-          backgroundColor: _headerPink,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+        ),
+      );
+    } else if (_selectedPaymentMethod == 'gopay') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentGopayScreen(
+            doctor: widget.doctor,
+            doctorId: widget.doctorId,
+            doctorName: widget.doctorName,
+            specialty: widget.specialty,
+            initials: widget.initials,
+            selectedDate: widget.selectedDate,
+            dateKey: widget.dateKey,
+            dateText: widget.dateText,
+            timeSlot: widget.timeSlot,
+            complaint: widget.complaint,
+            totalAmount: _totalAmount,
+            gopayBalance: _gopayBalance,
           ),
-          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -475,6 +522,9 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   // ─── 3. Pilihan Metode Pembayaran ───────────────────────────────────────
 
   Widget _buildPaymentOptions() {
+    final isVaSelected = _selectedPaymentMethod == 'va';
+    final isGopaySelected = _selectedPaymentMethod == 'gopay';
+
     return Column(
       children: [
         // 1. QRIS
@@ -487,24 +537,219 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
 
         const SizedBox(height: 10),
 
-        // 2. Virtual Account BCA
+        // 2. Virtual Account (Tanpa embel-embel BCA di judul)
         _buildPaymentOptionItem(
-          id: 'bca_va',
-          title: 'Virtual Account BCA',
-          subtitle: 'Transfer via ATM/m-banking BCA',
+          id: 'va',
+          title: 'Virtual Account',
+          subtitle: 'Transfer via ATM/m-banking ($_bankDisplayName)',
           icon: Icons.account_balance_outlined,
+          extraContent: isVaSelected ? _buildBankSelector() : null,
         ),
 
         const SizedBox(height: 10),
 
-        // 3. GoPay
+        // 3. GoPay (Menampilkan saldo langsung & rincian saat dipilih)
         _buildPaymentOptionItem(
           id: 'gopay',
           title: 'GoPay',
-          subtitle: 'Saldo e-wallet GoPay',
+          subtitle: 'Saldo e-wallet GoPay: ${_formatCurrency(_gopayBalance)}',
           icon: Icons.account_balance_wallet_outlined,
+          badge: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD4F7E7),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              '✓ Cukup',
+              style: GoogleFonts.poppins(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF00875A),
+              ),
+            ),
+          ),
+          extraContent: isGopaySelected ? _buildGopayBalanceDetail() : null,
         ),
       ],
+    );
+  }
+
+  /// Pilihan Bank untuk Virtual Account (Mandiri, BRI, BNI, BCA)
+  Widget _buildBankSelector() {
+    final banks = [
+      {'id': 'mandiri', 'name': 'Bank Mandiri', 'code': 'MANDIRI', 'color': 0xFF003D79},
+      {'id': 'bri', 'name': 'Bank Rakyat Indonesia', 'code': 'BRI', 'color': 0xFF00529C},
+      {'id': 'bni', 'name': 'Bank Negara Indonesia', 'code': 'BNI', 'color': 0xFFE05A1F},
+      {'id': 'bca', 'name': 'Bank Central Asia', 'code': 'BCA', 'color': 0xFF005BAC},
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7F9),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF8BBD0), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_balance_rounded, size: 15, color: _headerPink),
+              const SizedBox(width: 6),
+              Text(
+                'Pilih Bank Tujuan:',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _headerPink,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...banks.map((b) {
+            final isBankSelected = _selectedBank == b['id'];
+            final bankColor = Color(b['color'] as int);
+
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  _selectedBank = b['id'] as String;
+                });
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isBankSelected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isBankSelected ? _selectedBorderPink : const Color(0xFFEADBE0),
+                    width: isBankSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: bankColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: Text(
+                          b['code'] as String,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: bankColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        b['name'] as String,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: isBankSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: _textDark,
+                        ),
+                      ),
+                    ),
+                    Radio<String>(
+                      value: b['id'] as String,
+                      groupValue: _selectedBank,
+                      activeColor: _headerPink,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedBank = val;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  /// Detail Saldo GoPay dan Rincian Pemotongan
+  Widget _buildGopayBalanceDetail() {
+    final remaining = _gopayBalance - _totalAmount;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE0F7FA).withOpacity(0.4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFB2EBF2), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_balance_wallet_rounded, size: 16, color: Color(0xFF0081A0)),
+              const SizedBox(width: 6),
+              Text(
+                'Informasi Saldo GoPay',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0081A0),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Saldo Saat Ini', style: GoogleFonts.poppins(fontSize: 11.5, color: _textGrey)),
+              Text(_formatCurrency(_gopayBalance), style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w700, color: const Color(0xFF00875A))),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Total Pembayaran', style: GoogleFonts.poppins(fontSize: 11.5, color: _textGrey)),
+              Text('- ${_formatCurrency(_totalAmount)}', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w700, color: _headerPink)),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 6),
+            child: Divider(color: Color(0xFFB2EBF2), height: 1),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Sisa Saldo GoPay Nanti', style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w600, color: _textDark)),
+              Text(_formatCurrency(remaining), style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w800, color: const Color(0xFF0081A0))),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '• Pembayaran instan 1-klik dengan saldo GoPay Anda.',
+            style: GoogleFonts.poppins(fontSize: 10.5, color: const Color(0xFF00738F), fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
     );
   }
 
@@ -513,6 +758,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
     required String title,
     required String subtitle,
     required IconData icon,
+    Widget? badge,
+    Widget? extraContent,
   }) {
     final isSelected = _selectedPaymentMethod == id;
 
@@ -544,76 +791,89 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 ]
               : null,
         ),
-        child: Row(
+        child: Column(
           children: [
-            // Ikon kotak soft pink
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFCE7EE),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Icon(
-                  icon,
-                  size: 22,
-                  color: _headerPink,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Teks Judul & Subjudul
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: _textDark,
+            Row(
+              children: [
+                // Ikon kotak soft pink
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFCE7EE),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      size: 22,
+                      color: _headerPink,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w400,
-                      color: _textGrey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Radio Button Custom
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? _headerPink : const Color(0xFFCECECE),
-                  width: isSelected ? 2 : 1.8,
                 ),
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: _headerPink,
-                          shape: BoxShape.circle,
+                const SizedBox(width: 12),
+
+                // Teks Judul & Subjudul
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            title,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: _textDark,
+                            ),
+                          ),
+                          if (badge != null) ...[
+                            const SizedBox(width: 8),
+                            badge,
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: _textGrey,
                         ),
                       ),
-                    )
-                  : null,
+                    ],
+                  ),
+                ),
+
+                // Radio Button Custom
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? _headerPink : const Color(0xFFCECECE),
+                      width: isSelected ? 2 : 1.8,
+                    ),
+                  ),
+                  child: isSelected
+                      ? Center(
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: _headerPink,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        )
+                      : null,
+                ),
+              ],
             ),
+            if (extraContent != null) extraContent,
           ],
         ),
       ),
