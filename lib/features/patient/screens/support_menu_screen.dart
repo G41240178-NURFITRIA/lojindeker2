@@ -388,25 +388,6 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       Center(
                         child: Icon(article.iconData, color: article.categoryColor.withValues(alpha: 0.5), size: 46),
                       ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          article.readTime,
-                          style: GoogleFonts.poppins(
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF424242),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),

@@ -366,29 +366,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                       height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF757575)),
-                      const SizedBox(width: 4),
-                      Text(
-                        article.readTime,
-                        style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
-                      ),
-                      const SizedBox(width: 16),
-                      const Icon(Icons.verified_user_rounded, size: 14, color: Color(0xFF2E7D32)),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Ditinjau Medis',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF2E7D32),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -398,46 +375,6 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Reviewer note card
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFEADBDB)),
-                    ),
-                    child: Row(
-                      children: [
-                        const CircleAvatar(
-                          radius: 18,
-                          backgroundColor: Color(0xFFF9EAEB),
-                          child: Icon(Icons.medical_services_rounded, color: Color(0xFFB81018), size: 18),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Peninjau Medis:',
-                                style: GoogleFonts.poppins(fontSize: 10, color: const Color(0xFF757575)),
-                              ),
-                              Text(
-                                article.reviewer,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF212121),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
                   // Summary Box
                   Container(
                     padding: const EdgeInsets.all(16),

@@ -2067,10 +2067,6 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                   decoration: BoxDecoration(color: const Color(0xFFD81B60).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
                   child: Text(article.category, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60))),
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.timer_outlined, size: 13, color: Color(0xFF9E9E9E)),
-                const SizedBox(width: 3),
-                Text(article.readTime, style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
                 const Spacer(),
                 InkWell(
                   onTap: () => _confirmDelete(article),
@@ -2163,13 +2159,6 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                         article.category,
                         style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: article.categoryColor),
                       ),
-                    ),
-                    Row(
-                      children: [
-                        const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF9E9E9E)),
-                        const SizedBox(width: 4),
-                        Text(article.readTime, style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
-                      ],
                     ),
                   ],
                 ),

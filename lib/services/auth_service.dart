@@ -375,11 +375,40 @@ class AuthService {
 
   // ─── Reset Password ───────────────────────────────────────────────
   Future<void> sendPasswordResetEmail(String email) async {
+    final cleanEmail = email.trim();
+    debugPrint('📧 [AuthService] Mengirim password reset email ke: $cleanEmail');
     try {
-      await _auth.sendPasswordResetEmail(email: email.trim());
+      await _auth.sendPasswordResetEmail(email: cleanEmail);
+      debugPrint('✅ [AuthService] Permintaan sendPasswordResetEmail berhasil dikirim ke server Firebase untuk $cleanEmail.');
     } on FirebaseAuthException catch (e) {
+      debugPrint('❌ [AuthService] FirebaseAuthException saat sendPasswordResetEmail: code=${e.code}, message=${e.message}');
       throw Exception(
         _mapError(e.code, e.message ?? 'Gagal mengirim email reset.'),
+      );
+    } catch (e) {
+      debugPrint('❌ [AuthService] General error saat sendPasswordResetEmail: $e');
+      rethrow;
+    }
+  }
+
+  /// Memverifikasi dan menerapkan password baru menggunakan kode pemulihan (oobCode)
+  Future<void> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      await _auth.confirmPasswordReset(
+        code: code.trim(),
+        newPassword: newPassword.trim(),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'expired-action-code') {
+        throw Exception('Kode pemulihan telah kedaluwarsa. Silakan minta kode baru.');
+      } else if (e.code == 'invalid-action-code') {
+        throw Exception('Kode pemulihan tidak valid. Periksa kembali kode dari email Anda.');
+      }
+      throw Exception(
+        _mapError(e.code, e.message ?? 'Gagal memperbarui kata sandi.'),
       );
     }
   }
