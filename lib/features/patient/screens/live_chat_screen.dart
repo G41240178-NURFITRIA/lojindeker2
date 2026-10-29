@@ -602,15 +602,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                       _showDocumentPickerSheet();
                     },
                   ),
-                  _buildAttachmentOption(
-                    icon: Icons.water_drop_rounded,
-                    label: 'Gula Darah',
-                    colors: const [Color(0xFF26A69A), Color(0xFF00897B)],
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _sendLabSummaryAttachment();
-                    },
-                  ),
+
                 ],
               ),
             ],
@@ -1042,20 +1034,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     );
   }
 
-  void _sendLabSummaryAttachment() {
-    final glucose = PatientActivityService.instance.latestRiskNotifier.value?.glucoseLevel;
-    final textSummary = glucose != null && glucose.isNotEmpty
-        ? 'Gula darah terakhir saya: $glucose'
-        : 'Gula darah puasa saya: 110 mg/dL (Terkontrol)';
 
-    _sendMessage(
-      '📊 Laporan Glukosa Darah Terkini:\n$textSummary\nDikirim langsung dari pencatatan harian D-Care.',
-      type: 'document',
-      attachmentName: 'Ringkasan_Glukosa_Pasien.pdf',
-      attachmentSize: '88 KB',
-      attachmentData: 'mock_glucose_summary_pdf',
-    );
-  }
 
   void _openFullScreenImage(Uint8List bytes, String? name) {
     Navigator.push(
