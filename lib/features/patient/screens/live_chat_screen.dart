@@ -171,9 +171,12 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         final photo = data['photoUrl'] as String?;
-        setState(() {
-          _doctorPhotoUrl = (photo != null && photo.trim().isNotEmpty) ? photo : null;
-        });
+        final cleanPhoto = (photo != null && photo.trim().isNotEmpty) ? photo : null;
+        if (cleanPhoto != _doctorPhotoUrl) {
+          setState(() {
+            _doctorPhotoUrl = cleanPhoto;
+          });
+        }
       }
     });
   }
@@ -263,7 +266,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         if (chatDoc.exists && chatDoc.data() != null) {
           final data = chatDoc.data()!;
           final photo = data['doctorPhotoUrl'] as String?;
-          if (photo != null && photo.trim().isNotEmpty) {
+          if (photo != null && photo.trim().isNotEmpty && photo != _doctorPhotoUrl) {
             setState(() {
               _doctorPhotoUrl = photo;
             });
@@ -1461,6 +1464,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               clipBehavior: Clip.none,
               children: [
                 DoctorAvatarWidget(
+                  key: ValueKey('header_doc_avatar_${_doctorPhotoUrl.hashCode}'),
                   photoUrl: _doctorPhotoUrl,
                   size: 40,
                   initials: widget.initials,
@@ -2231,6 +2235,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 2, right: 8),
               child: DoctorAvatarWidget(
+                key: ValueKey('msg_doc_avatar_${_doctorPhotoUrl.hashCode}'),
                 photoUrl: _doctorPhotoUrl,
                 size: 28,
                 initials: widget.initials,
