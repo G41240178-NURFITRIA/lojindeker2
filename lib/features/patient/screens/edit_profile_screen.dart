@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../../../core/widgets/doctor_avatar_widget.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -379,29 +379,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                           ],
                         ),
-                        child: ClipOval(
-                          child: _selectedImagePath != null &&
-                                  File(_selectedImagePath!).existsSync()
-                              ? Image.file(
-                                  File(_selectedImagePath!),
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: _primaryPink,
-                                      child: const Icon(Icons.person, color: Colors.white, size: 48),
-                                    );
-                                  },
-                                )
-                              : Image.asset(
-                                  'assets/images/doctor_avatar.jpg',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: _primaryPink,
-                                      child: const Icon(Icons.person, color: Colors.white, size: 48),
-                                    );
-                                  },
-                                ),
+                        child: DoctorAvatarWidget(
+                          photoUrl: _selectedImagePath,
+                          size: 96,
+                          initials: _nameController.text.isNotEmpty ? _nameController.text[0] : null,
+                          backgroundColor: _primaryPink,
+                          iconColor: Colors.white,
                         ),
                       ),
                       Positioned(

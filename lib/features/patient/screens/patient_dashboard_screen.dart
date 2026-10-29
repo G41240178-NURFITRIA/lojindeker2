@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -340,37 +338,18 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                             ),
                           ],
                         ),
-                        child: ClipOval(
-                          child: ValueListenableBuilder<String?>(
-                            valueListenable:
-                                ProfileImageService().profileImagePath,
-                            builder: (context, imagePath, _) {
-                              final hasCustom =
-                                  imagePath != null &&
-                                  File(imagePath).existsSync();
-                              return hasCustom
-                                  ? Image.file(
-                                      File(imagePath),
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Image.asset(
-                                      'assets/images/doctor_avatar.jpg',
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                            return Container(
-                                              color: const Color(0xFFF06292),
-                                              child: const Icon(
-                                                Icons.person,
-                                                color: Colors.white,
-                                                size: 28,
-                                              ),
-                                            );
-                                          },
-                                    );
-                            },
-                          ),
-                        ),
+                    child: ValueListenableBuilder<String?>(
+                      valueListenable: ProfileImageService().profileImagePath,
+                      builder: (context, imagePath, _) {
+                        return DoctorAvatarWidget(
+                          photoUrl: imagePath,
+                          size: 50,
+                          initials: _currentPatientName.isNotEmpty ? _currentPatientName[0] : null,
+                          backgroundColor: const Color(0xFFF06292),
+                          iconColor: Colors.white,
+                        );
+                      },
+                    ),
                       ),
                       Positioned(
                         bottom: -1,

@@ -1,7 +1,10 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/doctor_avatar_widget.dart';
 import 'doctor_dashboard_screen.dart';
 
 class DoctorAllChatsScreen extends StatefulWidget {
@@ -26,6 +29,42 @@ class _DoctorAllChatsScreenState extends State<DoctorAllChatsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  // Cache foto profil pasien real-time dari Firestore koleksi users
+  final Map<String, String> _patientPhotos = {};
+  StreamSubscription<QuerySnapshot>? _usersSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeToUserPhotos();
+  }
+
+  void _subscribeToUserPhotos() {
+    _usersSub = FirebaseFirestore.instance.collection('users').snapshots().listen((snap) {
+      if (!mounted) return;
+      final map = <String, String>{};
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final photo = data['photoUrl']?.toString() ?? '';
+        if (photo.trim().isNotEmpty) {
+          map[doc.id] = photo.trim();
+          final username = data['username']?.toString().toLowerCase().trim();
+          if (username != null && username.isNotEmpty) {
+            map[username] = photo.trim();
+          }
+          final fullName = data['fullName']?.toString().toLowerCase().trim();
+          if (fullName != null && fullName.isNotEmpty) {
+            map[fullName] = photo.trim();
+          }
+        }
+      }
+      setState(() {
+        _patientPhotos.clear();
+        _patientPhotos.addAll(map);
+      });
+    });
+  }
+
   List<DoctorPatientChat> get _filteredChats {
     if (_searchQuery.trim().isEmpty) return widget.chats;
     return widget.chats
@@ -39,6 +78,7 @@ class _DoctorAllChatsScreenState extends State<DoctorAllChatsScreen> {
 
   @override
   void dispose() {
+    _usersSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -181,6 +221,12 @@ class _DoctorAllChatsScreenState extends State<DoctorAllChatsScreen> {
   }
 
   Widget _buildChatItem(DoctorPatientChat chat) {
+    // Ambil foto profil dari properti chat atau dari cache user Firestore
+    final resolvedPhoto = (chat.patientPhotoUrl != null && chat.patientPhotoUrl!.isNotEmpty)
+        ? chat.patientPhotoUrl
+        : (_patientPhotos[chat.patientId] ??
+            _patientPhotos[chat.name.toLowerCase().trim()]);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10, left: 16, right: 16),
       decoration: BoxDecoration(
@@ -198,14 +244,12 @@ class _DoctorAllChatsScreenState extends State<DoctorAllChatsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                const CircleAvatar(
-                  radius: 21,
+                DoctorAvatarWidget(
+                  photoUrl: resolvedPhoto,
+                  size: 42,
+                  initials: chat.name.isNotEmpty ? chat.name[0] : null,
                   backgroundColor: AppColors.primary,
-                  child: Icon(
-                    Icons.person_rounded,
-                    color: Colors.white,
-                    size: 23,
-                  ),
+                  iconColor: Colors.white,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

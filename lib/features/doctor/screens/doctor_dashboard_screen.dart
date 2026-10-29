@@ -5,9 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/chat_service.dart';
+import '../../../core/services/consultation_booking_service.dart';
+import '../../patient/models/consultation_booking_model.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
@@ -24,6 +27,8 @@ class DoctorPatientChat {
   final String time;
   final int unreadCount;
   final String glucoseNote;
+  final String? patientPhotoUrl;
+  final String? patientId;
 
   DoctorPatientChat({
     required this.id,
@@ -32,6 +37,8 @@ class DoctorPatientChat {
     required this.time,
     required this.unreadCount,
     this.glucoseNote = 'Gula Darah: 142 mg/dL (Stabil)',
+    this.patientPhotoUrl,
+    this.patientId,
   });
 }
 
@@ -71,6 +78,22 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   int _totalPatientCount = 0;
   StreamSubscription<QuerySnapshot>? _patientCountSubscription;
 
+  // Notifikasi booking konsultasi real-time dari pasien
+  List<ConsultationBookingModel> _bookingNotifications = [];
+  StreamSubscription<List<ConsultationBookingModel>>? _bookingNotificationsSub;
+
+  // Set ID booking yang sudah dibaca oleh dokter
+  final Set<String> _readBookingIds = {};
+
+  // Hitung jumlah notifikasi booking yang belum dibaca (unread count)
+  int get _unreadBookingCount => _bookingNotifications
+      .where((b) => !b.isDoctorRead && !_readBookingIds.contains(b.id))
+      .length;
+
+  // Cache foto profil pasien real-time
+  final Map<String, String> _patientPhotosCache = {};
+  StreamSubscription<QuerySnapshot>? _patientPhotosSub;
+
   @override
   void initState() {
     super.initState();
@@ -79,6 +102,122 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     _initDoctorProfile();
     _subscribeToChats();
     _subscribeToPatientCount();
+    _loadReadBookingState();
+    _subscribeToBookingNotifications();
+    _subscribeToPatientPhotos();
+  }
+
+  Future<void> _loadReadBookingState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final doctorUid = widget.doctorId ?? _resolvedDoctorUid ?? AuthService.instance.currentUser?.uid ?? 'default';
+      final savedIds = prefs.getStringList('doctor_read_bookings_$doctorUid') ?? [];
+      if (mounted) {
+        setState(() {
+          _readBookingIds.addAll(savedIds);
+        });
+      }
+    } catch (e) {
+      debugPrint('ℹ️ [_loadReadBookingState] $e');
+    }
+  }
+
+  Future<void> _saveReadBookingState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final doctorUid = widget.doctorId ?? _resolvedDoctorUid ?? AuthService.instance.currentUser?.uid ?? 'default';
+      await prefs.setStringList('doctor_read_bookings_$doctorUid', _readBookingIds.toList());
+    } catch (e) {
+      debugPrint('ℹ️ [_saveReadBookingState] $e');
+    }
+  }
+
+  void _markAllNotificationsAsRead() {
+    final unreadIds = _bookingNotifications
+        .where((b) => !b.isDoctorRead && !_readBookingIds.contains(b.id))
+        .map((b) => b.id)
+        .toList();
+
+    if (unreadIds.isNotEmpty) {
+      setState(() {
+        _readBookingIds.addAll(unreadIds);
+      });
+      _saveReadBookingState();
+      ConsultationBookingService.instance.markAllBookingsAsRead(unreadIds);
+    }
+  }
+
+  void _subscribeToBookingNotifications() {
+    _bookingNotificationsSub?.cancel();
+    final effectiveUid = widget.doctorId ?? _resolvedDoctorUid ?? AuthService.instance.currentUser?.uid ?? '';
+    final effectiveName = _doctorDisplayName.isNotEmpty ? _doctorDisplayName : widget.doctorName;
+    _bookingNotificationsSub = ConsultationBookingService.instance
+        .streamDoctorBookings(
+          doctorId: effectiveUid,
+          doctorName: effectiveName,
+        )
+        .listen((bookings) {
+      if (!mounted) return;
+      setState(() {
+        _bookingNotifications = bookings;
+      });
+    });
+  }
+
+  void _subscribeToPatientPhotos() {
+    _patientPhotosSub?.cancel();
+    _patientPhotosSub = FirebaseFirestore.instance.collection('users').snapshots().listen((snap) {
+      if (!mounted) return;
+      final map = <String, String>{};
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final photo = data['photoUrl']?.toString() ?? '';
+        if (photo.trim().isNotEmpty) {
+          map[doc.id] = photo.trim();
+          final username = data['username']?.toString().toLowerCase().trim();
+          if (username != null && username.isNotEmpty) {
+            map[username] = photo.trim();
+          }
+          final fullName = data['fullName']?.toString().toLowerCase().trim();
+          if (fullName != null && fullName.isNotEmpty) {
+            map[fullName] = photo.trim();
+          }
+        }
+      }
+      setState(() {
+        _patientPhotosCache.clear();
+        _patientPhotosCache.addAll(map);
+      });
+    });
+  }
+
+  void _openChatFromBooking(ConsultationBookingModel booking) async {
+    Navigator.pop(context); // Tutup dialog notifikasi
+    final effectiveUid = widget.doctorId ?? _resolvedDoctorUid ?? AuthService.instance.currentUser?.uid;
+    final effectiveName = _doctorDisplayName.isNotEmpty ? _doctorDisplayName : widget.doctorName;
+
+    final chatId = await ChatService.instance.getOrCreateChat(
+      doctorName: effectiveName,
+      doctorId: effectiveUid,
+      doctorSpecialty: _doctorSpecialty,
+      patientName: booking.patientName,
+      glucoseNote: booking.complaint.isNotEmpty ? booking.complaint : 'Booking: ${booking.timeSlot} WIB',
+    );
+
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DoctorChatDetailScreen(
+          chatId: chatId,
+          doctorName: effectiveName,
+          patientName: booking.patientName,
+          initialMessage: booking.complaint.isNotEmpty
+              ? 'Halo ${booking.patientName}, saya telah menerima jadwal booking konsultasi Anda pada ${booking.date} jam ${booking.timeSlot} WIB. Keluhan: "${booking.complaint}". Ada yang bisa saya bantu sekarang?'
+              : 'Halo ${booking.patientName}, saya dokter Anda untuk sesi konsultasi jam ${booking.timeSlot} WIB. Silakan sampaikan keluhan Anda.',
+          glucoseNote: booking.complaint.isNotEmpty ? booking.complaint : 'Jadwal Booking Terkonfirmasi',
+        ),
+      ),
+    );
   }
 
   void _subscribeToChats() {
@@ -103,6 +242,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     if (uid != null && uid.isNotEmpty) {
       _resolvedDoctorUid = uid;
       _subscribeToChats();
+      _subscribeToBookingNotifications();
       _listenToDoctorProfile(uid);
       return;
     }
@@ -589,6 +729,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   /// yang sesungguhnya (bukan dummy), secara real-time.
   void _subscribeToPatientCount() {
     _patientCountSubscription?.cancel();
+    _bookingNotificationsSub?.cancel();
+    _patientPhotosSub?.cancel();
     _patientCountSubscription = FirebaseFirestore.instance
         .collection('users')
         .snapshots()
@@ -623,119 +765,397 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   void _showNotificationDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.softPinkCard,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.notifications_active_rounded,
-                color: AppColors.primary,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Notifikasi Dokter',
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF141414),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildNotificationRow(
-              icon: Icons.chat_bubble_outline_rounded,
-              title: 'Pesan Baru dari Pasien',
-              desc: 'Widyatna Dwi mengirim 2 pesan baru mengenai obatnya.',
-              time: '14:02',
-            ),
-            const SizedBox(height: 12),
-            _buildNotificationRow(
-              icon: Icons.warning_amber_rounded,
-              title: 'Peringatan Gula Darah',
-              desc: 'Yosua Gunadiel melaporkan kenaikan gula darah 210 mg/dL.',
-              time: 'Senin',
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Tutup',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    final newlyReadIds = _bookingNotifications
+        .where((b) => !b.isDoctorRead && !_readBookingIds.contains(b.id))
+        .map((b) => b.id)
+        .toSet();
 
-  Widget _buildNotificationRow({
-    required IconData icon,
-    required String title,
-    required String desc,
-    required String time,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            color: AppColors.softPinkBg,
-            borderRadius: BorderRadius.circular(8),
+    _markAllNotificationsAsRead();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
           ),
-          child: Icon(icon, size: 18, color: AppColors.primary),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF141414),
+              const SizedBox(height: 12),
+              // Grab handle
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              Text(
-                desc,
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: const Color(0xFF666666),
+              const SizedBox(height: 16),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.softPinkCard,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.notifications_active_rounded,
+                        color: AppColors.primary,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Notifikasi Booking Pasien',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF141414),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              if (_bookingNotifications.isNotEmpty)
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (newlyReadIds.isNotEmpty) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFEF4444),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          '${newlyReadIds.length} Baru',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                    ],
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        'Total ${_bookingNotifications.length}',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                          Text(
+                            'Jadwal konsultasi yang dibooking pasien secara real-time',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              color: const Color(0xFF757575),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Color(0xFF757575)),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                time,
-                style: GoogleFonts.poppins(
-                  fontSize: 9.5,
-                  color: const Color(0xFF9E9E9E),
-                ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+
+              // Content List
+              Expanded(
+                child: _bookingNotifications.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFFF0F5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.event_available_rounded,
+                                  color: AppColors.primary,
+                                  size: 38,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Belum Ada Booking Jadwal',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF212121),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Ketika pasien memilih dan membooking jadwal konsultasi dengan Anda, notifikasi akan langsung muncul di sini secara real-time.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: const Color(0xFF757575),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        itemCount: _bookingNotifications.length,
+                        itemBuilder: (context, index) {
+                          final booking = _bookingNotifications[index];
+                          final isNew = newlyReadIds.contains(booking.id);
+                          final patientPhoto = _patientPhotosCache[booking.patientId] ??
+                              _patientPhotosCache[booking.patientName.toLowerCase().trim()];
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: isNew ? const Color(0xFFFFF0F5) : Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isNew ? const Color(0xFFF48FB1) : const Color(0xFFEEEEEE),
+                                width: isNew ? 1.5 : 1.0,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Top row: Avatar, Name, Status Badge
+                                Row(
+                                  children: [
+                                    DoctorAvatarWidget(
+                                      photoUrl: patientPhoto,
+                                      size: 42,
+                                      initials: booking.patientName.isNotEmpty ? booking.patientName[0] : null,
+                                      backgroundColor: AppColors.primary,
+                                      iconColor: Colors.white,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  booking.patientName,
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: const Color(0xFF212121),
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  if (isNew)
+                                                    Container(
+                                                      margin: const EdgeInsets.only(right: 6),
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFFEF4444),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: Text(
+                                                        'BARU',
+                                                        style: GoogleFonts.poppins(
+                                                          fontSize: 9,
+                                                          fontWeight: FontWeight.w800,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFE8F5E9),
+                                                      borderRadius: BorderRadius.circular(10),
+                                                      border: Border.all(color: const Color(0xFF81C784)),
+                                                    ),
+                                                    child: Text(
+                                                      'Terkonfirmasi',
+                                                      style: GoogleFonts.poppins(
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: const Color(0xFF2E7D32),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          Text(
+                                            'Membooking jadwal konsultasi',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 11,
+                                              color: const Color(0xFF757575),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Schedule Details Box
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: const Color(0xFFFFD1DC)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.primary),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            booking.date,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF333333),
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          const Icon(Icons.access_time_rounded, size: 14, color: AppColors.primary),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            '${booking.timeSlot} WIB',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (booking.complaint.isNotEmpty) ...[
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFFF8F9),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Icon(Icons.chat_bubble_outline_rounded, size: 13, color: Color(0xFF888888)),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                child: Text(
+                                                  'Keluhan: "${booking.complaint}"',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 11,
+                                                    color: const Color(0xFF555555),
+                                                    fontStyle: FontStyle.italic,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+
+                                // Action Buttons
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        elevation: 1,
+                                      ),
+                                      onPressed: () => _openChatFromBooking(booking),
+                                      icon: const Icon(Icons.chat_rounded, size: 15),
+                                      label: Text(
+                                        'Buka Chat Pasien',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -765,14 +1185,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
   Widget _buildBody() {
     if (_selectedTabIndex == 0) return _buildDashboardBody();
-    if (_selectedTabIndex == 1) {
-      return DoctorAllChatsScreen(
-        doctorName: widget.doctorName,
-        chats: _chats,
-        onChatOpen: _openChat,
-        showBackButton: false,
-      );
-    }
     return _buildProfileTab();
   }
 
@@ -897,18 +1309,34 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                           color: Color(0xFF141414),
                           size: 26,
                         ),
-                        Positioned(
-                          top: 12,
-                          right: 14,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
+                        if (_unreadBookingCount > 0)
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${_unreadBookingCount > 9 ? '9+' : _unreadBookingCount}',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -1274,14 +1702,15 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             child: Row(
               children: [
                 // Soft Pink circle avatar with white person icon
-                const CircleAvatar(
-                  radius: 21,
+                DoctorAvatarWidget(
+                  photoUrl: (chat.patientPhotoUrl != null && chat.patientPhotoUrl!.isNotEmpty)
+                      ? chat.patientPhotoUrl
+                      : (_patientPhotosCache[chat.patientId] ??
+                          _patientPhotosCache[chat.name.toLowerCase().trim()]),
+                  size: 42,
+                  initials: chat.name.isNotEmpty ? chat.name[0] : null,
                   backgroundColor: AppColors.primary,
-                  child: Icon(
-                    Icons.person_rounded,
-                    color: Colors.white,
-                    size: 23,
-                  ),
+                  iconColor: Colors.white,
                 ),
                 const SizedBox(width: 12),
 
@@ -1370,7 +1799,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           ),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 48),
+      padding: const EdgeInsets.symmetric(horizontal: 56),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -1381,13 +1810,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           ),
           _buildNavItem(
             index: 1,
-            label: 'Chat',
-            icon: _selectedTabIndex == 1 ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded,
-          ),
-          _buildNavItem(
-            index: 2,
             label: 'Profil',
-            icon: _selectedTabIndex == 2 ? Icons.account_circle_rounded : Icons.account_circle_outlined,
+            icon: _selectedTabIndex == 1 ? Icons.account_circle_rounded : Icons.account_circle_outlined,
           ),
         ],
       ),
@@ -2853,6 +3277,8 @@ class DoctorChatDetailScreen extends StatefulWidget {
 }
 
 class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
+  String? _patientPhoto;
+
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<List<RealtimeChatMessage>>? _msgSubscription;
@@ -2862,6 +3288,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _loadPatientPhoto();
     if (widget.chatId != null && widget.chatId!.isNotEmpty) {
       ChatService.instance.markAsReadByDoctor(widget.chatId!);
       _msgSubscription = ChatService.instance
@@ -2902,6 +3329,34 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     _msgController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _loadPatientPhoto() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection("users")
+          .where("fullName", isEqualTo: widget.patientName)
+          .limit(1)
+          .get();
+      if (snap.docs.isNotEmpty && mounted) {
+        final p = snap.docs.first.data()["photoUrl"]?.toString();
+        if (p != null && p.isNotEmpty) {
+          setState(() => _patientPhoto = p);
+          return;
+        }
+      }
+      final snapUser = await FirebaseFirestore.instance
+          .collection("users")
+          .where("username", isEqualTo: widget.patientName.toLowerCase().trim())
+          .limit(1)
+          .get();
+      if (snapUser.docs.isNotEmpty && mounted) {
+        final p = snapUser.docs.first.data()["photoUrl"]?.toString();
+        if (p != null && p.isNotEmpty) {
+          setState(() => _patientPhoto = p);
+        }
+      }
+    } catch (_) {}
   }
 
   void _sendMessage({
@@ -3825,15 +4280,13 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         titleSpacing: 0,
         title: Row(
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.25),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1.5),
-              ),
-              child: const Icon(Icons.person_rounded, color: Colors.white, size: 22),
+            DoctorAvatarWidget(
+              photoUrl: _patientPhoto,
+              size: 38,
+              initials: widget.patientName.isNotEmpty ? widget.patientName[0] : null,
+              border: Border.all(color: Colors.white, width: 1.5),
+              backgroundColor: Colors.white.withValues(alpha: 0.25),
+              iconColor: Colors.white,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -5162,4 +5615,3 @@ class _ExpandableVisitCardState extends State<_ExpandableVisitCard>
     );
   }
 }
-

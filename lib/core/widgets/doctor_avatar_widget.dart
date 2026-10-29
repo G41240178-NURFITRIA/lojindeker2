@@ -3,12 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 
-/// Widget avatar dokter serbaguna yang mendukung:
+/// Alias untuk penggunaan avatar secara umum (dokter, pasien, admin)
+typedef AppAvatarWidget = DoctorAvatarWidget;
+
+/// Widget avatar serbaguna yang mendukung:
 /// - Base64 Data URI (data:image/...;base64,...)
 /// - Base64 raw string
 /// - Network URL (http / https)
 /// - Local Asset path (assets/...)
-/// - Fallback dinamis (initials dokter / logo D-Care / ikon person)
+/// - File path (khusus mobile / desktop non-web)
+/// - Fallback dinamis (initials / ikon person)
 class DoctorAvatarWidget extends StatelessWidget {
   final String? photoUrl;
   final double size;
@@ -101,7 +105,7 @@ class DoctorAvatarWidget extends StatelessWidget {
       }
 
       // 2. Network URL (http / https)
-      if (photo.startsWith('http://') || photo.startsWith('https://')) {
+      if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('blob:')) {
         return Image.network(
           photo,
           width: size,

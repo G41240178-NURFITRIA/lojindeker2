@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/profile_image_service.dart';
+import '../../../core/widgets/doctor_avatar_widget.dart';
 
 import 'edit_profile_screen.dart';
 import 'account_settings_screen.dart';
@@ -253,6 +253,269 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 
+  void _showPhotoPickerOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Ubah Foto Profil',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF212121),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Foto ini akan ditampilkan di profil dan di ruang pesan konsultasi dokter.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF757575),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.photo_library_rounded, color: _darkRose),
+                  ),
+                  title: Text(
+                    'Pilih dari Galeri / File',
+                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Pilih foto dari galeri atau komputer Anda',
+                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final path = await ProfileImageService().pickImageFromGallery();
+                    if (path != null) {
+                      await ProfileImageService().saveProfilePhoto(path, displayName: _currentName);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Foto profil berhasil diperbarui!',
+                              style: GoogleFonts.poppins(fontSize: 12.5),
+                            ),
+                            backgroundColor: const Color(0xFF2E7D32),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF0F5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded, color: _darkRose),
+                  ),
+                  title: Text(
+                    'Ambil Foto dengan Kamera',
+                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Gunakan kamera untuk mengambil potret langsung',
+                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final path = await ProfileImageService().pickImageFromCamera();
+                    if (path != null) {
+                      await ProfileImageService().saveProfilePhoto(path, displayName: _currentName);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Foto profil berhasil diambil & disimpan!',
+                              style: GoogleFonts.poppins(fontSize: 12.5),
+                            ),
+                            backgroundColor: const Color(0xFF2E7D32),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.face_retouching_natural_rounded, color: Color(0xFF2E7D32)),
+                  ),
+                  title: Text(
+                    'Pilih Avatar Siap Pakai',
+                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Gunakan salah satu avatar pilihan menarik',
+                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showPresetAvatarsDialog(context);
+                  },
+                ),
+                if (ProfileImageService().hasCustomImage()) ...[
+                  const Divider(height: 16),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFEBEE),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFD32F2F)),
+                    ),
+                    title: Text(
+                      'Hapus Foto Profil',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFD32F2F),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Kembalikan avatar profil ke ikon bawaan',
+                      style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                    ),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      await ProfileImageService().clearImage(displayName: _currentName);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Foto profil berhasil dihapus.',
+                              style: GoogleFonts.poppins(fontSize: 12.5),
+                            ),
+                            backgroundColor: _darkRose,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPresetAvatarsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Pilih Avatar Karakter',
+          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: _darkRose),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: GridView.builder(
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: ProfileImageService.presetAvatars.length,
+            itemBuilder: (context, index) {
+              final avatar = ProfileImageService.presetAvatars[index];
+              return InkWell(
+                onTap: () async {
+                  Navigator.pop(dialogCtx);
+                  final url = avatar['url']!;
+                  await ProfileImageService().saveProfilePhoto(url, displayName: _currentName);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Avatar "${avatar['title']}" berhasil diterapkan!',
+                          style: GoogleFonts.poppins(fontSize: 12.5),
+                        ),
+                        backgroundColor: const Color(0xFF2E7D32),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  }
+                },
+                borderRadius: BorderRadius.circular(40),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _cardBorder, width: 2),
+                  ),
+                  child: ClipOval(
+                    child: Image.network(
+                      avatar['url']!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: _darkRose),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text(
+              'Tutup',
+              style: GoogleFonts.poppins(color: _darkRose, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final content = SafeArea(
@@ -294,24 +557,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
             // Profile Avatar with Camera badge
             InkWell(
-              onTap: () async {
-                final result = await Navigator.push<String>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EditProfileScreen(
-                      patientName: _currentName,
-                      onProfileUpdated: (newName) {
-                        setState(() => _currentName = newName);
-                        widget.onProfileUpdated?.call(newName);
-                      },
-                    ),
-                  ),
-                );
-                if (result != null && result.isNotEmpty) {
-                  setState(() => _currentName = result);
-                  widget.onProfileUpdated?.call(result);
-                }
-              },
+              onTap: () => _showPhotoPickerOptions(context),
               borderRadius: BorderRadius.circular(50),
               child: Stack(
                 clipBehavior: Clip.none,
@@ -330,33 +576,17 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                         ),
                       ],
                     ),
-                    child: ClipOval(
-                      child: ValueListenableBuilder<String?>(
-                        valueListenable: ProfileImageService().profileImagePath,
-                        builder: (context, imagePath, _) {
-                          final hasCustom =
-                              imagePath != null && File(imagePath).existsSync();
-                          return hasCustom
-                              ? Image.file(
-                                  File(imagePath),
-                                  fit: BoxFit.cover,
-                                )
-                              : Image.asset(
-                                  'assets/images/doctor_avatar.jpg',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: _primaryPink,
-                                      child: const Icon(
-                                        Icons.person,
-                                        color: Colors.white,
-                                        size: 52,
-                                      ),
-                                    );
-                                  },
-                                );
-                        },
-                      ),
+                    child: ValueListenableBuilder<String?>(
+                      valueListenable: ProfileImageService().profileImagePath,
+                      builder: (context, imagePath, _) {
+                        return DoctorAvatarWidget(
+                          photoUrl: imagePath,
+                          size: 96,
+                          initials: _currentName.isNotEmpty ? _currentName[0] : null,
+                          backgroundColor: _primaryPink,
+                          iconColor: Colors.white,
+                        );
+                      },
                     ),
                   ),
                   Positioned(

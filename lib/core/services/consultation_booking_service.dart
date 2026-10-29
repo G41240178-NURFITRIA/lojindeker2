@@ -58,6 +58,33 @@ class ConsultationBookingService {
     });
   }
 
+  /// Stream real-time seluruh notifikasi booking jadwal dari pasien untuk dokter
+  Stream<List<ConsultationBookingModel>> streamDoctorBookings({
+    required String doctorId,
+    String? doctorName,
+  }) {
+    return _db
+        .collection('consultation_bookings')
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs.map((doc) {
+        return ConsultationBookingModel.fromFirestore(doc);
+      }).where((b) {
+        if (b.status == 'cancelled') return false;
+        if (doctorId.isNotEmpty && b.doctorId == doctorId) return true;
+        if (doctorName != null && doctorName.trim().isNotEmpty) {
+          final cleanDoctor = doctorName.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+          final cleanBookingDoc = b.doctorName.toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+          return cleanDoctor.contains(cleanBookingDoc) || cleanBookingDoc.contains(cleanDoctor);
+        }
+        return false;
+      }).toList();
+
+      list.sort((a, b) => (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000)));
+      return list;
+    });
+  }
+
   /// Mengecek apakah suatu slot jam sudah dibooking secara real-time
   Future<bool> isSlotBooked({
     required String doctorId,
@@ -138,6 +165,37 @@ class ConsultationBookingService {
     });
   }
 
+  /// Menandai sebuah notifikasi booking telah dibaca oleh dokter
+  Future<void> markBookingAsRead(String bookingId) async {
+    try {
+      await _db.collection('consultation_bookings').doc(bookingId).update({
+        'isDoctorRead': true,
+        'doctorReadAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('ℹ️ [ConsultationBookingService] markBookingAsRead: $e');
+    }
+  }
+
+  /// Menandai semua notifikasi booking yang belum dibaca sebagai sudah dibaca
+  Future<void> markAllBookingsAsRead(List<String> bookingIds) async {
+    if (bookingIds.isEmpty) return;
+    try {
+      final batch = _db.batch();
+      for (final id in bookingIds) {
+        if (id.trim().isNotEmpty) {
+          batch.update(_db.collection('consultation_bookings').doc(id.trim()), {
+            'isDoctorRead': true,
+            'doctorReadAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('ℹ️ [ConsultationBookingService] markAllBookingsAsRead: $e');
+    }
+  }
+
   /// Seed slot demo awal (seperti pada gambar: 10:30 & 14:00 sudah dibooking orang lain)
   /// jika tanggal tersebut belum memiliki data booking sama sekali
   Future<void> seedInitialBookingsIfEmpty({
@@ -172,6 +230,7 @@ class ConsultationBookingService {
           'timeSlot': '10:30',
           'complaint': 'Pemeriksaan rutin berkala',
           'status': 'booked',
+          'isDoctorRead': true,
           'createdAt': FieldValue.serverTimestamp(),
         });
 
@@ -188,6 +247,7 @@ class ConsultationBookingService {
           'timeSlot': '14:00',
           'complaint': 'Konsultasi lanjutan kadar gula darah',
           'status': 'booked',
+          'isDoctorRead': true,
           'createdAt': FieldValue.serverTimestamp(),
         });
 

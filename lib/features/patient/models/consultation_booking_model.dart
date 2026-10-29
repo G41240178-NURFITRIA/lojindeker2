@@ -17,6 +17,7 @@ class ConsultationBookingModel {
   final String? transactionId;
   final String? paymentMethod;
   final int? totalAmount;
+  final bool isDoctorRead;
 
   const ConsultationBookingModel({
     required this.id,
@@ -34,7 +35,46 @@ class ConsultationBookingModel {
     this.transactionId,
     this.paymentMethod,
     this.totalAmount,
+    this.isDoctorRead = false,
   });
+
+  ConsultationBookingModel copyWith({
+    String? id,
+    String? doctorId,
+    String? doctorName,
+    String? doctorSpecialty,
+    String? patientId,
+    String? patientName,
+    String? date,
+    String? dateKey,
+    String? timeSlot,
+    String? complaint,
+    String? status,
+    DateTime? createdAt,
+    String? transactionId,
+    String? paymentMethod,
+    int? totalAmount,
+    bool? isDoctorRead,
+  }) {
+    return ConsultationBookingModel(
+      id: id ?? this.id,
+      doctorId: doctorId ?? this.doctorId,
+      doctorName: doctorName ?? this.doctorName,
+      doctorSpecialty: doctorSpecialty ?? this.doctorSpecialty,
+      patientId: patientId ?? this.patientId,
+      patientName: patientName ?? this.patientName,
+      date: date ?? this.date,
+      dateKey: dateKey ?? this.dateKey,
+      timeSlot: timeSlot ?? this.timeSlot,
+      complaint: complaint ?? this.complaint,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      transactionId: transactionId ?? this.transactionId,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      totalAmount: totalAmount ?? this.totalAmount,
+      isDoctorRead: isDoctorRead ?? this.isDoctorRead,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -49,6 +89,7 @@ class ConsultationBookingModel {
       'timeSlot': timeSlot,
       'complaint': complaint,
       'status': status,
+      'isDoctorRead': isDoctorRead,
       if (transactionId != null) 'transactionId': transactionId,
       if (paymentMethod != null) 'paymentMethod': paymentMethod,
       if (totalAmount != null) 'totalAmount': totalAmount,
@@ -82,6 +123,7 @@ class ConsultationBookingModel {
       transactionId: map['transactionId']?.toString(),
       paymentMethod: map['paymentMethod']?.toString(),
       totalAmount: map['totalAmount'] is num ? (map['totalAmount'] as num).toInt() : null,
+      isDoctorRead: map['isDoctorRead'] == true,
     );
   }
 

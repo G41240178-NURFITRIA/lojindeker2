@@ -94,6 +94,8 @@ class RealtimeConsultationChat {
   final int unreadCountForDoctor;
   final int unreadCountForPatient;
   final String glucoseNote;
+  final String? patientPhotoUrl;
+  final String? doctorPhotoUrl;
 
   RealtimeConsultationChat({
     required this.id,
@@ -109,6 +111,8 @@ class RealtimeConsultationChat {
     required this.unreadCountForDoctor,
     required this.unreadCountForPatient,
     required this.glucoseNote,
+    this.patientPhotoUrl,
+    this.doctorPhotoUrl,
   });
 
   factory RealtimeConsultationChat.fromFirestore(DocumentSnapshot doc) {
@@ -133,6 +137,8 @@ class RealtimeConsultationChat {
       unreadCountForDoctor: (data['unreadCountForDoctor'] as num?)?.toInt() ?? 0,
       unreadCountForPatient: (data['unreadCountForPatient'] as num?)?.toInt() ?? 0,
       glucoseNote: data['glucoseNote']?.toString() ?? '',
+      patientPhotoUrl: data['patientPhotoUrl']?.toString() ?? data['patientPhoto']?.toString(),
+      doctorPhotoUrl: data['doctorPhotoUrl']?.toString() ?? data['doctorPhoto']?.toString(),
     );
   }
 
@@ -144,6 +150,8 @@ class RealtimeConsultationChat {
       time: lastMessageTime.isEmpty ? 'Baru saja' : lastMessageTime,
       unreadCount: unreadCountForDoctor,
       glucoseNote: glucoseNote.isEmpty ? 'Kondisi Gula Darah Terkontrol' : glucoseNote,
+      patientPhotoUrl: patientPhotoUrl,
+      patientId: patientId,
     );
   }
 }
@@ -165,18 +173,31 @@ class ChatService {
     String? doctorSpecialty,
     String? glucoseNote,
     String? patientName,
+    String? patientPhotoUrl,
   }) async {
     final uid = currentUid ?? _auth.currentUser?.uid ?? 'guest_patient';
 
     String resolvedPatientName = patientName ?? '';
-    if (resolvedPatientName.isEmpty && uid != 'guest_patient') {
+    String? resolvedPatientPhoto = patientPhotoUrl;
+
+    if (uid != 'guest_patient') {
       try {
         final userProfile = await UserRepository.instance.findByUid(uid);
-        if (userProfile != null && userProfile.fullName.isNotEmpty) {
-          resolvedPatientName = userProfile.fullName;
-        } else if (_auth.currentUser?.displayName != null &&
+        if (userProfile != null) {
+          if (resolvedPatientName.isEmpty && userProfile.fullName.isNotEmpty) {
+            resolvedPatientName = userProfile.fullName;
+          }
+          if (resolvedPatientPhoto == null || resolvedPatientPhoto.isEmpty) {
+            resolvedPatientPhoto = userProfile.photoUrl;
+          }
+        }
+        if (resolvedPatientName.isEmpty &&
+            _auth.currentUser?.displayName != null &&
             _auth.currentUser!.displayName!.isNotEmpty) {
           resolvedPatientName = _auth.currentUser!.displayName!;
+        }
+        if (resolvedPatientPhoto == null || resolvedPatientPhoto.isEmpty) {
+          resolvedPatientPhoto = _auth.currentUser?.photoURL;
         }
       } catch (e) {
         debugPrint('⚠️ [ChatService] Gagal mengambil profil pasien: $e');
@@ -185,6 +206,17 @@ class ChatService {
     if (resolvedPatientName.isEmpty) {
       resolvedPatientName = 'Pasien';
     }
+
+    // Ambil foto dokter jika ada
+    String? resolvedDoctorPhoto;
+    try {
+      if (doctorId != null && doctorId.isNotEmpty) {
+        final doc = await _db.collection('doctors').doc(doctorId).get();
+        if (doc.exists && doc.data() != null) {
+          resolvedDoctorPhoto = doc.data()!['photoUrl']?.toString();
+        }
+      }
+    } catch (_) {}
 
     final targetDoctorName = doctorName.toLowerCase().trim();
     final cleanTargetDoctor =
@@ -230,6 +262,10 @@ class ChatService {
           // Percakapan lama ditemukan — pertahankan dan perbarui kelengkapan datanya
           final updateData = <String, dynamic>{
             'patientName': resolvedPatientName,
+            if (resolvedPatientPhoto != null && resolvedPatientPhoto.isNotEmpty)
+              'patientPhotoUrl': resolvedPatientPhoto,
+            if (resolvedDoctorPhoto != null && resolvedDoctorPhoto.isNotEmpty)
+              'doctorPhotoUrl': resolvedDoctorPhoto,
             if (doctorId != null &&
                 doctorId.isNotEmpty &&
                 docDoctorId != doctorId)
@@ -263,6 +299,10 @@ class ChatService {
             // Tautkan sesi chat lama ini ke UID pasien yang sekarang login
             doc.reference.update({
               'patientId': uid,
+              if (resolvedPatientPhoto != null && resolvedPatientPhoto.isNotEmpty)
+                'patientPhotoUrl': resolvedPatientPhoto,
+              if (resolvedDoctorPhoto != null && resolvedDoctorPhoto.isNotEmpty)
+                'doctorPhotoUrl': resolvedDoctorPhoto,
               if (doctorId != null && doctorId.isNotEmpty)
                 'doctorId': doctorId,
               'updatedAt': FieldValue.serverTimestamp(),
@@ -280,9 +320,11 @@ class ChatService {
     await docRef.set({
       'patientId': uid,
       'patientName': resolvedPatientName,
+      'patientPhotoUrl': resolvedPatientPhoto ?? '',
       'doctorId': doctorId ?? '',
       'doctorName': doctorName,
       'doctorSpecialty': doctorSpecialty ?? 'Spesialis Penyakit Dalam',
+      'doctorPhotoUrl': resolvedDoctorPhoto ?? '',
       'lastMessage': '',
       'lastMessageTime': FieldValue.serverTimestamp(),
       'lastSenderRole': '',
