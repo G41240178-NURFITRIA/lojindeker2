@@ -2484,18 +2484,14 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         child: SingleChildScrollView(
                           child: activeTab == 0
                               ? _buildScheduleSettingsTabContent(
-                                  ctx: ctx,
-                                  setModalState: setModalState,
                                   scheduleController: scheduleController,
                                   selectedDays: selectedDays,
                                   selectedHours: selectedHours,
-                                  isSaving: isSaving,
                                   bookingCount: bookingCount,
                                   bookings: bookings,
                                   onSwitchToBookingsTab: () =>
                                       setModalState(() => activeTab = 1),
                                   updateCombinedText: updateCombinedText,
-                                  bottomSheetContext: bottomSheetContext,
                                 )
                               : _buildDoctorBookedSlotsTabContent(
                                   ctx: ctx,
@@ -2505,6 +2501,161 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                 ),
                         ),
                       ),
+
+                      // Tombol Batal & Simpan (hanya tampil di tab Atur Jadwal)
+                      if (activeTab == 0) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: isSaving
+                                    ? null
+                                    : () => Navigator.pop(bottomSheetContext),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  side: const BorderSide(
+                                    color: Color(0xFFD0D0D0),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Batal',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF616161),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton(
+                                onPressed: isSaving
+                                    ? null
+                                    : () async {
+                                        final newSchedule = scheduleController.text.trim();
+                                        final messenger = ScaffoldMessenger.of(context);
+                                        if (newSchedule.isEmpty) {
+                                          messenger.showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Teks jadwal tidak boleh kosong.'),
+                                              backgroundColor: Colors.orange,
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        setModalState(() => isSaving = true);
+
+                                        try {
+                                          String? targetUid = _resolvedDoctorUid ??
+                                              widget.doctorId ??
+                                              AuthService.instance.currentUser?.uid;
+
+                                          if (targetUid != null && targetUid.isNotEmpty) {
+                                            await UserRepository.instance.updateDoctorSchedule(
+                                              targetUid,
+                                              newSchedule,
+                                            );
+                                          } else {
+                                            final snap = await FirebaseFirestore.instance
+                                                .collection('doctors')
+                                                .where('fullName', isEqualTo: widget.doctorName)
+                                                .limit(1)
+                                                .get();
+                                            if (snap.docs.isNotEmpty) {
+                                              await snap.docs.first.reference.update({
+                                                'schedule': newSchedule,
+                                                'updatedAt': FieldValue.serverTimestamp(),
+                                              });
+                                            }
+                                          }
+
+                                          if (mounted) {
+                                            setState(() {
+                                              _doctorSchedule = newSchedule;
+                                            });
+                                          }
+
+                                          if (bottomSheetContext.mounted) {
+                                            Navigator.pop(bottomSheetContext);
+                                          }
+
+                                          if (mounted) {
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.check_circle_rounded,
+                                                      color: Colors.white,
+                                                      size: 20,
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: Text(
+                                                        'Jadwal dokter berhasil diperbarui & otomatis sinkron ke booking pasien.',
+                                                        style: GoogleFonts.poppins(fontSize: 12.5),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                backgroundColor: const Color(0xFF2E7D32),
+                                                behavior: SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                margin: const EdgeInsets.all(16),
+                                              ),
+                                            );
+                                          }
+                                        } catch (err) {
+                                          setModalState(() => isSaving = false);
+                                          if (mounted) {
+                                            messenger.showSnackBar(
+                                              SnackBar(
+                                                content: Text('Gagal menyimpan jadwal: $err'),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: isSaving
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(
+                                        'Simpan Jadwal',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   );
                 },
@@ -2518,17 +2669,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
   /// Tab Konten: Pengaturan Hari & Jam Praktik Dokter
   Widget _buildScheduleSettingsTabContent({
-    required BuildContext ctx,
-    required StateSetter setModalState,
     required TextEditingController scheduleController,
     required String selectedDays,
     required String selectedHours,
-    required bool isSaving,
     required int bookingCount,
     required List<ConsultationBookingModel> bookings,
     required VoidCallback onSwitchToBookingsTab,
     required Function(String, String) updateCombinedText,
-    required BuildContext bottomSheetContext,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2668,68 +2815,11 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             );
           }).toList(),
         ),
-        const SizedBox(height: 14),
-
-        // Tombol Kustom Jam dengan TimePicker
-        InkWell(
-          onTap: () async {
-            final TimeOfDay? start = await showTimePicker(
-              context: ctx,
-              initialTime: const TimeOfDay(hour: 9, minute: 0),
-              helpText: 'PILIH JAM MULAI',
-            );
-            if (start == null || !ctx.mounted) return;
-
-            final TimeOfDay? end = await showTimePicker(
-              context: ctx,
-              initialTime: const TimeOfDay(hour: 17, minute: 0),
-              helpText: 'PILIH JAM SELESAI',
-            );
-            if (end == null || !ctx.mounted) return;
-
-            String formatTime(TimeOfDay t) =>
-                '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-            final customHour =
-                '${formatTime(start)} - ${formatTime(end)}';
-            updateCombinedText(selectedDays, customHour);
-          },
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.softPinkCard,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: AppColors.softPinkBorder,
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.access_time_rounded,
-                  size: 16,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Pilih Jam Lainnya (TimePicker)',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
         const SizedBox(height: 18),
 
-        // Teks Hasil / Edit Manual
+        // Teks Format Jadwal
         Text(
-          'Teks Format Jadwal (Dapat Diedit Manual)',
+          'Teks Format Jadwal',
           style: GoogleFonts.poppins(
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
@@ -2948,160 +3038,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               ],
             ],
           ),
-        ),
-
-        // Action Buttons (Batal & Simpan)
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: isSaving
-                    ? null
-                    : () => Navigator.pop(bottomSheetContext),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  side: const BorderSide(
-                    color: Color(0xFFD0D0D0),
-                  ),
-                ),
-                child: Text(
-                  'Batal',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF616161),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: ElevatedButton(
-                onPressed: isSaving
-                    ? null
-                    : () async {
-                        final newSchedule = scheduleController.text.trim();
-                        if (newSchedule.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content:
-                                  Text('Teks jadwal tidak boleh kosong.'),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
-                          return;
-                        }
-
-                        setModalState(() => isSaving = true);
-
-                        try {
-                          String? targetUid = _resolvedDoctorUid ??
-                              widget.doctorId ??
-                              AuthService.instance.currentUser?.uid;
-
-                          if (targetUid != null && targetUid.isNotEmpty) {
-                            await UserRepository.instance.updateDoctorSchedule(
-                              targetUid,
-                              newSchedule,
-                            );
-                          } else {
-                            final snap = await FirebaseFirestore.instance
-                                .collection('doctors')
-                                .where('fullName', isEqualTo: widget.doctorName)
-                                .limit(1)
-                                .get();
-                            if (snap.docs.isNotEmpty) {
-                              await snap.docs.first.reference.update({
-                                'schedule': newSchedule,
-                                'updatedAt': FieldValue.serverTimestamp(),
-                              });
-                            }
-                          }
-
-                          if (mounted) {
-                            setState(() {
-                              _doctorSchedule = newSchedule;
-                            });
-                          }
-
-                          if (bottomSheetContext.mounted) {
-                            Navigator.pop(bottomSheetContext);
-                          }
-
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.check_circle_rounded,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        'Jadwal dokter berhasil diperbarui & otomatis sinkron ke booking pasien.',
-                                        style: GoogleFonts.poppins(
-                                            fontSize: 12.5),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: const Color(0xFF2E7D32),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                margin: const EdgeInsets.all(16),
-                              ),
-                            );
-                          }
-                        } catch (err) {
-                          setModalState(() => isSaving = false);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content:
-                                    Text('Gagal menyimpan jadwal: $err'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: isSaving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        'Simpan Jadwal',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-              ),
-            ),
-          ],
         ),
       ],
     );
