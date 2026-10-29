@@ -372,28 +372,6 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     }
                   },
                 ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.face_retouching_natural_rounded, color: Color(0xFF2E7D32)),
-                  ),
-                  title: Text(
-                    'Pilih Avatar Siap Pakai',
-                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    'Gunakan salah satu avatar pilihan menarik',
-                    style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _showPresetAvatarsDialog(context);
-                  },
-                ),
                 if (ProfileImageService().hasCustomImage()) ...[
                   const Divider(height: 16),
                   ListTile(
