@@ -1786,8 +1786,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   /// 4. Bottom Navigation Bar:
-  /// Sesuai permintaan pengguna: Menu Chat dan Pasien dihapus!
-  /// Hanya menyisakan menu 'Beranda' dan 'Profil'.
+  /// Hanya menu 'Beranda' (index 0) dan 'Profil' (index 1).
   Widget _buildBottomNavigationBar() {
     return Container(
       height: 68,
