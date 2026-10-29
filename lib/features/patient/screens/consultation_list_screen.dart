@@ -195,10 +195,6 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
 
       // ── 3. Parse rentang hari ──────────────────────────────────
       // Normalisasi pemisah hari (–, -)  
-      if (daysPart.toLowerCase().contains('setiap hari')) {
-        return true;
-      }
-
       final daySep = RegExp(r'[–\-]');
       final dayParts = daysPart.split(daySep).map((s) => s.trim().toLowerCase()).toList();
 
