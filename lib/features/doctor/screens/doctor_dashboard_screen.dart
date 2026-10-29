@@ -6032,21 +6032,8 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                   ),
                 ),
               ),
-              IconButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Mengunduh riwayat sebagai PDF...',
-                          style: GoogleFonts.poppins()),
-                      backgroundColor: AppColors.primary,
-                      behavior: SnackBarBehavior.floating,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.download_outlined,
-                    color: AppColors.primary, size: 22),
-              ),
+              // Spacer penyeimbang tombol kembali agar judul tetap berada di tengah
+              const SizedBox(width: 48),
             ],
           ),
         ),

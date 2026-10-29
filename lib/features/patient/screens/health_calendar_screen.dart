@@ -883,13 +883,6 @@ class _HealthCalendarScreenState extends State<HealthCalendarScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: 'Tambah Agenda',
-            icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 24),
-            onPressed: _showAddEventSheet,
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
