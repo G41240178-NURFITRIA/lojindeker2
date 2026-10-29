@@ -779,27 +779,49 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   Widget _buildBottomNavigationBar(BuildContext context) {
     return Container(
       height: 64,
-      color: _bgScreen,
+      color: const Color(0xFFFAF1F1),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           IconButton(
-            icon: const Icon(Icons.home_outlined, size: 28),
-            color: _navIconInactive,
+            icon: const Icon(Icons.home_outlined, size: 26),
+            color: const Color(0xFFF48FB1),
             tooltip: 'Beranda',
-            onPressed: _handleBack,
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => const PatientDashboardScreen(initialTabIndex: 0),
+                ),
+                (route) => false,
+              );
+            },
           ),
           IconButton(
-            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 26),
-            color: _navIconActive,
-            tooltip: 'Konsultasi',
-            onPressed: () {},
+            icon: const Icon(Icons.calendar_month_outlined, size: 26),
+            color: const Color(0xFFF48FB1),
+            tooltip: 'Riwayat Booking',
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => const PatientDashboardScreen(initialTabIndex: 1),
+                ),
+                (route) => false,
+              );
+            },
           ),
           IconButton(
-            icon: const Icon(Icons.person_outline_rounded, size: 28),
-            color: _navIconInactive,
+            icon: const Icon(Icons.person_outline_rounded, size: 26),
+            color: const Color(0xFFF48FB1),
             tooltip: 'Profil Pasien',
-            onPressed: _handleBack,
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => const PatientDashboardScreen(initialTabIndex: 2),
+                ),
+                (route) => false,
+              );
+            },
           ),
         ],
       ),

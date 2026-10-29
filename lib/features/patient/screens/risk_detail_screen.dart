@@ -1,3 +1,4 @@
+import 'patient_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -617,7 +618,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildNavItem(0, Icons.home_outlined),
-          _buildNavItem(1, Icons.chat_bubble_outline_rounded),
+          _buildNavItem(1, Icons.calendar_month_outlined),
           _buildNavItem(2, Icons.person_outline_rounded),
         ],
       ),

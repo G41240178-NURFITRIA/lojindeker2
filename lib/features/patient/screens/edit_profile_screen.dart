@@ -1,3 +1,4 @@
+import 'patient_dashboard_screen.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -597,7 +598,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
           ),
           IconButton(
-            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 26),
+            icon: const Icon(Icons.calendar_month_outlined, size: 26),
             color: _navIconInactive,
             tooltip: 'Konsultasi',
             onPressed: () {

@@ -1,3 +1,4 @@
+import 'patient_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/risk_assessment_model.dart';
@@ -421,7 +422,7 @@ class _AiRiskHistoryScreenState extends State<AiRiskHistoryScreen> {
             onTap: () => Navigator.of(context).popUntil((route) => route.isFirst),
           ),
           _buildNavItem(
-            icon: Icons.chat_bubble_outline_rounded,
+            icon: Icons.calendar_month_outlined,
             isSelected: false,
             onTap: () {
               Navigator.of(context).popUntil((route) => route.isFirst);

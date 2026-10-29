@@ -1,3 +1,4 @@
+import 'patient_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/profile_image_service.dart';
@@ -780,7 +781,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 26),
+            icon: const Icon(Icons.calendar_month_outlined, size: 26),
             color: _navIconInactive,
             onPressed: () {
               Navigator.push(

@@ -25,15 +25,20 @@ import '../models/consultation_booking_model.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   final String patientName;
+  final int initialTabIndex;
 
-  const PatientDashboardScreen({super.key, this.patientName = 'Pasien'});
+  const PatientDashboardScreen({
+    super.key,
+    this.patientName = 'Pasien',
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<PatientDashboardScreen> createState() => _PatientDashboardScreenState();
 }
 
 class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
-  int _selectedTabIndex = 0;
+  late int _selectedTabIndex;
   late String _currentPatientName;
   final ScrollController _homeScrollController = ScrollController();
 
@@ -44,6 +49,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedTabIndex = widget.initialTabIndex;
     _currentPatientName = widget.patientName;
     _loadCurrentProfile();
     _subscribeToAdminArticles();

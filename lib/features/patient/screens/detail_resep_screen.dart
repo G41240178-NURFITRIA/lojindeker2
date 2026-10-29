@@ -1,3 +1,4 @@
+import 'patient_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'riwayat_resep_screen.dart';
@@ -641,7 +642,7 @@ class _DetailResepScreenState extends State<DetailResepScreen> {
           ),
           _buildNavItem(
             index: 1,
-            icon: Icons.chat_bubble_outline_rounded,
+            icon: Icons.calendar_month_outlined,
             onTap: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
               Navigator.push(

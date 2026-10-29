@@ -1,3 +1,4 @@
+import 'patient_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'consultation_list_screen.dart';
@@ -335,7 +336,7 @@ class _GlucoseChartScreenState extends State<GlucoseChartScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildNavItem(0, Icons.home_outlined),
-          _buildNavItem(1, Icons.chat_bubble_outline_rounded),
+          _buildNavItem(1, Icons.calendar_month_outlined),
           _buildNavItem(2, Icons.person_outline_rounded),
         ],
       ),

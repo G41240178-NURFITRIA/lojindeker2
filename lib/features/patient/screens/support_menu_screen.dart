@@ -1,3 +1,4 @@
+import 'patient_dashboard_screen.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -614,7 +615,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
             },
           ),
           _buildNavItem(
-            icon: Icons.chat_bubble_outline_rounded,
+            icon: Icons.calendar_month_outlined,
             tooltip: 'Konsultasi Dokter',
             onTap: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
