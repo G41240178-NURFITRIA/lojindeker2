@@ -429,6 +429,82 @@ class ChatService {
     return docRef.id;
   }
 
+  /// Dapatkan atau buat sesi chat untuk dokter dengan pasien
+  Future<String> getOrCreateChatForDoctor({
+    required String doctorName,
+    required String patientName,
+    String? doctorId,
+    String? patientId,
+    String? glucoseNote,
+  }) async {
+    final effectiveDocId = doctorId ?? currentUid ?? '';
+    final cleanTargetDoc = doctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+    final cleanTargetPatient = patientName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+
+    try {
+      final snap = await _db.collection('consultation_chats').get();
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final dName = (data['doctorName'] ?? '').toString().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+        final pName = (data['patientName'] ?? '').toString().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+        final dId = (data['doctorId'] ?? '').toString();
+        final pId = (data['patientId'] ?? '').toString();
+
+        bool docMatch = false;
+        if (effectiveDocId.isNotEmpty && dId.isNotEmpty) {
+          docMatch = (dId == effectiveDocId);
+        } else if (cleanTargetDoc.isNotEmpty && dName.isNotEmpty) {
+          docMatch = dName.contains(cleanTargetDoc) || cleanTargetDoc.contains(dName);
+        }
+
+        bool patientMatch = false;
+        if (patientId != null && patientId.isNotEmpty && pId.isNotEmpty) {
+          patientMatch = (pId == patientId);
+        } else if (cleanTargetPatient.isNotEmpty && pName.isNotEmpty) {
+          patientMatch = pName.contains(cleanTargetPatient) || cleanTargetPatient.contains(pName);
+        }
+
+        if (docMatch && patientMatch) {
+          doc.reference.update({
+            if (glucoseNote != null && glucoseNote.isNotEmpty) 'glucoseNote': glucoseNote,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }).catchError((_) {});
+          return doc.id;
+        }
+      }
+
+      // Buat baru jika belum ada
+      final docRef = _db.collection('consultation_chats').doc();
+      final now = DateTime.now();
+      final expiresAt = now.add(const Duration(minutes: 25));
+
+      await docRef.set({
+        'patientId': patientId ?? '',
+        'patientName': patientName,
+        'doctorId': effectiveDocId,
+        'doctorName': doctorName,
+        'doctorSpecialty': 'Spesialis Penyakit Dalam',
+        'lastMessage': 'Sesi konsultasi dokter dimulai.',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastSenderRole': 'doctor',
+        'unreadCountForDoctor': 0,
+        'unreadCountForPatient': 0,
+        'glucoseNote': glucoseNote ?? '',
+        'status': 'active',
+        'createdAt': Timestamp.fromDate(now),
+        'expiresAt': Timestamp.fromDate(expiresAt),
+        'durationMinutes': 25,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      return docRef.id;
+    } catch (e) {
+      debugPrint('⚠️ Error in getOrCreateChatForDoctor: $e');
+      final fallbackId = 'chat_${cleanTargetPatient.isNotEmpty ? cleanTargetPatient : "pasien"}_${DateTime.now().millisecondsSinceEpoch}';
+      return fallbackId;
+    }
+  }
+
   /// Mengakhiri sesi konsultasi (misal waktu 25 menit telah habis)
   Future<void> endConsultation(String chatId, {String? reason}) async {
     try {

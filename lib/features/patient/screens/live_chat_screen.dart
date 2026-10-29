@@ -10,6 +10,7 @@ import '../../../core/services/chat_service.dart';
 import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/patient_chat_notification_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
+import '../../../core/widgets/in_app_camera_screen.dart';
 import '../../../core/widgets/medical_document_viewer_screen.dart';
 
 /// Model pesan chat
@@ -503,7 +504,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     colors: const [Color(0xFFFF5252), Color(0xFFFF1744)],
                     onTap: () {
                       Navigator.pop(ctx);
-                      _pickAndSendImage(ImageSource.camera);
+                      _openCameraFlow();
                     },
                   ),
                   _buildAttachmentOption(
@@ -589,6 +590,40 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openCameraFlow() async {
+    try {
+      final resultBase64 = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const InAppCameraScreen(
+            title: 'Kamera Pasien D-Care',
+            subtitle: 'Arahkan kamera ke resep, obat, atau berkas medis Anda',
+          ),
+        ),
+      );
+
+      if (resultBase64 != null && resultBase64.isNotEmpty) {
+        final bytes = base64Decode(resultBase64);
+        final sizeKb = (bytes.lengthInBytes / 1024).round();
+        final sizeStr = sizeKb > 1024
+            ? '${(sizeKb / 1024).toStringAsFixed(1)} MB'
+            : '$sizeKb KB';
+
+        _sendMessage(
+          '',
+          type: 'image',
+          attachmentData: resultBase64,
+          attachmentName:
+              'Foto_Medis_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          attachmentSize: sizeStr,
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in patient camera flow: $e');
+      _pickAndSendImage(ImageSource.camera);
+    }
   }
 
   Future<void> _pickAndSendImage(ImageSource source) async {
@@ -892,7 +927,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               InkWell(
                 onTap: () {
                   Navigator.pop(ctx);
-                  _pickAndSendImage(ImageSource.camera);
+                  _openCameraFlow();
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(

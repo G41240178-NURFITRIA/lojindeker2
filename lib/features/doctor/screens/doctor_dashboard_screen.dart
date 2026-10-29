@@ -11,6 +11,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/services/consultation_booking_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
+import '../../../core/widgets/in_app_camera_screen.dart';
 import '../../../core/widgets/medical_document_viewer_screen.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
@@ -3380,6 +3381,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                 builder: (_) => DoctorChatDetailScreen(
                                   doctorName: effectiveDoctorName,
                                   patientName: b.patientName,
+                                  patientId: b.patientId,
                                   initialMessage:
                                       'Halo ${b.patientName}, saya $effectiveDoctorName. Jadwal konsultasi Anda jam ${b.timeSlot} (${b.date}) telah saya konfirmasi. Apakah ada keluhan lanjutan yang ingin disampaikan?',
                                   glucoseNote: b.complaint.isNotEmpty
@@ -4068,6 +4070,7 @@ class DoctorChatDetailScreen extends StatefulWidget {
   final String patientName;
   final String initialMessage;
   final String glucoseNote;
+  final String? patientId;
 
   const DoctorChatDetailScreen({
     super.key,
@@ -4076,6 +4079,7 @@ class DoctorChatDetailScreen extends StatefulWidget {
     required this.patientName,
     required this.initialMessage,
     required this.glucoseNote,
+    this.patientId,
   });
 
   @override
@@ -4089,6 +4093,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   final ScrollController _scrollController = ScrollController();
   StreamSubscription<List<RealtimeChatMessage>>? _msgSubscription;
   StreamSubscription<DocumentSnapshot>? _chatDocSubscription;
+  String? _activeChatId;
 
   // Manajemen Timer Konsultasi 25 Menit
   Timer? _countdownTimer;
@@ -4103,82 +4108,110 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   void initState() {
     super.initState();
     _loadPatientPhoto();
-    if (widget.chatId != null && widget.chatId!.isNotEmpty) {
-      ChatService.instance.markAsReadByDoctor(widget.chatId!);
-      _msgSubscription = ChatService.instance
-          .streamMessages(widget.chatId!)
-          .listen((items) {
-        if (!mounted) return;
-        final currentUid = ChatService.instance.currentUid ?? '';
-        setState(() {
-          _messages = items
-              .where((m) =>
-                  !m.isDeletedFor('doctor') &&
-                  (currentUid.isEmpty || !m.isDeletedFor(currentUid)))
-              .map((m) => {
-                    'id': m.id,
-                    'text': m.text,
-                    'isDoctor': m.isDoctor,
-                    'isSystem': m.isSystem,
-                    'time': m.time,
-                    'read': m.isRead,
-                    'type': m.type,
-                    'attachmentData': m.attachmentData,
-                    'attachmentName': m.attachmentName,
-                    'attachmentSize': m.attachmentSize,
-                  })
-              .toList();
-        });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent + 40,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          }
-        });
+    _activeChatId = widget.chatId;
+    if (_activeChatId != null && _activeChatId!.isNotEmpty) {
+      _bindChatSession(_activeChatId!);
+    } else {
+      _ensureChatId();
+    }
+  }
+
+  Future<void> _ensureChatId() async {
+    try {
+      final id = await ChatService.instance.getOrCreateChatForDoctor(
+        doctorName: widget.doctorName,
+        patientName: widget.patientName,
+        patientId: widget.patientId,
+        glucoseNote: widget.glucoseNote,
+      );
+      if (!mounted) return;
+      setState(() {
+        _activeChatId = id;
       });
+      _bindChatSession(id);
+    } catch (e) {
+      debugPrint('⚠️ Error initializing doctor chat ID: $e');
+    }
+  }
 
-      // Pantau dokumen chat untuk status konsultasi & batas durasi 25 menit
-      _chatDocSubscription = FirebaseFirestore.instance
-          .collection('consultation_chats')
-          .doc(widget.chatId!)
-          .snapshots()
-          .listen((chatDoc) {
-        if (!mounted) return;
-        if (chatDoc.exists && chatDoc.data() != null) {
-          final data = chatDoc.data()!;
-          final status = data['status']?.toString() ?? 'active';
-          final expTs = data['expiresAt'] as Timestamp?;
-          final createdTs = data['createdAt'] as Timestamp?;
-          DateTime? expDt = expTs?.toDate();
-          if (expDt == null && createdTs != null) {
-            expDt = createdTs.toDate().add(const Duration(minutes: 25));
-          }
+  void _bindChatSession(String cid) {
+    _msgSubscription?.cancel();
+    _chatDocSubscription?.cancel();
 
-          if (expDt != null) {
-            _expiresAt = expDt;
-            final isTimeExpired = DateTime.now().isAfter(expDt);
-            final ended = (status == 'ended' || isTimeExpired);
-
-            if (ended != _isConsultationEnded) {
-              setState(() {
-                _isConsultationEnded = ended;
-              });
-            }
-
-            if (ended) {
-              _remainingDuration = Duration.zero;
-              _countdownTimer?.cancel();
-              _showConsultationEndedNotification();
-            } else {
-              _startCountdownTimer();
-            }
-          }
+    ChatService.instance.markAsReadByDoctor(cid);
+    _msgSubscription = ChatService.instance
+        .streamMessages(cid)
+        .listen((items) {
+      if (!mounted) return;
+      final currentUid = ChatService.instance.currentUid ?? '';
+      setState(() {
+        _messages = items
+            .where((m) =>
+                !m.isDeletedFor('doctor') &&
+                (currentUid.isEmpty || !m.isDeletedFor(currentUid)))
+            .map((m) => {
+                  'id': m.id,
+                  'text': m.text,
+                  'isDoctor': m.isDoctor,
+                  'isSystem': m.isSystem,
+                  'time': m.time,
+                  'read': m.isRead,
+                  'type': m.type,
+                  'attachmentData': m.attachmentData,
+                  'attachmentName': m.attachmentName,
+                  'attachmentSize': m.attachmentSize,
+                })
+            .toList();
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent + 40,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
         }
       });
-    }
+    });
+
+    // Pantau dokumen chat untuk status konsultasi & batas durasi 25 menit
+    _chatDocSubscription = FirebaseFirestore.instance
+        .collection('consultation_chats')
+        .doc(cid)
+        .snapshots()
+        .listen((chatDoc) {
+      if (!mounted) return;
+      if (chatDoc.exists && chatDoc.data() != null) {
+        final data = chatDoc.data()!;
+        final status = data['status']?.toString() ?? 'active';
+        final expTs = data['expiresAt'] as Timestamp?;
+        final createdTs = data['createdAt'] as Timestamp?;
+        DateTime? expDt = expTs?.toDate();
+        if (expDt == null && createdTs != null) {
+          expDt = createdTs.toDate().add(const Duration(minutes: 25));
+        }
+
+        if (expDt != null) {
+          _expiresAt = expDt;
+          final isTimeExpired = DateTime.now().isAfter(expDt);
+          final ended = (status == 'ended' || isTimeExpired);
+
+          if (ended != _isConsultationEnded) {
+            setState(() {
+              _isConsultationEnded = ended;
+            });
+          }
+
+          if (ended) {
+            _remainingDuration = Duration.zero;
+            _countdownTimer?.cancel();
+            _showConsultationEndedNotification();
+          } else {
+            _startCountdownTimer();
+          }
+        }
+      }
+    });
   }
 
   void _startCountdownTimer() {
@@ -4355,10 +4388,14 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       _msgController.clear();
     }
 
-    if (widget.chatId != null && widget.chatId!.isNotEmpty) {
+    if (_activeChatId == null || _activeChatId!.isEmpty) {
+      await _ensureChatId();
+    }
+
+    if (_activeChatId != null && _activeChatId!.isNotEmpty) {
       try {
         await ChatService.instance.sendMessage(
-          chatId: widget.chatId!,
+          chatId: _activeChatId!,
           text: text,
           senderRole: 'doctor',
           senderName: widget.doctorName,
@@ -4370,6 +4407,39 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       } catch (e) {
         debugPrint('⚠️ Error sending doctor message: $e');
       }
+    }
+  }
+
+  Future<void> _openCameraFlow() async {
+    try {
+      final resultBase64 = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const InAppCameraScreen(
+            title: 'Kamera Medis Dokter',
+            subtitle: 'Arahkan kamera ke berkas medis atau kondisi fisik pasien',
+          ),
+        ),
+      );
+
+      if (resultBase64 != null && resultBase64.isNotEmpty) {
+        final bytes = base64Decode(resultBase64);
+        final sizeKb = (bytes.lengthInBytes / 1024).round();
+        final sizeStr = sizeKb > 1024
+            ? '${(sizeKb / 1024).toStringAsFixed(1)} MB'
+            : '$sizeKb KB';
+
+        _sendMessage(
+          type: 'image',
+          attachmentData: resultBase64,
+          attachmentName:
+              'Foto_Medis_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          attachmentSize: sizeStr,
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error in camera flow: $e');
+      _pickAndSendImage(ImageSource.camera);
     }
   }
 
@@ -4415,7 +4485,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     colors: const [Color(0xFFFF5252), Color(0xFFFF1744)],
                     onTap: () {
                       Navigator.pop(ctx);
-                      _pickAndSendImage(ImageSource.camera);
+                      _openCameraFlow();
                     },
                   ),
                   _buildAttachmentOption(
@@ -4804,7 +4874,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
               InkWell(
                 onTap: () {
                   Navigator.pop(ctx);
-                  _pickAndSendImage(ImageSource.camera);
+                  _openCameraFlow();
                 },
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
@@ -4853,6 +4923,28 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       attachmentSize: '95 KB',
       attachmentData: 'mock_lab_pdf',
     );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Ringkasan hasil lab berhasil dikirim ke ruang konsultasi',
+                  style: GoogleFonts.poppins(fontSize: 12.5),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF00897B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _openFullScreenImage(Uint8List bytes, String? name) {

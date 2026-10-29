@@ -9,6 +9,7 @@ import '../constants/app_colors.dart';
 /// Layar Kamera Interaktif D-Care (Lensa Kamera Live dengan Viewfinder Medis)
 /// Menampilkan feed kamera aktif secara langsung (tanpa layar hitam),
 /// dilengkapi garis bidik medis, toggle flash, flip kamera, dan tombol jepret langsung (1 langkah).
+/// Juga dilengkapi fallback otomatis ke kamera HP bawaan bila diperlukan.
 class InAppCameraScreen extends StatefulWidget {
   final String title;
   final String subtitle;
@@ -24,13 +25,15 @@ class InAppCameraScreen extends StatefulWidget {
 }
 
 class _InAppCameraScreenState extends State<InAppCameraScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   List<CameraDescription> _cameras = [];
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
   bool _isFrontCamera = false;
   int _flashMode = 0; // 0: Auto, 1: On, 2: Off
   bool _isCapturing = false;
+  bool _isLoading = true;
+  String? _initError;
   Uint8List? _capturedImageBytes;
   late AnimationController _shutterAnimController;
   late AnimationController _scannerAnimController;
@@ -40,6 +43,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _shutterAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 90),
@@ -52,7 +56,31 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
     _initCamera();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final CameraController? cameraController = _cameraController;
+    if (cameraController == null || !cameraController.value.isInitialized) {
+      if (state == AppLifecycleState.resumed) {
+        _initCamera();
+      }
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive) {
+      cameraController.dispose();
+      _isCameraInitialized = false;
+    } else if (state == AppLifecycleState.resumed) {
+      _initCamera();
+    }
+  }
+
   Future<void> _initCamera() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _initError = null;
+    });
+
     try {
       _cameras = await availableCameras();
       if (_cameras.isNotEmpty) {
@@ -66,19 +94,30 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
         );
         await _setupController(camera);
       } else {
-        if (mounted) setState(() {});
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _initError = 'Kamera tidak ditemukan pada perangkat';
+          });
+        }
       }
     } catch (e) {
       debugPrint('⚠️ Error init camera: $e');
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _initError = e.toString();
+        });
+      }
     }
   }
 
   Future<void> _setupController(CameraDescription camera) async {
     final controller = CameraController(
       camera,
-      ResolutionPreset.high,
+      ResolutionPreset.medium, // Medium cepat & kompatibel di semua HP
       enableAudio: false,
+      imageFormatGroup: ImageFormatGroup.jpeg,
     );
 
     try {
@@ -87,15 +126,27 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
         setState(() {
           _cameraController = controller;
           _isCameraInitialized = true;
+          _isLoading = false;
+          _initError = null;
         });
+      } else {
+        controller.dispose();
       }
     } catch (e) {
       debugPrint('⚠️ Error setup camera controller: $e');
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = false;
+          _isLoading = false;
+          _initError = e.toString();
+        });
+      }
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
     _shutterAnimController.dispose();
     _scannerAnimController.dispose();
@@ -138,6 +189,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
     setState(() {
       _isFrontCamera = !_isFrontCamera;
       _isCameraInitialized = false;
+      _isLoading = true;
     });
 
     await _cameraController?.dispose();
@@ -156,7 +208,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
     try {
       final XFile? file = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85,
+        imageQuality: 80,
         maxWidth: 1024,
       );
       if (file != null) {
@@ -172,6 +224,27 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
     }
   }
 
+  /// Ambil foto menggunakan Kamera HP Bawaan (Native Camera)
+  Future<void> _pickFromNativeCamera() async {
+    try {
+      final XFile? file = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+        maxWidth: 1024,
+      );
+      if (file != null) {
+        final bytes = await file.readAsBytes();
+        if (mounted) {
+          setState(() {
+            _capturedImageBytes = bytes;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error pick native camera: $e');
+    }
+  }
+
   /// Jepret Foto Langsung dari Kamera (1 Langkah)
   Future<void> _capturePhoto() async {
     if (_isCapturing) return;
@@ -183,7 +256,9 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
       _shutterAnimController.reverse();
 
       // 2. Jepret langsung dari sensor kamera live
-      if (_cameraController != null && _isCameraInitialized) {
+      if (_cameraController != null &&
+          _isCameraInitialized &&
+          _cameraController!.value.isInitialized) {
         final XFile photo = await _cameraController!.takePicture();
         final bytes = await photo.readAsBytes();
         if (mounted) {
@@ -192,23 +267,13 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
           });
         }
       } else {
-        // Fallback cadangan jika kamera live belum siap
-        final XFile? file = await _picker.pickImage(
-          source: ImageSource.camera,
-          imageQuality: 85,
-          maxWidth: 1024,
-        );
-        if (file != null) {
-          final bytes = await file.readAsBytes();
-          if (mounted) {
-            setState(() {
-              _capturedImageBytes = bytes;
-            });
-          }
-        }
+        // Fallback cadangan ke kamera bawaan HP jika live sensor belum siap
+        await _pickFromNativeCamera();
       }
     } catch (e) {
       debugPrint('⚠️ Error capture photo: $e');
+      // Jika terjadi error pada live capture, coba panggil kamera HP
+      await _pickFromNativeCamera();
     } finally {
       if (mounted) {
         setState(() => _isCapturing = false);
@@ -254,7 +319,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
           },
         ),
 
-        // 1. Area Viewfinder Tengah dengan Feed Kamera Langsung (Bukan Hitam)
+        // 1. Area Viewfinder Tengah dengan Feed Kamera Langsung (Bukan Layar Hitam)
         Center(
           child: Container(
             margin: const EdgeInsets.fromLTRB(20, 68, 20, 115),
@@ -271,46 +336,116 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                 alignment: Alignment.center,
                 fit: StackFit.expand,
                 children: [
-                  // Feed Kamera Live
-                  if (_cameraController != null && _isCameraInitialized)
-                    SizedBox.expand(
-                      child: FittedBox(
-                        fit: BoxFit.cover,
-                        child: SizedBox(
-                          width:
-                              _cameraController!.value.previewSize?.height ??
-                              720,
-                          height:
-                              _cameraController!.value.previewSize?.width ??
-                              1280,
-                          child: CameraPreview(_cameraController!),
-                        ),
-                      ),
+                  // Feed Kamera Live dengan Scale Responsif
+                  if (_cameraController != null &&
+                      _isCameraInitialized &&
+                      _cameraController!.value.isInitialized)
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final size = constraints.biggest;
+                        var scale = size.aspectRatio *
+                            _cameraController!.value.aspectRatio;
+                        if (scale < 1) scale = 1 / scale;
+
+                        return ClipRect(
+                          child: Transform.scale(
+                            scale: scale,
+                            child: Center(
+                              child: CameraPreview(_cameraController!),
+                            ),
+                          ),
+                        );
+                      },
                     )
                   else
+                    // Tampilan Viewfinder Ramah Saat Kamera Menyiapkan / Butuh Kamera HP
                     Container(
-                      color: const Color(0xFF141622),
+                      color: const Color(0xFF161928),
                       child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(
-                              width: 32,
-                              height: 32,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: AppColors.primary,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 68,
+                                height: 68,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.primary.withValues(alpha: 0.4),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: _isLoading
+                                    ? const Center(
+                                        child: SizedBox(
+                                          width: 28,
+                                          height: 28,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      )
+                                    : const Center(
+                                        child: Icon(
+                                          Icons.photo_camera_rounded,
+                                          color: AppColors.primary,
+                                          size: 32,
+                                        ),
+                                      ),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Menyiapkan kamera...',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white70,
-                                fontSize: 12,
+                              const SizedBox(height: 16),
+                              Text(
+                                _isLoading
+                                    ? 'Menyiapkan Kamera Medis...'
+                                    : 'Kamera Siap Digunakan',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 6),
+                              Text(
+                                _isLoading
+                                    ? 'Sedang menghubungkan ke sensor kamera perangkat Anda'
+                                    : 'Gunakan kamera bawaan HP atau pilih dari galeri untuk mengambil berkas medis Anda',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white70,
+                                  fontSize: 11.5,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              ElevatedButton.icon(
+                                onPressed: _pickFromNativeCamera,
+                                icon: const Icon(Icons.camera_alt_rounded,
+                                    size: 17, color: Colors.white),
+                                label: Text(
+                                  'Buka Kamera HP Langsung',
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 18, vertical: 11),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -521,9 +656,11 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        _isFrontCamera
-                            ? 'Kamera Depan'
-                            : 'Kamera Utama (Belakang)',
+                        _isCameraInitialized
+                            ? (_isFrontCamera
+                                ? 'Kamera Depan'
+                                : 'Kamera Utama')
+                            : 'Kamera HP Aktif',
                         style: GoogleFonts.poppins(
                           color: Colors.white60,
                           fontSize: 10.5,
@@ -532,16 +669,26 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                     ],
                   ),
                 ),
+                // Tombol Pilihan Cepat Kamera HP
+                IconButton(
+                  tooltip: 'Gunakan Kamera HP Bawaan',
+                  onPressed: _pickFromNativeCamera,
+                  icon: const Icon(
+                    Icons.phone_android_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
                 IconButton(
                   onPressed: _toggleFlash,
                   icon: Icon(
                     _flashMode == 0
                         ? Icons.flash_auto_rounded
                         : _flashMode == 1
-                        ? Icons.flash_on_rounded
-                        : Icons.flash_off_rounded,
+                            ? Icons.flash_on_rounded
+                            : Icons.flash_off_rounded,
                     color: _flashMode == 1 ? Colors.amber : Colors.white,
-                    size: 26,
+                    size: 24,
                   ),
                 ),
               ],
