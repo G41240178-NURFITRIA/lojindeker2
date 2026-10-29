@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/article_service.dart';
 import 'when_to_see_doctor_screen.dart';
 import 'article_detail_screen.dart';
 import 'consultation_list_screen.dart';
@@ -13,6 +15,26 @@ class SupportMenuScreen extends StatefulWidget {
 
 class _SupportMenuScreenState extends State<SupportMenuScreen> {
   static const Color _maroon = Color(0xFFB81018);
+  List<AdminArticleModel> _adminArticles = [];
+  StreamSubscription<List<AdminArticleModel>>? _articleSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeToAdminArticles();
+  }
+
+  void _subscribeToAdminArticles() {
+    _articleSub = ArticleService.instance.streamArticles().listen((articles) {
+      if (mounted) setState(() => _adminArticles = articles);
+    });
+  }
+
+  @override
+  void dispose() {
+    _articleSub?.cancel();
+    super.dispose();
+  }
 
 
   @override
@@ -92,7 +114,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${educationalArticles.length} Artikel',
+                      '${educationalArticles.length + _adminArticles.length} Artikel',
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -104,19 +126,29 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Horizontal list of articles (Clickable!)
+              // Horizontal list of articles (Admin articles real-time + preset articles)
               SizedBox(
                 height: 295,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
-                  itemCount: educationalArticles.length,
+                  itemCount: _adminArticles.length + educationalArticles.length,
                   itemBuilder: (context, index) {
-                    final article = educationalArticles[index];
-                    return Padding(
-                      padding: EdgeInsets.only(right: index == educationalArticles.length - 1 ? 0 : 12),
-                      child: _buildArticleCard(article: article),
-                    );
+                    final isAdminArticle = index < _adminArticles.length;
+                    final isLast = index == _adminArticles.length + educationalArticles.length - 1;
+                    if (isAdminArticle) {
+                      final article = _adminArticles[index];
+                      return Padding(
+                        padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                        child: _buildAdminArticleCard(article: article),
+                      );
+                    } else {
+                      final article = educationalArticles[index - _adminArticles.length];
+                      return Padding(
+                        padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                        child: _buildArticleCard(article: article),
+                      );
+                    }
                   },
                 ),
               ),
@@ -450,6 +482,112 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       ],
                     ),
                   ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Card artikel dari admin (Firestore real-time)
+  Widget _buildAdminArticleCard({required AdminArticleModel article}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => showAdminArticleDetailSheet(context, article),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 175,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFD81B60).withValues(alpha: 0.3), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFD81B60).withValues(alpha: 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header gradien dengan badge 'Baru'
+              Stack(
+                children: [
+                  Container(
+                    height: 145,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFD81B60), Color(0xFFF06292)],
+                      ),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.article_rounded, size: 50, color: Colors.white.withValues(alpha: 0.85)),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                      child: Text('Baru', style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFFD81B60))),
+                    ),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD81B60).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          article.category,
+                          style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60)),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        article.title,
+                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF141414), height: 1.25),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      if (article.subtitle.isNotEmpty)
+                        Text(
+                          article.subtitle,
+                          style: GoogleFonts.poppins(fontSize: 9.5, color: const Color(0xFF757575), height: 1.2),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Text(
+                            'Baca artikel',
+                            style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w600, color: const Color(0xFFD81B60)),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.arrow_forward_rounded, size: 10, color: Color(0xFFD81B60)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
