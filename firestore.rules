@@ -12,7 +12,10 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
     
     function isDoctor() {
@@ -76,9 +79,9 @@ service cloud.firestore {
     }
     
     // 7. Admin Articles Collection (Artikel Edukasi dari Admin)
-    // Read & Write: semua user yang login (admin buat/hapus, pasien baca)
     match /admin_articles/{articleId} {
-      allow read, write: if isSignedIn();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     // Default fallback deny
