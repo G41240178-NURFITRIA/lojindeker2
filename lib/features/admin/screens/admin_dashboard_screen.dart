@@ -1609,69 +1609,72 @@ class _KelolaPenggunaModalContentState extends State<_KelolaPenggunaModalContent
               ),
               const SizedBox(width: 6),
 
-              // Toggle Active/Inactive Button
+              // Tombol Hapus Akun
               OutlinedButton.icon(
                 onPressed: () async {
-                  final newStatus = !patient.isActive;
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: Text(
-                        newStatus ? 'Aktifkan Pasien?' : 'Nonaktifkan Pasien?',
+                        'Hapus Akun?',
                         style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
                       ),
                       content: Text(
-                        newStatus
-                            ? 'Akun ${patient.fullName} akan dapat masuk dan menggunakan layanan LojinDeker kembali.'
-                            : 'Akun ${patient.fullName} akan dinonaktifkan sementara dari sistem.',
+                        'Akun ${patient.fullName} akan dihapus secara permanen dari sistem. Tindakan ini tidak dapat dibatalkan.',
                       ),
                       actions: [
                         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
                         ElevatedButton(
                           onPressed: () => Navigator.pop(ctx, true),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: newStatus ? const Color(0xFF2E7D32) : const Color(0xFFD81B60),
+                            backgroundColor: Colors.red.shade700,
                           ),
-                          child: Text(newStatus ? 'Aktifkan' : 'Nonaktifkan', style: const TextStyle(color: Colors.white)),
+                          child: const Text('Hapus', style: TextStyle(color: Colors.white)),
                         ),
                       ],
                     ),
                   );
 
                   if (confirm == true) {
-                    await UserRepository.instance.setPatientActive(patient.uid, isActive: newStatus);
-                    // Catat ke log admin
-                    AdminActivityService.instance.logStatusPengguna(
-                      fullName: patient.fullName,
-                      isActive: newStatus,
-                    );
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: newStatus ? const Color(0xFF2E7D32) : const Color(0xFFD81B60),
-                          content: Text('Status akun ${patient.fullName} berhasil diperbarui.'),
-                        ),
+                    try {
+                      await UserRepository.instance.deletePatient(patient);
+                      // Catat ke log admin
+                      AdminActivityService.instance.logStatusPengguna(
+                        fullName: patient.fullName,
+                        isActive: false,
                       );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.red.shade700,
+                            content: Text('Akun ${patient.fullName} berhasil dihapus.'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Gagal menghapus akun: $e')),
+                        );
+                      }
                     }
                   }
                 },
                 icon: Icon(
-                  patient.isActive ? Icons.block_rounded : Icons.check_circle_outline_rounded,
+                  Icons.delete_forever_rounded,
                   size: 15,
-                  color: patient.isActive ? Colors.red.shade700 : const Color(0xFF2E7D32),
+                  color: Colors.red.shade700,
                 ),
                 label: Text(
-                  patient.isActive ? 'Nonaktifkan' : 'Aktifkan',
+                  'Hapus Akun',
                   style: GoogleFonts.poppins(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
-                    color: patient.isActive ? Colors.red.shade700 : const Color(0xFF2E7D32),
+                    color: Colors.red.shade700,
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
-                  side: BorderSide(
-                    color: patient.isActive ? Colors.red.shade200 : Colors.green.shade200,
-                  ),
+                  side: BorderSide(color: Colors.red.shade200),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),

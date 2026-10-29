@@ -32,10 +32,19 @@ class RealtimeChatMessage {
     this.attachmentData,
     this.attachmentName,
     this.attachmentSize,
+    this.deletedFor = const [],
   });
+
+  final List<String> deletedFor;
+
+  bool isDeletedFor(String? identifier) {
+    if (identifier == null || identifier.isEmpty) return false;
+    return deletedFor.contains(identifier);
+  }
 
   bool get isPatient => senderRole == 'pasien';
   bool get isDoctor => senderRole == 'doctor';
+  bool get isSystem => senderRole == 'system' || type == 'system';
   bool get isImage => type == 'image';
   bool get isDocument => type == 'document';
 
@@ -60,6 +69,7 @@ class RealtimeChatMessage {
       attachmentData: data['attachmentData']?.toString(),
       attachmentName: data['attachmentName']?.toString(),
       attachmentSize: data['attachmentSize']?.toString(),
+      deletedFor: List<String>.from(data['deletedFor'] as List? ?? []),
     );
   }
 
@@ -96,6 +106,9 @@ class RealtimeConsultationChat {
   final String glucoseNote;
   final String? patientPhotoUrl;
   final String? doctorPhotoUrl;
+  final String status; // 'active' | 'ended'
+  final DateTime? createdAt;
+  final DateTime? expiresAt;
 
   RealtimeConsultationChat({
     required this.id,
@@ -113,7 +126,24 @@ class RealtimeConsultationChat {
     required this.glucoseNote,
     this.patientPhotoUrl,
     this.doctorPhotoUrl,
+    this.status = 'active',
+    this.createdAt,
+    this.expiresAt,
   });
+
+  bool get isEnded {
+    if (status == 'ended') return true;
+    if (expiresAt != null && DateTime.now().isAfter(expiresAt!)) return true;
+    return false;
+  }
+
+  Duration get remainingDuration {
+    if (isEnded || expiresAt == null) return Duration.zero;
+    final diff = expiresAt!.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  int get remainingSeconds => remainingDuration.inSeconds;
 
   factory RealtimeConsultationChat.fromFirestore(DocumentSnapshot doc) {
     final data = (doc.data() as Map<String, dynamic>?) ?? {};
@@ -122,6 +152,19 @@ class RealtimeConsultationChat {
     final timeStr = dt != null
         ? '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}'
         : '';
+
+    final createdTs = data['createdAt'] as Timestamp?;
+    final createdDt = createdTs?.toDate();
+
+    final expTs = data['expiresAt'] as Timestamp?;
+    DateTime? expDt = expTs?.toDate();
+    if (expDt == null && createdDt != null) {
+      expDt = createdDt.add(const Duration(minutes: 25));
+    }
+
+    final rawStatus = data['status']?.toString() ?? 'active';
+    final resolvedStatus =
+        (expDt != null && DateTime.now().isAfter(expDt)) ? 'ended' : rawStatus;
 
     return RealtimeConsultationChat(
       id: doc.id,
@@ -139,6 +182,9 @@ class RealtimeConsultationChat {
       glucoseNote: data['glucoseNote']?.toString() ?? '',
       patientPhotoUrl: data['patientPhotoUrl']?.toString() ?? data['patientPhoto']?.toString(),
       doctorPhotoUrl: data['doctorPhotoUrl']?.toString() ?? data['doctorPhoto']?.toString(),
+      status: resolvedStatus,
+      createdAt: createdDt,
+      expiresAt: expDt,
     );
   }
 
@@ -222,101 +268,143 @@ class ChatService {
     final cleanTargetDoctor =
         targetDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
 
-    // 1. Cek apakah sudah ada sesi chat antara pasien ini dan dokter ini
+    // 1. Cari percakapan yang sudah ada di Firestore agar riwayat chat tidak hilang
     try {
-      final query = await _db
-          .collection('consultation_chats')
-          .where('patientId', isEqualTo: uid)
-          .get();
+      final allChatsSnap = await _db.collection('consultation_chats').get();
 
-      for (final doc in query.docs) {
+      // Prioritas 1: Cocokkan patientId dan dokter
+      for (final doc in allChatsSnap.docs) {
         final data = doc.data();
+        final pId = data['patientId']?.toString() ?? '';
         final docDoctorId = data['doctorId']?.toString().trim() ?? '';
         final docDoctorName =
             data['doctorName']?.toString().toLowerCase().trim() ?? '';
         final cleanDocDoctor =
             docDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
 
-        bool isMatch = false;
-
-        // Cocokkan berdasarkan ID dokter jika keduanya tersedia
+        bool isDoctorMatch = false;
         if (doctorId != null &&
             doctorId.isNotEmpty &&
             docDoctorId.isNotEmpty) {
-          if (docDoctorId == doctorId) {
-            isMatch = true;
-          }
+          isDoctorMatch = (docDoctorId == doctorId);
         }
-
-        // Jika ID belum cocok atau salah satu kosong, cocokkan berdasarkan nama
-        if (!isMatch &&
+        if (!isDoctorMatch &&
             cleanDocDoctor.isNotEmpty &&
             cleanTargetDoctor.isNotEmpty) {
-          if (cleanDocDoctor.contains(cleanTargetDoctor) ||
-              cleanTargetDoctor.contains(cleanDocDoctor)) {
-            isMatch = true;
-          }
+          isDoctorMatch = cleanDocDoctor.contains(cleanTargetDoctor) ||
+              cleanTargetDoctor.contains(cleanDocDoctor);
         }
 
-        if (isMatch) {
-          // Percakapan lama ditemukan — pertahankan dan perbarui kelengkapan datanya
-          final updateData = <String, dynamic>{
+        if (isDoctorMatch &&
+            (pId == uid || (uid != 'guest_patient' && pId.isEmpty))) {
+          doc.reference.update({
             'patientName': resolvedPatientName,
             if (resolvedPatientPhoto != null && resolvedPatientPhoto.isNotEmpty)
               'patientPhotoUrl': resolvedPatientPhoto,
             if (resolvedDoctorPhoto != null && resolvedDoctorPhoto.isNotEmpty)
               'doctorPhotoUrl': resolvedDoctorPhoto,
-            if (doctorId != null &&
-                doctorId.isNotEmpty &&
-                docDoctorId != doctorId)
+            if (doctorId != null && doctorId.isNotEmpty && docDoctorId != doctorId)
               'doctorId': doctorId,
             if (glucoseNote != null && glucoseNote.isNotEmpty)
               'glucoseNote': glucoseNote,
             'updatedAt': FieldValue.serverTimestamp(),
-          };
-          doc.reference.update(updateData).catchError((_) {});
+          }).catchError((_) {});
           return doc.id;
         }
       }
 
-      // 1b. Fallback: jika pasien baru login dengan UID baru, cari sesi chat lama dengan nama pasien dan nama dokter yang sama
-      if (resolvedPatientName.isNotEmpty && resolvedPatientName != 'Pasien') {
-        final fallbackQuery = await _db
-            .collection('consultation_chats')
-            .where('patientName', isEqualTo: resolvedPatientName)
-            .get();
+      // Prioritas 2: Cocokkan berdasarkan nama pasien dan dokter
+      for (final doc in allChatsSnap.docs) {
+        final data = doc.data();
+        final docPatientName =
+            (data['patientName']?.toString() ?? '').toLowerCase().trim();
+        final pTargetLower = resolvedPatientName.toLowerCase().trim();
+        final docDoctorName =
+            data['doctorName']?.toString().toLowerCase().trim() ?? '';
+        final cleanDocDoctor =
+            docDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
 
-        for (final doc in fallbackQuery.docs) {
-          final data = doc.data();
-          final docDoctorName =
-              data['doctorName']?.toString().toLowerCase().trim() ?? '';
-          final cleanDocDoctor =
-              docDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+        final isDoctorMatch = cleanDocDoctor.contains(cleanTargetDoctor) ||
+            cleanTargetDoctor.contains(cleanDocDoctor);
+        final isPatientMatch = pTargetLower.isNotEmpty &&
+            pTargetLower != 'pasien' &&
+            (docPatientName.contains(pTargetLower) ||
+                pTargetLower.contains(docPatientName));
 
-          if (cleanDocDoctor.isNotEmpty &&
-              (cleanDocDoctor.contains(cleanTargetDoctor) ||
-                  cleanTargetDoctor.contains(cleanDocDoctor))) {
-            // Tautkan sesi chat lama ini ke UID pasien yang sekarang login
-            doc.reference.update({
-              'patientId': uid,
-              if (resolvedPatientPhoto != null && resolvedPatientPhoto.isNotEmpty)
-                'patientPhotoUrl': resolvedPatientPhoto,
-              if (resolvedDoctorPhoto != null && resolvedDoctorPhoto.isNotEmpty)
-                'doctorPhotoUrl': resolvedDoctorPhoto,
-              if (doctorId != null && doctorId.isNotEmpty)
-                'doctorId': doctorId,
-              'updatedAt': FieldValue.serverTimestamp(),
-            }).catchError((_) {});
-            return doc.id;
-          }
+        if (isDoctorMatch && isPatientMatch) {
+          // Tautkan sesi chat lama ini ke UID pasien yang sekarang login
+          doc.reference.update({
+            'patientId': uid,
+            if (resolvedPatientPhoto != null && resolvedPatientPhoto.isNotEmpty)
+              'patientPhotoUrl': resolvedPatientPhoto,
+            if (resolvedDoctorPhoto != null && resolvedDoctorPhoto.isNotEmpty)
+              'doctorPhotoUrl': resolvedDoctorPhoto,
+            if (doctorId != null && doctorId.isNotEmpty)
+              'doctorId': doctorId,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }).catchError((_) {});
+          return doc.id;
         }
+      }
+
+      // Prioritas 3: Cari chat apapun dengan dokter ini agar riwayat chat tidak hilang
+      for (final doc in allChatsSnap.docs) {
+        final data = doc.data();
+        final docDoctorName =
+            data['doctorName']?.toString().toLowerCase().trim() ?? '';
+        final cleanDocDoctor =
+            docDoctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+        final isDoctorMatch = cleanDocDoctor.contains(cleanTargetDoctor) ||
+            cleanTargetDoctor.contains(cleanDocDoctor);
+
+        if (isDoctorMatch) {
+          doc.reference.update({
+            'patientId': uid,
+            if (resolvedPatientName.isNotEmpty && resolvedPatientName != 'Pasien')
+              'patientName': resolvedPatientName,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }).catchError((_) {});
+          return doc.id;
+        }
+      }
+
+      // Prioritas 4: Jika ada sesi chat sebelumnya di database, pakai yang ada agar pesan tidak hilang
+      if (allChatsSnap.docs.isNotEmpty) {
+        final existingDoc = allChatsSnap.docs.first;
+        final data = existingDoc.data();
+        final expTs = data['expiresAt'] as Timestamp?;
+        final createdTs = data['createdAt'] as Timestamp?;
+        final status = data['status']?.toString() ?? 'active';
+        final cDt = createdTs?.toDate() ?? DateTime.now();
+        final eDt = expTs?.toDate() ?? cDt.add(const Duration(minutes: 25));
+        final isPast = DateTime.now().isAfter(eDt);
+
+        final updateMap = <String, dynamic>{
+          'patientId': uid,
+          if (resolvedPatientName.isNotEmpty && resolvedPatientName != 'Pasien')
+            'patientName': resolvedPatientName,
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+        if (expTs == null) {
+          updateMap['createdAt'] = Timestamp.fromDate(cDt);
+          updateMap['expiresAt'] = Timestamp.fromDate(eDt);
+        }
+        if (isPast && status != 'ended') {
+          updateMap['status'] = 'ended';
+        }
+
+        existingDoc.reference.update(updateMap).catchError((_) {});
+        return existingDoc.id;
       }
     } catch (e) {
       debugPrint('⚠️ [ChatService] Query chat eksisting: $e');
     }
 
-    // 2. Buat sesi chat baru jika benar-benar belum pernah ada
+    // 2. Buat sesi chat baru jika benar-benar belum pernah ada data apapun
     final docRef = _db.collection('consultation_chats').doc();
+    final now = DateTime.now();
+    final expiresAt = now.add(const Duration(minutes: 25));
+
     await docRef.set({
       'patientId': uid,
       'patientName': resolvedPatientName,
@@ -325,17 +413,54 @@ class ChatService {
       'doctorName': doctorName,
       'doctorSpecialty': doctorSpecialty ?? 'Spesialis Penyakit Dalam',
       'doctorPhotoUrl': resolvedDoctorPhoto ?? '',
-      'lastMessage': '',
+      'lastMessage': 'Halo! Konsultasi dokter aktif.',
       'lastMessageTime': FieldValue.serverTimestamp(),
-      'lastSenderRole': '',
+      'lastSenderRole': 'doctor',
       'unreadCountForDoctor': 0,
       'unreadCountForPatient': 0,
       'glucoseNote': glucoseNote ?? '',
-      'createdAt': FieldValue.serverTimestamp(),
+      'status': 'active',
+      'createdAt': Timestamp.fromDate(now),
+      'expiresAt': Timestamp.fromDate(expiresAt),
+      'durationMinutes': 25,
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
     return docRef.id;
+  }
+
+  /// Mengakhiri sesi konsultasi (misal waktu 25 menit telah habis)
+  Future<void> endConsultation(String chatId, {String? reason}) async {
+    try {
+      final docRef = _db.collection('consultation_chats').doc(chatId);
+      final docSnap = await docRef.get();
+      if (!docSnap.exists) return;
+      final data = docSnap.data() ?? {};
+      if (data['status'] == 'ended') return;
+
+      await docRef.update({
+        'status': 'ended',
+        'endedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastMessage': 'Sesi konsultasi 25 menit telah berakhir.',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastSenderRole': 'system',
+      });
+
+      // Tambahkan pesan sistem ke riwayat percakapan
+      await docRef.collection('messages').add({
+        'text': reason ??
+            'Waktu sesi konsultasi (25 menit) telah berakhir. Ruang konsultasi telah ditutup.',
+        'senderRole': 'system',
+        'senderName': 'Sistem D-Care',
+        'senderId': 'system',
+        'timestamp': FieldValue.serverTimestamp(),
+        'isRead': true,
+        'type': 'system',
+      });
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] endConsultation error: $e');
+    }
   }
 
   /// Stream pesan dalam satu sesi chat
@@ -364,6 +489,31 @@ class ChatService {
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty && attachmentData == null) return;
+
+    // Validasi apakah sesi konsultasi sudah berakhir
+    try {
+      final chatSnap =
+          await _db.collection('consultation_chats').doc(chatId).get();
+      if (chatSnap.exists) {
+        final data = chatSnap.data() ?? {};
+        final status = data['status']?.toString() ?? 'active';
+        final expTs = data['expiresAt'] as Timestamp?;
+        final isExpired =
+            expTs != null && DateTime.now().isAfter(expTs.toDate());
+
+        if (status == 'ended' || isExpired) {
+          if (status != 'ended') {
+            await endConsultation(chatId);
+          }
+          throw Exception(
+              'Sesi konsultasi telah berakhir. Anda tidak dapat mengirim pesan lagi.');
+        }
+      }
+    } catch (e) {
+      if (e.toString().contains('tidak dapat mengirim pesan')) {
+        rethrow;
+      }
+    }
 
     final actualSenderId = senderId ?? currentUid ?? '';
 
@@ -404,7 +554,7 @@ class ChatService {
 
     if (senderRole == 'pasien') {
       updateData['unreadCountForDoctor'] = FieldValue.increment(1);
-    } else {
+    } else if (senderRole == 'doctor') {
       updateData['unreadCountForPatient'] = FieldValue.increment(1);
     }
 
@@ -412,6 +562,33 @@ class ChatService {
         .collection('consultation_chats')
         .doc(chatId)
         .update(updateData);
+  }
+
+  /// Hapus satu pesan hanya untuk pengguna saat ini (dokter atau pasien)
+  Future<void> deleteMessageForMe({
+    required String chatId,
+    required String messageId,
+    required String userIdentifier,
+  }) async {
+    try {
+      final chatRef = _db.collection('consultation_chats').doc(chatId);
+      final msgRef = chatRef.collection('messages').doc(messageId);
+
+      await msgRef.update({
+        'deletedFor': FieldValue.arrayUnion([userIdentifier]),
+      });
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] Gagal menghapus pesan untuk saya: $e');
+      rethrow;
+    }
+  }
+
+  /// Hapus satu pesan untuk semua orang (real-time untuk pasien dan dokter)
+  Future<void> deleteMessageForEveryone({
+    required String chatId,
+    required String messageId,
+  }) async {
+    return deleteMessage(chatId: chatId, messageId: messageId);
   }
 
   /// Hapus satu pesan dalam sesi chat (terhapus real-time untuk pasien dan dokter)

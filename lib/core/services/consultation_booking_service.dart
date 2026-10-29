@@ -30,6 +30,39 @@ class ConsultationBookingService {
     });
   }
 
+  /// Stream real-time seluruh booking aktif untuk dokter ini (semua tanggal)
+  Stream<List<ConsultationBookingModel>> streamAllDoctorBookings({
+    required String doctorId,
+    String? doctorName,
+  }) {
+    return _db
+        .collection('consultation_bookings')
+        .where('status', isEqualTo: 'booked')
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs.map((doc) {
+        return ConsultationBookingModel.fromFirestore(doc);
+      }).where((b) {
+        if (doctorId.isNotEmpty && b.doctorId == doctorId) return true;
+        if (doctorName != null && doctorName.isNotEmpty) {
+          final cleanTarget =
+              doctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+          final cleanDoc =
+              b.doctorName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+          if (cleanDoc.isNotEmpty && cleanTarget.isNotEmpty) {
+            return cleanDoc.contains(cleanTarget) ||
+                cleanTarget.contains(cleanDoc);
+          }
+        }
+        return false;
+      }).toList();
+
+      list.sort((a, b) =>
+          '${a.dateKey} ${a.timeSlot}'.compareTo('${b.dateKey} ${b.timeSlot}'));
+      return list;
+    });
+  }
+
   /// Stream single booking by id secara real-time
   Stream<ConsultationBookingModel?> streamBookingById(String bookingId) {
     if (bookingId.isEmpty) return Stream.value(null);

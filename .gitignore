@@ -51,3 +51,10 @@ app.*.map.json
 .env
 .env.*
 !.env.example
+
+# Java heap dumps
+*.hprof
+
+# Kotlin compiler session files
+android/.kotlin/
+

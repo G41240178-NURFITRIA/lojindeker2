@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -48,6 +50,8 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
   String? _selectedSlot;
   final TextEditingController _complaintController = TextEditingController();
   bool _isSubmitting = false;
+  String? _liveSchedule;
+  StreamSubscription? _doctorScheduleSub;
 
   // Daftar default slot jam konsultasi (durasi 25 menit, jeda 5 menit, istirahat 12:00-13:00)
   static const List<String> _allSlots = [
@@ -70,30 +74,133 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
   @override
   void initState() {
     super.initState();
-    // Default ke September 2026 tanggal 24 agar langsung identik dengan gambar jika dibuka
-    // Pengguna juga bebas navigasi bulan dan tanggal manapun
+    // Inisialisasi kalender real-time sesuai tanggal saat ini (misal 22 Oktober 2026)
     final now = DateTime.now();
-    if (now.year == 2026 && now.month == 9) {
-      _displayedMonth = DateTime(2026, 9, 1);
-      _selectedDate = DateTime(2026, 9, 24);
-    } else if (now.year == 2026 && now.month < 9) {
-      _displayedMonth = DateTime(2026, 9, 1);
-      _selectedDate = DateTime(2026, 9, 24);
-    } else {
-      // Jika saat ini di September 2026 atau bulan lainnya, set default tanggal 24 September atau hari ini
-      _displayedMonth = DateTime(2026, 9, 1);
-      _selectedDate = DateTime(2026, 9, 24);
-    }
+    _displayedMonth = DateTime(now.year, now.month, 1);
+    _selectedDate = DateTime(now.year, now.month, now.day);
 
-    _selectedSlot = '09:00'; // Default terpilih sesuai referensi gambar
+    _selectedSlot = _findInitialValidSlot();
 
     _seedInitialDataIfAvailable();
+    _listenToDoctorSchedule();
+  }
+
+  void _listenToDoctorSchedule() {
+    try {
+      final docId = _effectiveDoctorId;
+      if (docId.isNotEmpty) {
+        _doctorScheduleSub = FirebaseFirestore.instance
+            .collection('doctors')
+            .doc(docId)
+            .snapshots()
+            .listen((snap) {
+          if (snap.exists && snap.data() != null) {
+            final s = snap.data()!['schedule'] as String?;
+            if (s != null && s.isNotEmpty && mounted) {
+              setState(() {
+                _liveSchedule = s;
+                if (_selectedSlot != null &&
+                    !_computedSlots.contains(_selectedSlot)) {
+                  _selectedSlot = _findInitialValidSlot();
+                }
+              });
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('ℹ️ [BookingConsultation] listen doctor schedule: $e');
+    }
   }
 
   @override
   void dispose() {
+    _doctorScheduleSub?.cancel();
     _complaintController.dispose();
     super.dispose();
+  }
+
+  /// Cek apakah dokter membuka jadwal praktik pada hari yang dipilih pada kalender
+  bool get _isDoctorPracticingOnSelectedDate {
+    final sch = _effectiveSchedule.toLowerCase();
+    final weekday = _selectedDate.weekday; // 1 = Senin, ..., 7 = Minggu
+    if (sch.contains('setiap hari')) {
+      return true;
+    }
+    if (sch.contains('senin - kamis') || sch.contains('senin – kamis')) {
+      return weekday >= DateTime.monday && weekday <= DateTime.thursday;
+    }
+    if (sch.contains('senin - sabtu') || sch.contains('senin – sabtu')) {
+      return weekday >= DateTime.monday && weekday <= DateTime.saturday;
+    }
+    if (sch.contains('senin - jumat') || sch.contains('senin – jumat')) {
+      return weekday >= DateTime.monday && weekday <= DateTime.friday;
+    }
+    return true;
+  }
+
+  /// Menghitung slot jam dinamis berdasarkan jadwal praktik dokter saat ini
+  List<String> get _computedSlots {
+    try {
+      final reg = RegExp(r'(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})');
+      final match = reg.firstMatch(_effectiveSchedule);
+      if (match != null) {
+        final startParts = match.group(1)!.split(':');
+        final endParts = match.group(2)!.split(':');
+        int startMinutes =
+            int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+        int endMinutes = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
+
+        if (endMinutes > startMinutes) {
+          final List<String> generated = [];
+          for (int m = startMinutes; m + 30 <= endMinutes; m += 30) {
+            final h = m ~/ 60;
+            final min = m % 60;
+            // Lewati istirahat 12:00 - 13:00 jika jadwal mencakup pagi s/d sore
+            if (startMinutes <= 11 * 60 && endMinutes >= 14 * 60 && (h == 12)) {
+              continue;
+            }
+            final slotStr =
+                '${h.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
+            generated.add(slotStr);
+          }
+          if (generated.isNotEmpty) {
+            return generated;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('ℹ️ [BookingConsultation] parse schedule slots error: $e');
+    }
+    return _allSlots;
+  }
+
+  /// Cek apakah slot jam tertentu sudah lewat waktu saat ini (jika hari ini dipilih)
+  bool _isSlotPast(String slot) {
+    if (!_isToday(_selectedDate)) {
+      return false; // Jika hari esok / lusa, semua sesi jam belum lewat
+    }
+    try {
+      final parts = slot.split(':');
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      final now = DateTime.now();
+      final slotTime = DateTime(now.year, now.month, now.day, hour, minute);
+      return now.isAfter(slotTime);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Cari slot jam pertama yang masih belum lewat waktu
+  String? _findInitialValidSlot() {
+    if (!_isDoctorPracticingOnSelectedDate) return null;
+    for (final slot in _computedSlots) {
+      if (!_isSlotPast(slot)) {
+        return slot;
+      }
+    }
+    return null;
   }
 
   String get _effectiveDoctorId {
@@ -138,6 +245,9 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
   }
 
   String get _effectiveSchedule {
+    if (_liveSchedule != null && _liveSchedule!.isNotEmpty) {
+      return _liveSchedule!;
+    }
     if (widget.doctor != null &&
         widget.doctor!.schedule != null &&
         widget.doctor!.schedule!.isNotEmpty) {
@@ -203,11 +313,7 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
 
   bool _isToday(DateTime d) {
     final now = DateTime.now();
-    if (now.year == d.year && now.month == d.month && now.day == d.day) {
-      return true;
-    }
-    // Tanggal 24 September 2026 juga dihitung sebagai "Hari ini" sesuai UI gambar
-    return d.year == 2026 && d.month == 9 && d.day == 24;
+    return now.year == d.year && now.month == d.month && now.day == d.day;
   }
 
   String _formatDateHeaderLabel(DateTime d) {
@@ -219,22 +325,22 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
     return '$dayStr, ${d.day} $monthStr';
   }
 
-  /// Menentukan apakah tanggal dapat dipilih
+  /// Menentukan apakah tanggal dapat dipilih (tanggal yang sudah terlewati tidak bisa dipilih)
   bool _isDateSelectable(DateTime d) {
-    // Di September 2026, tanggal 1-23 nonaktif, 24-30 aktif
-    if (d.year == 2026 && d.month == 9) {
-      return d.day >= 24;
-    }
-    final cleanToday = DateTime(
-      DateTime.now().year,
-      DateTime.now().month,
-      DateTime.now().day,
-    );
+    final now = DateTime.now();
+    final cleanToday = DateTime(now.year, now.month, now.day);
     final cleanDate = DateTime(d.year, d.month, d.day);
     return !cleanDate.isBefore(cleanToday);
   }
 
+  bool get _canGoPreviousMonth {
+    final now = DateTime.now();
+    final currentMonthStart = DateTime(now.year, now.month, 1);
+    return _displayedMonth.isAfter(currentMonthStart);
+  }
+
   void _previousMonth() {
+    if (!_canGoPreviousMonth) return;
     setState(() {
       _displayedMonth = DateTime(
         _displayedMonth.year,
@@ -543,20 +649,20 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               InkWell(
-                onTap: _previousMonth,
+                onTap: _canGoPreviousMonth ? _previousMonth : null,
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   width: 32,
                   height: 32,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFDECEF),
+                  decoration: BoxDecoration(
+                    color: _canGoPreviousMonth ? const Color(0xFFFDECEF) : const Color(0xFFF5F5F5),
                     shape: BoxShape.circle,
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
                       Icons.chevron_left_rounded,
                       size: 20,
-                      color: _headerPink,
+                      color: _canGoPreviousMonth ? _headerPink : const Color(0xFFC7C7C7),
                     ),
                   ),
                 ),
@@ -611,11 +717,11 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Grid Tanggal (7 Kolom)
+          // Grid Tanggal (7 Kolom, mendukung 5 atau 6 baris agar tanggal tidak terpotong)
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: 35, // 5 baris kalender
+            itemCount: ((firstWeekdayOffset + daysInMonth) > 35) ? 42 : 35,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 7,
               mainAxisSpacing: 6,
@@ -640,6 +746,10 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
                     ? () {
                         setState(() {
                           _selectedDate = cellDate;
+                          // Sesuaikan slot terpilih jika di tanggal baru slot tersebut sudah lewat
+                          if (_selectedSlot == null || _isSlotPast(_selectedSlot!)) {
+                            _selectedSlot = _findInitialValidSlot();
+                          }
                         });
                         _seedInitialDataIfAvailable();
                       }
@@ -671,9 +781,41 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
     );
   }
 
-  // ─── 4. Grid Pilihan Jam Real-Time ────────────────────────────────────
-
   Widget _buildTimeSlotsGrid(Set<String> bookedSlots) {
+    // Jika dokter tidak buka pada hari yang dipilih, tampilkan banner
+    if (!_isDoctorPracticingOnSelectedDate) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3E0),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFFB74D), width: 1),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.event_busy_rounded, color: Color(0xFFE65100), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Dokter tidak membuka praktik pada hari ini.\nJadwal: $_effectiveSchedule',
+                style: GoogleFonts.poppins(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF8D4B00),
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final slots = _computedSlots;
+    // Hitung apakah semua slot jam hari ini sudah terlewati
+    final allSlotsPast = _isToday(_selectedDate) && slots.every((s) => _isSlotPast(s));
+
     return LayoutBuilder(
       builder: (context, constraints) {
         // Grid 4 Kolom
@@ -682,23 +824,59 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
         final itemWidth = (constraints.maxWidth - (spacing * (crossAxisCount - 1))) /
             crossAxisCount;
 
-        return Wrap(
-          spacing: spacing,
-          runSpacing: 10,
-          children: _allSlots.map((slot) {
-            final isBooked = bookedSlots.contains(slot);
-            final isSelected = !isBooked && (_selectedSlot == slot);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: spacing,
+              runSpacing: 10,
+              children: slots.map((slot) {
+                final isBooked = bookedSlots.contains(slot);
+                final isPast = _isSlotPast(slot);
+                final isSelected = !isBooked && !isPast && (_selectedSlot == slot);
 
-            return SizedBox(
-              width: itemWidth,
-              height: 38,
-              child: _buildTimeSlotPill(
-                slot: slot,
-                isBooked: isBooked,
-                isSelected: isSelected,
+                return SizedBox(
+                  width: itemWidth,
+                  height: 38,
+                  child: _buildTimeSlotPill(
+                    slot: slot,
+                    isBooked: isBooked,
+                    isPast: isPast,
+                    isSelected: isSelected,
+                  ),
+                );
+              }).toList(),
+            ),
+            if (allSlotsPast) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFB74D), width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.access_time_rounded,
+                        color: Color(0xFFE65100), size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Semua sesi hari ini telah selesai. Silakan pilih tanggal berikutnya pada kalender di atas.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF8D4B00),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            );
-          }).toList(),
+            ],
+          ],
         );
       },
     );
@@ -707,6 +885,7 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
   Widget _buildTimeSlotPill({
     required String slot,
     required bool isBooked,
+    required bool isPast,
     required bool isSelected,
   }) {
     Color bg;
@@ -717,12 +896,18 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
 
     if (isBooked) {
       // Slot sudah dibooking orang lain:
-      // Tampilan persis di gambar referensi: abu-abu muda, border abu-abu, teks dicoret (strikethrough)
       bg = _bookedBg;
       border = Border.all(color: _bookedBorder, width: 1.2);
       textColor = _bookedText;
       textDecoration = TextDecoration.lineThrough;
       fontWeight = FontWeight.w600;
+    } else if (isPast) {
+      // Slot waktu sudah lewat dari jam saat ini (real-time):
+      bg = const Color(0xFFF3F3F3);
+      border = Border.all(color: const Color(0xFFE0E0E0), width: 1.0);
+      textColor = const Color(0xFFAAAAAA);
+      textDecoration = null;
+      fontWeight = FontWeight.w500;
     } else if (isSelected) {
       // Slot terpilih oleh pengguna: solid pink
       bg = _selectedSlotPink;
@@ -767,11 +952,38 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
                 ),
               );
             }
-          : () {
-              setState(() {
-                _selectedSlot = slot;
-              });
-            },
+          : isPast
+              ? () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Row(
+                        children: [
+                          const Icon(Icons.schedule_rounded,
+                              color: Colors.white, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Jam $slot sudah terlewati hari ini. Silakan pilih jam berikutnya atau tanggal lain.',
+                              style: GoogleFonts.poppins(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFF555555),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              : () {
+                  setState(() {
+                    _selectedSlot = slot;
+                  });
+                },
       borderRadius: BorderRadius.circular(10),
       child: Container(
         alignment: Alignment.center,
@@ -886,6 +1098,20 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
         SnackBar(
           content: Text(
             'Silakan pilih jam konsultasi yang masih tersedia.',
+            style: GoogleFonts.poppins(fontSize: 12.5),
+          ),
+          backgroundColor: const Color(0xFFD32F2F),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_isSlotPast(_selectedSlot!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Jam $_selectedSlot sudah terlewati hari ini. Silakan pilih jam berikutnya atau tanggal lain.',
             style: GoogleFonts.poppins(fontSize: 12.5),
           ),
           backgroundColor: const Color(0xFFD32F2F),

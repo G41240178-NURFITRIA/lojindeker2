@@ -27,6 +27,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   late final Stream<QuerySnapshot> _doctorsStream;
   final Map<String, bool> _unlockedCache = {};
   Timer? _checkUnlockTimer;
+  Timer? _scheduleTimer;
 
   // Warna sesuai tema Soft Pink
   static const Color _primaryPink = Color(0xFFF06292);
@@ -59,12 +60,17 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
         setState(() {});
       }
     });
+    // Refresh status online dokter setiap menit sesuai perubahan jam
+    _scheduleTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
     _bookingsSub?.cancel();
     _checkUnlockTimer?.cancel();
+    _scheduleTimer?.cancel();
     super.dispose();
   }
 
@@ -128,6 +134,87 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
 
       return (now.isAfter(scheduleStart) || now.isAtSameMomentAs(scheduleStart)) &&
           now.isBefore(sessionEnd);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ─── Cek online berdasarkan jadwal ──────────────────────────────
+  /// Daftar nama hari dalam bahasa Indonesia → weekday index (1=Senin … 7=Minggu)
+  static const Map<String, int> _hariIndex = {
+    'senin': 1, 'selasa': 2, 'rabu': 3, 'kamis': 4,
+    'jumat': 5, "jum'at": 5,
+    'sabtu': 6, 'minggu': 7,
+  };
+
+  /// Kembalikan true jika waktu sekarang berada dalam rentang jadwal dokter.
+  /// Format jadwal yang didukung: "Senin – Jumat (09:00 – 17:00)"
+  /// atau variasi dengan "-" sebagai pemisah hari/jam.
+  bool _isDoctorOnlineBySchedule(AppUser doctor) {
+    // Kalau admin sengaja nonaktifkan dokter, langsung offline
+    if (!doctor.isActive) return false;
+
+    final raw = (doctor.schedule ?? '').trim();
+    if (raw.isEmpty) return false;
+
+    try {
+      final now = DateTime.now();
+
+      // ── 1. Pisahkan bagian hari dan bagian jam ──────────────────
+      // Cari pola tanda kurung: "(...)"
+      final parenMatch = RegExp(r'\(([^)]+)\)').firstMatch(raw);
+      if (parenMatch == null) return false;
+
+      final daysPart = raw.substring(0, parenMatch.start).trim();
+      final timePart = parenMatch.group(1)!.trim(); // "09:00 – 17:00"
+
+      // ── 2. Parse jam mulai & selesai ───────────────────────────
+      // Normalisasi pemisah (–, -, ~, s/d) menjadi satu
+      final timeSep = RegExp(r'[–\-~]|s\/d');
+      final timeParts = timePart.split(timeSep).map((s) => s.trim()).toList();
+      if (timeParts.length < 2) return false;
+
+      // Helper inline: ambil jam dari string "HH:MM"
+      int parseH(String t) => int.tryParse(t.split(':')[0]) ?? -1;
+      int parseM(String t) {
+        final p = t.split(':');
+        return p.length > 1 ? (int.tryParse(p[1]) ?? 0) : 0;
+      }
+
+      final startH = parseH(timeParts[0]);
+      final startM = parseM(timeParts[0]);
+      final endH   = parseH(timeParts[1]);
+      final endM   = parseM(timeParts[1]);
+      if (startH < 0 || endH < 0) return false;
+
+      final startMinutes = startH * 60 + startM;
+      final endMinutes   = endH * 60 + endM;
+      final nowMinutes   = now.hour * 60 + now.minute;
+
+      if (nowMinutes < startMinutes || nowMinutes >= endMinutes) return false;
+
+      // ── 3. Parse rentang hari ──────────────────────────────────
+      // Normalisasi pemisah hari (–, -)  
+      final daySep = RegExp(r'[–\-]');
+      final dayParts = daysPart.split(daySep).map((s) => s.trim().toLowerCase()).toList();
+
+      if (dayParts.length == 1) {
+        // Hari tunggal, mis. "Senin"
+        final idx = _hariIndex[dayParts[0]];
+        return idx != null && now.weekday == idx;
+      }
+
+      // Rentang hari, mis. "Senin – Jumat"
+      final startDay = _hariIndex[dayParts[0]];
+      final endDay   = _hariIndex[dayParts[1]];
+      if (startDay == null || endDay == null) return false;
+
+      if (startDay <= endDay) {
+        return now.weekday >= startDay && now.weekday <= endDay;
+      } else {
+        // Rentang melewati akhir pekan, mis. "Sabtu – Rabu"
+        return now.weekday >= startDay || now.weekday <= endDay;
+      }
     } catch (_) {
       return false;
     }
@@ -241,7 +328,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   }
 
   Widget _buildDoctorCard(BuildContext context, AppUser doctor) {
-    final isOnline = doctor.isActive;
+    final isOnline = _isDoctorOnlineBySchedule(doctor);
     final specialty = (doctor.specialization != null && doctor.specialization!.isNotEmpty)
         ? doctor.specialization!
         : 'Spesialis Penyakit Dalam';
@@ -456,7 +543,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Nonaktif',
+                      'Offline',
                       style: GoogleFonts.poppins(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w500,
