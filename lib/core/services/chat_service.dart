@@ -220,6 +220,7 @@ class ChatService {
     String? glucoseNote,
     String? patientName,
     String? patientPhotoUrl,
+    bool forceActive = false,
   }) async {
     final uid = currentUid ?? _auth.currentUser?.uid ?? 'guest_patient';
 
@@ -309,6 +310,9 @@ class ChatService {
               'glucoseNote': glucoseNote,
             'updatedAt': FieldValue.serverTimestamp(),
           }).catchError((_) {});
+          if (forceActive) {
+            reactivateChat(doc.id);
+          }
           return doc.id;
         }
       }
@@ -343,6 +347,9 @@ class ChatService {
               'doctorId': doctorId,
             'updatedAt': FieldValue.serverTimestamp(),
           }).catchError((_) {});
+          if (forceActive) {
+            reactivateChat(doc.id);
+          }
           return doc.id;
         }
       }
@@ -364,6 +371,9 @@ class ChatService {
               'patientName': resolvedPatientName,
             'updatedAt': FieldValue.serverTimestamp(),
           }).catchError((_) {});
+          if (forceActive) {
+            reactivateChat(doc.id);
+          }
           return doc.id;
         }
       }
@@ -389,11 +399,20 @@ class ChatService {
           updateMap['createdAt'] = Timestamp.fromDate(cDt);
           updateMap['expiresAt'] = Timestamp.fromDate(eDt);
         }
-        if (isPast && status != 'ended') {
+        if (forceActive) {
+          final now = DateTime.now();
+          updateMap['status'] = 'active';
+          updateMap['createdAt'] = Timestamp.fromDate(now);
+          updateMap['expiresAt'] = Timestamp.fromDate(now.add(const Duration(minutes: 25)));
+          updateMap['durationMinutes'] = 25;
+        } else if (isPast && status != 'ended') {
           updateMap['status'] = 'ended';
         }
 
         existingDoc.reference.update(updateMap).catchError((_) {});
+        if (forceActive) {
+          reactivateChat(existingDoc.id);
+        }
         return existingDoc.id;
       }
     } catch (e) {
@@ -427,6 +446,28 @@ class ChatService {
     });
 
     return docRef.id;
+  }
+
+  /// Mengaktifkan kembali sesi konsultasi (mereset durasi 25 menit baru)
+  Future<void> reactivateChat(String chatId, {int durationMinutes = 25}) async {
+    try {
+      final docRef = _db.collection('consultation_chats').doc(chatId);
+      final now = DateTime.now();
+      final expiresAt = now.add(Duration(minutes: durationMinutes));
+
+      await docRef.update({
+        'status': 'active',
+        'createdAt': Timestamp.fromDate(now),
+        'expiresAt': Timestamp.fromDate(expiresAt),
+        'durationMinutes': durationMinutes,
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastMessage': 'Sesi konsultasi 25 menit aktif dimulai.',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastSenderRole': 'system',
+      });
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] reactivateChat error: $e');
+    }
   }
 
   /// Dapatkan atau buat sesi chat untuk dokter dengan pasien
@@ -578,17 +619,11 @@ class ChatService {
             expTs != null && DateTime.now().isAfter(expTs.toDate());
 
         if (status == 'ended' || isExpired) {
-          if (status != 'ended') {
-            await endConsultation(chatId);
-          }
-          throw Exception(
-              'Sesi konsultasi telah berakhir. Anda tidak dapat mengirim pesan lagi.');
+          await reactivateChat(chatId);
         }
       }
     } catch (e) {
-      if (e.toString().contains('tidak dapat mengirim pesan')) {
-        rethrow;
-      }
+      debugPrint('⚠️ [ChatService] Validasi chat sebelum kirim: $e');
     }
 
     final actualSenderId = senderId ?? currentUid ?? '';

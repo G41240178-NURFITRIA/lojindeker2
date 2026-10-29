@@ -197,6 +197,33 @@ class _PatientScheduleScreenState extends State<PatientScheduleScreen> {
     }
   }
 
+  /// Mendapatkan durasi sisa waktu hingga jadwal tiba
+  Duration _getRemainingDuration() {
+    try {
+      final parts = widget.timeSlot.split(':');
+      final hour = int.tryParse(parts[0]) ?? 9;
+      final minute = int.tryParse(
+            parts.length > 1
+                ? parts[1].replaceAll(RegExp(r'[^0-9]'), '')
+                : '0',
+          ) ??
+          0;
+
+      final scheduleStart = DateTime(
+        widget.selectedDate.year,
+        widget.selectedDate.month,
+        widget.selectedDate.day,
+        hour,
+        minute,
+      );
+
+      final diff = scheduleStart.difference(_currentTime);
+      return diff.isNegative ? Duration.zero : diff;
+    } catch (_) {
+      return Duration.zero;
+    }
+  }
+
   void _handleOpenConsultation() {
     final active = _isScheduleActive();
 
@@ -250,7 +277,7 @@ class _PatientScheduleScreenState extends State<PatientScheduleScreen> {
       return;
     }
 
-    // Jika sudah masuk jadwal, buka ruang chat konsultasi real-time!
+    // Jika sudah masuk jadwal, buka ruang chat konsultasi real-time dengan sesi aktif 25 menit!
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -259,6 +286,7 @@ class _PatientScheduleScreenState extends State<PatientScheduleScreen> {
           specialty: widget.specialty,
           initials: widget.initials,
           doctorId: widget.doctorId,
+          forceActiveSession: true,
         ),
       ),
     );
@@ -592,7 +620,12 @@ class _PatientScheduleScreenState extends State<PatientScheduleScreen> {
                           ],
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
+
+                        // Section Hitung Mundur Real-time menuju jadwal booking
+                        _buildCountdownWidget(isUnlocked),
+
+                        const SizedBox(height: 18),
 
                         // Baris 4: Tombol Mulai Konsultasi (Terkunci vs Aktif Real-time)
                         _buildConsultationActionButton(isUnlocked),
@@ -707,6 +740,220 @@ class _PatientScheduleScreenState extends State<PatientScheduleScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Widget Hitung Mundur Real-time yang Berjalan Menuju Waktu Booking
+  Widget _buildCountdownWidget(bool isUnlocked) {
+    if (isUnlocked) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F5E9),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFA5D6A7), width: 1.2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: Color(0xFF00875A),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Jadwal Konsultasi Telah Tiba!',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF1B5E20),
+                    ),
+                  ),
+                  Text(
+                    'Ruang chat konsultasi dokter telah terbuka & siap digunakan.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: const Color(0xFF2E7D32),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final remaining = _getRemainingDuration();
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes % 60;
+    final seconds = remaining.inSeconds % 60;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4F7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.timer_outlined, size: 16, color: Color(0xFFD81B60)),
+              const SizedBox(width: 6),
+              Text(
+                'Hitung Mundur Waktu Konsultasi',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF880E4F),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildTimeBox(hours.toString().padLeft(2, '0'), 'JAM'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  ':',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFE5406C),
+                  ),
+                ),
+              ),
+              _buildTimeBox(minutes.toString().padLeft(2, '0'), 'MENIT'),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  ':',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFE5406C),
+                  ),
+                ),
+              ),
+              _buildTimeBox(seconds.toString().padLeft(2, '0'), 'DETIK'),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'Tombol aktif otomatis saat jam booking tiba',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    color: const Color(0xFF880E4F),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _simulateScheduleArrived = true;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Jadwal konsultasi dibuka! Silakan klik Mulai Konsultasi.',
+                        style: GoogleFonts.poppins(),
+                      ),
+                      backgroundColor: const Color(0xFF00875A),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5406C),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.flash_on_rounded, size: 12, color: Colors.white),
+                      const SizedBox(width: 2),
+                      Text(
+                        'Uji Buka',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeBox(String value, String label) {
+    return Column(
+      children: [
+        Container(
+          width: 48,
+          height: 38,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFF8BBD0), width: 1),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F000000),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFFD81B60),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFFA69399),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -58,6 +58,7 @@ class LiveChatScreen extends StatefulWidget {
   final String specialty;
   final String initials;
   final String? doctorId;
+  final bool forceActiveSession;
 
   const LiveChatScreen({
     super.key,
@@ -65,6 +66,7 @@ class LiveChatScreen extends StatefulWidget {
     this.specialty = 'Spesialis Penyakit Dalam',
     this.initials = 'DK',
     this.doctorId,
+    this.forceActiveSession = false,
   });
 
   @override
@@ -176,6 +178,40 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     });
   }
 
+  Future<void> _reactivateSession() async {
+    setState(() {
+      _isConsultationEnded = false;
+      _hasShownEndedDialog = false;
+      _remainingDuration = const Duration(minutes: 25);
+      _expiresAt = DateTime.now().add(const Duration(minutes: 25));
+    });
+    _startCountdownTimer();
+    if (_chatId != null && _chatId!.isNotEmpty) {
+      await ChatService.instance.reactivateChat(_chatId!, durationMinutes: 25);
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Ruang chat konsultasi berhasil dibuka! Sesi 25 menit aktif.',
+                style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF00875A),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<void> _initChat() async {
     try {
       final glucose = PatientActivityService.instance.latestRiskNotifier.value?.glucoseLevel;
@@ -184,9 +220,18 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         doctorId: widget.doctorId,
         doctorSpecialty: widget.specialty,
         glucoseNote: glucose,
+        forceActive: widget.forceActiveSession,
       );
 
       if (!mounted) return;
+
+      if (widget.forceActiveSession) {
+        _hasShownEndedDialog = true;
+        _isConsultationEnded = false;
+        _remainingDuration = const Duration(minutes: 25);
+        _expiresAt = DateTime.now().add(const Duration(minutes: 25));
+        ChatService.instance.reactivateChat(chatId);
+      }
 
       setState(() {
         _chatId = chatId;
@@ -243,6 +288,11 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             _expiresAt = expDt;
             final isTimeExpired = DateTime.now().isAfter(expDt);
             final ended = (status == 'ended' || isTimeExpired);
+
+            if (widget.forceActiveSession && ended) {
+              ChatService.instance.reactivateChat(chatId);
+              return;
+            }
 
             if (ended != _isConsultationEnded) {
               setState(() {
@@ -340,7 +390,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Durasi konsultasi selama 25 menit bersama ${widget.doctorName} telah selesai. Ruang percakapan telah ditutup secara otomatis.\n\nAnda tetap dapat melihat seluruh riwayat percakapan ini.',
+                'Durasi konsultasi selama 25 menit bersama ${widget.doctorName} telah selesai. Anda dapat membuka kembali ruang percakapan untuk memulai sesi baru 25 menit atau sekadar melihat riwayat.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   fontSize: 12.5,
@@ -351,22 +401,44 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF06292),
+                    backgroundColor: const Color(0xFFE5406C),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    elevation: 0,
+                    elevation: 1,
+                  ),
+                  icon: const Icon(Icons.lock_open_rounded, size: 18),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _reactivateSession();
+                  },
+                  label: Text(
+                    'Buka Room Chat (Mulai Sesi 25 Menit)',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF757575),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   onPressed: () => Navigator.pop(ctx),
                   child: Text(
-                    'Mengerti',
+                    'Tutup (Hanya Lihat Riwayat)',
                     style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12.5,
                     ),
                   ),
                 ),
@@ -413,8 +485,13 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Sesi konsultasi 25 menit telah berakhir. Anda tidak dapat mengirim pesan lagi.',
+            'Sesi konsultasi 25 menit telah berakhir.',
             style: GoogleFonts.poppins(),
+          ),
+          action: SnackBarAction(
+            label: 'Buka Chat',
+            textColor: const Color(0xFFFFD54F),
+            onPressed: _reactivateSession,
           ),
           backgroundColor: const Color(0xFFD81B60),
         ),
@@ -1436,15 +1513,55 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
           ],
         ),
         actions: [
+          if (_isConsultationEnded)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE5406C),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: _reactivateSession,
+                icon: const Icon(Icons.lock_open_rounded, size: 14),
+                label: Text(
+                  'Buka Chat',
+                  style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF1E1E1E)),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             onSelected: (val) {
               if (val == 'clear') {
                 _confirmClearAllMessages();
+              } else if (val == 'reopen') {
+                _reactivateSession();
               }
             },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'reopen',
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_open_rounded, color: Color(0xFFE5406C), size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Buka Sesi Chat (25 Menit)',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFFE5406C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'clear',
                 child: Row(
@@ -1593,7 +1710,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     if (_isConsultationEnded) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: const BoxDecoration(
           color: Color(0xFFFCE4EC),
           border: Border(bottom: BorderSide(color: Color(0xFFF8BBD0), width: 1)),
@@ -1603,12 +1720,42 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
           children: [
             const Icon(Icons.timer_off_rounded, size: 16, color: Color(0xFFD81B60)),
             const SizedBox(width: 8),
-            Text(
-              'Sesi Konsultasi Berakhir (Batas 25 Menit)',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF880E4F),
+            Flexible(
+              child: Text(
+                'Sesi Berakhir (Batas 25 Menit)',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF880E4F),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 10),
+            InkWell(
+              onTap: _reactivateSession,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5406C),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.lock_open_rounded, size: 12, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Buka Chat',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1661,44 +1808,73 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         border: Border(top: BorderSide(color: _borderSoft, width: 1)),
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFCE4EC),
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFF48FB1)),
-              ),
-              child: const Icon(
-                Icons.lock_rounded,
-                color: Color(0xFFD81B60),
-                size: 20,
-              ),
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFCE4EC),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFF48FB1)),
+                  ),
+                  child: const Icon(
+                    Icons.lock_rounded,
+                    color: Color(0xFFD81B60),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Sesi Konsultasi Telah Selesai',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF880E4F),
+                        ),
+                      ),
+                      Text(
+                        'Waktu konsultasi 25 menit telah habis. Klik tombol di bawah untuk membuka ruang chat baru.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          color: const Color(0xFFAD1457),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Sesi Konsultasi Telah Selesai',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF880E4F),
-                    ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE5406C),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  Text(
-                    'Waktu konsultasi 25 menit telah habis. Anda tidak dapat mengirim pesan lagi pada sesi ini.',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11.5,
-                      color: const Color(0xFFAD1457),
-                    ),
+                  elevation: 2,
+                ),
+                onPressed: _reactivateSession,
+                icon: const Icon(Icons.lock_open_rounded, size: 18),
+                label: Text(
+                  'Buka Room Chat (Mulai Sesi 25 Menit)',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
+                ),
               ),
             ),
           ],
