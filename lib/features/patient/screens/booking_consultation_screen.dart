@@ -81,7 +81,8 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
 
     _selectedSlot = _findInitialValidSlot();
 
-    _seedInitialDataIfAvailable();
+    // Bersihkan data dummy masa lalu di database jika ada
+    ConsultationBookingService.instance.cleanupLegacyDummyBookings();
     _listenToDoctorSchedule();
   }
 
@@ -178,6 +179,7 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
 
   /// Cari slot jam pertama yang masih belum lewat waktu
   String? _findInitialValidSlot() {
+    if (!_isDoctorPracticingOnSelectedDate) return null;
     for (final slot in _computedSlots) {
       if (!_isSlotPast(slot)) {
         return slot;
@@ -251,18 +253,6 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
     return '$y-$m-$day';
   }
 
-  /// Seed data booking awal (slot 10:30 & 14:00 terisi) untuk tanggal aktif jika kosong
-  Future<void> _seedInitialDataIfAvailable() async {
-    final dateKey = _formatDateKey(_selectedDate);
-    final dateText = _formatFullIndonesianDate(_selectedDate);
-    await ConsultationBookingService.instance.seedInitialBookingsIfEmpty(
-      doctorId: _effectiveDoctorId,
-      doctorName: _effectiveDoctorName,
-      doctorSpecialty: _effectiveSpecialty,
-      dateKey: dateKey,
-      dateText: dateText,
-    );
-  }
 
   // ─── Format Tanggal Bahasa Indonesia ───────────────────────────────────
 
@@ -738,7 +728,6 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
                           _selectedSlot = _findInitialValidSlot() ??
                               (_computedSlots.isNotEmpty ? _computedSlots.first : null);
                         });
-                        _seedInitialDataIfAvailable();
                       }
                     : null,
                 borderRadius: BorderRadius.circular(10),

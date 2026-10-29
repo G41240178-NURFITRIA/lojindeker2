@@ -16,7 +16,7 @@ class ConsultationBookingService {
     required String doctorId,
     required String dateKey,
   }) {
-    // Normalisasi query
+    // Normalisasi query data riil dari Firestore
     return _db
         .collection('consultation_bookings')
         .where('doctorId', isEqualTo: doctorId)
@@ -24,9 +24,12 @@ class ConsultationBookingService {
         .where('status', isEqualTo: 'booked')
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return ConsultationBookingModel.fromFirestore(doc);
-      }).toList();
+      return snapshot.docs
+          .map((doc) => ConsultationBookingModel.fromFirestore(doc))
+          .where((b) =>
+              !b.patientId.startsWith('other_patient_') &&
+              b.patientName != 'Pasien Terdaftar')
+          .toList();
     });
   }
 
@@ -130,10 +133,14 @@ class ConsultationBookingService {
         .where('dateKey', isEqualTo: dateKey)
         .where('timeSlot', isEqualTo: timeSlot)
         .where('status', isEqualTo: 'booked')
-        .limit(1)
         .get();
 
-    return query.docs.isNotEmpty;
+    return query.docs.any((doc) {
+      final data = doc.data();
+      final pid = data['patientId']?.toString() ?? '';
+      final pname = data['patientName']?.toString() ?? '';
+      return !pid.startsWith('other_patient_') && pname != 'Pasien Terdaftar';
+    });
   }
 
   /// Membuat booking baru dengan proteksi atomic real-time
@@ -229,8 +236,29 @@ class ConsultationBookingService {
     }
   }
 
-  /// Seed slot demo awal (seperti pada gambar: 10:30 & 14:00 sudah dibooking orang lain)
-  /// jika tanggal tersebut belum memiliki data booking sama sekali
+  /// Hapus booking dummy lama jika ada di Firestore
+  Future<void> cleanupLegacyDummyBookings() async {
+    try {
+      final snap1 = await _db
+          .collection('consultation_bookings')
+          .where('patientId', isEqualTo: 'other_patient_1')
+          .get();
+      for (final doc in snap1.docs) {
+        await doc.reference.delete();
+      }
+      final snap2 = await _db
+          .collection('consultation_bookings')
+          .where('patientId', isEqualTo: 'other_patient_2')
+          .get();
+      for (final doc in snap2.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      debugPrint('ℹ️ [ConsultationBookingService] cleanupLegacyDummyBookings error: $e');
+    }
+  }
+
+  /// Dinonaktifkan: Hanya gunakan data booking real-time yang sebenarnya dilakukan oleh pasien
   Future<void> seedInitialBookingsIfEmpty({
     required String doctorId,
     required String doctorName,
@@ -238,58 +266,6 @@ class ConsultationBookingService {
     required String dateKey,
     required String dateText,
   }) async {
-    try {
-      final existing = await _db
-          .collection('consultation_bookings')
-          .where('doctorId', isEqualTo: doctorId)
-          .where('dateKey', isEqualTo: dateKey)
-          .limit(1)
-          .get();
-
-      if (existing.docs.isEmpty) {
-        // Buat 2 slot terisi seperti di gambar contoh (10:30 dan 14:00)
-        final batch = _db.batch();
-
-        final ref1 = _db.collection('consultation_bookings').doc();
-        batch.set(ref1, {
-          'id': ref1.id,
-          'doctorId': doctorId,
-          'doctorName': doctorName,
-          'doctorSpecialty': doctorSpecialty,
-          'patientId': 'other_patient_1',
-          'patientName': 'Pasien Terdaftar',
-          'date': dateText,
-          'dateKey': dateKey,
-          'timeSlot': '10:30',
-          'complaint': 'Pemeriksaan rutin berkala',
-          'status': 'booked',
-          'isDoctorRead': true,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        final ref2 = _db.collection('consultation_bookings').doc();
-        batch.set(ref2, {
-          'id': ref2.id,
-          'doctorId': doctorId,
-          'doctorName': doctorName,
-          'doctorSpecialty': doctorSpecialty,
-          'patientId': 'other_patient_2',
-          'patientName': 'Pasien Terdaftar',
-          'date': dateText,
-          'dateKey': dateKey,
-          'timeSlot': '14:00',
-          'complaint': 'Konsultasi lanjutan kadar gula darah',
-          'status': 'booked',
-          'isDoctorRead': true,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        await batch.commit();
-        debugPrint(
-            '✅ [ConsultationBookingService] Seed awal slot 10:30 & 14:00 berhasil untuk $dateKey');
-      }
-    } catch (e) {
-      debugPrint('ℹ️ [ConsultationBookingService] seedInitialBookingsIfEmpty: $e');
-    }
+    return;
   }
 }
