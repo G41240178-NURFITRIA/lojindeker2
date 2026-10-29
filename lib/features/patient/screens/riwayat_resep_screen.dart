@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/auth_service.dart';
 import 'detail_resep_screen.dart';
 import 'consultation_list_screen.dart';
 
@@ -61,72 +63,78 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
     'Resep',
   ];
 
-  final List<PrescriptionModel> _prescriptions = const [
-    PrescriptionModel(
-      id: 'RXP-001',
-      date: '18 Mei 2026',
-      doctorName: 'dr. Andini Putri',
-      doctorSpecialty: 'Sp. Penyakit Dalam',
-      status: 'Aktif',
-      notes:
-          'Kontrol gula darah rutin, kurangi konsumsi gula dan karbohidrat sederhana. Kontrol ulang 2 minggu lagi.',
-      medicines: [
-        MedicineModel(
-          name: 'Metformin',
-          dosage: '500 mg',
-          instruction: '2x sehari sesudah makan',
-          quantity: '30 tablet',
-        ),
-        MedicineModel(
-          name: 'Glimepiride',
-          dosage: '1 mg',
-          instruction: '1x sehari sebelum makan pagi',
-          quantity: '30 tablet',
-        ),
-      ],
-    ),
-    PrescriptionModel(
-      id: 'RXP-002',
-      date: '15 Februari 2026',
-      doctorName: 'dr. Andini Putri',
-      doctorSpecialty: 'Sp. Penyakit Dalam',
-      status: 'Selesai',
-      notes:
-          'Kondisi Stabil. Tambahkan suplemen vitamin D3 untuk daya tahan tubuh. Kontrol rutin sebulan sekali.',
-      medicines: [
-        MedicineModel(
-          name: 'Metformin',
-          dosage: '500 mg',
-          instruction: '2x sehari sesudah makan',
-          quantity: '30 tablet',
-        ),
-        MedicineModel(
-          name: 'Vitamin D3',
-          dosage: '1000 IU',
-          instruction: '1x sehari sesudah makan',
-          quantity: '30 kapsul',
-          isBottle: true,
-        ),
-      ],
-    ),
-    PrescriptionModel(
-      id: 'RXP-003',
-      date: '10 November 2023',
-      doctorName: 'dr. Budi Santoso',
-      doctorSpecialty: 'Sp. Penyakit Dalam',
-      status: 'Selesai',
-      notes:
-          'Pemeriksaan awal terdeteksi gula darah tinggi. Mulai terapi obat dan disarankan mengatur pola makan.',
-      medicines: [
-        MedicineModel(
-          name: 'Metformin',
-          dosage: '500 mg',
-          instruction: '2x sehari sesudah makan',
-          quantity: '30 tablet',
-        ),
-      ],
-    ),
-  ];
+  List<PrescriptionModel> _prescriptions = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrescriptions();
+  }
+
+  Future<void> _loadPrescriptions() async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('prescriptions')
+          .get();
+
+      final List<PrescriptionModel> list = [];
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final rawMeds = (data['medicines'] as List<dynamic>?) ?? [];
+        final meds = rawMeds.map((m) {
+          if (m is Map) {
+            return MedicineModel(
+              name: m['name']?.toString() ?? 'Obat',
+              dosage: m['dosage']?.toString() ?? '',
+              instruction: m['instruction']?.toString() ?? '',
+              quantity: m['quantity']?.toString() ?? '',
+              isBottle: m['isBottle'] == true,
+            );
+          }
+          final str = m.toString();
+          return MedicineModel(
+            name: str,
+            dosage: '',
+            instruction: 'Sesuai anjuran',
+            quantity: '',
+          );
+        }).toList();
+
+        list.add(
+          PrescriptionModel(
+            id: doc.id,
+            date: data['date']?.toString() ?? 'Hari ini',
+            doctorName: data['doctorName']?.toString() ?? 'dr. Spesialis',
+            doctorSpecialty: data['doctorSpecialty']?.toString() ?? 'Sp. Penyakit Dalam',
+            status: data['status']?.toString() ?? 'Aktif',
+            notes: data['notes']?.toString() ?? 'Konsumsi obat secara teratur sesuai petunjuk dokter.',
+            medicines: meds,
+          ),
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _prescriptions = list;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading prescriptions in RiwayatResepScreen: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,21 +170,91 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
           // 1. Horizontal Category Tabs/Chips
           _buildCategoryTabs(),
 
-          // 2. Prescription Cards List
+          // 2. Prescription Cards List / Empty State
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-              physics: const BouncingScrollPhysics(),
-              itemCount: _prescriptions.length,
-              itemBuilder: (context, index) {
-                final prescription = _prescriptions[index];
-                return _buildPrescriptionCard(prescription);
-              },
-            ),
+            child: _prescriptions.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: _prescriptions.length,
+                    itemBuilder: (context, index) {
+                      final prescription = _prescriptions[index];
+                      return _buildPrescriptionCard(prescription);
+                    },
+                  ),
           ),
         ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFFF06292)),
+      );
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF0F5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.medication_outlined,
+                color: Color(0xFFD81B60),
+                size: 40,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Belum Ada Resep Obat',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF141414),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Daftar resep obat resmi yang diresepkan oleh dokter akan otomatis muncul di sini setelah konsultasi.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: const Color(0xFF757575),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
+                );
+              },
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.white),
+              label: Text(
+                'Konsultasi Sekarang',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF06292),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
