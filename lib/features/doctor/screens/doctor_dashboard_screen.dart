@@ -4394,15 +4394,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                       _showDocumentPickerSheet();
                     },
                   ),
-                  _buildAttachmentOption(
-                    icon: Icons.medical_services_rounded,
-                    label: 'Hasil Lab',
-                    colors: const [Color(0xFF26A69A), Color(0xFF00897B)],
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _sendLabSummaryAttachment();
-                    },
-                  ),
                 ],
               ),
             ],
@@ -4798,41 +4789,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         );
       },
     );
-  }
-
-  void _sendLabSummaryAttachment() {
-    final note = widget.glucoseNote.isNotEmpty
-        ? widget.glucoseNote
-        : 'Gula Darah: 110 mg/dL (Terkontrol)';
-    _sendMessage(
-      customText: '📊 Ringkasan Hasil Lab:\n$note\nTanggal: Hari ini\nStatus: Terverifikasi oleh Dokter',
-      type: 'document',
-      attachmentName: 'Ringkasan_Hasil_Lab_${widget.patientName.replaceAll(' ', '_')}.pdf',
-      attachmentSize: '95 KB',
-      attachmentData: 'mock_lab_pdf',
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Ringkasan hasil lab berhasil dikirim ke ruang konsultasi',
-                  style: GoogleFonts.poppins(fontSize: 12.5),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF00897B),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
   }
 
   void _openFullScreenImage(Uint8List bytes, String? name) {
