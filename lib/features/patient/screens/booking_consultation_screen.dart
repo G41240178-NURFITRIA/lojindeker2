@@ -120,24 +120,8 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
     super.dispose();
   }
 
-  /// Cek apakah dokter membuka jadwal praktik pada hari yang dipilih pada kalender
-  bool get _isDoctorPracticingOnSelectedDate {
-    final sch = _effectiveSchedule.toLowerCase();
-    final weekday = _selectedDate.weekday; // 1 = Senin, ..., 7 = Minggu
-    if (sch.contains('setiap hari')) {
-      return true;
-    }
-    if (sch.contains('senin - kamis') || sch.contains('senin – kamis')) {
-      return weekday >= DateTime.monday && weekday <= DateTime.thursday;
-    }
-    if (sch.contains('senin - sabtu') || sch.contains('senin – sabtu')) {
-      return weekday >= DateTime.monday && weekday <= DateTime.saturday;
-    }
-    if (sch.contains('senin - jumat') || sch.contains('senin – jumat')) {
-      return weekday >= DateTime.monday && weekday <= DateTime.friday;
-    }
-    return true;
-  }
+  /// Dokter membuka jadwal praktik di setiap tanggal pada kalender
+  bool get _isDoctorPracticingOnSelectedDate => true;
 
   /// Menghitung slot jam dinamis berdasarkan jadwal praktik dokter saat ini
   List<String> get _computedSlots {
@@ -194,7 +178,6 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
 
   /// Cari slot jam pertama yang masih belum lewat waktu
   String? _findInitialValidSlot() {
-    if (!_isDoctorPracticingOnSelectedDate) return null;
     for (final slot in _computedSlots) {
       if (!_isSlotPast(slot)) {
         return slot;
@@ -245,15 +228,20 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
   }
 
   String get _effectiveSchedule {
+    String raw = widget.schedule;
     if (_liveSchedule != null && _liveSchedule!.isNotEmpty) {
-      return _liveSchedule!;
-    }
-    if (widget.doctor != null &&
+      raw = _liveSchedule!;
+    } else if (widget.doctor != null &&
         widget.doctor!.schedule != null &&
         widget.doctor!.schedule!.isNotEmpty) {
-      return widget.doctor!.schedule!;
+      raw = widget.doctor!.schedule!;
     }
-    return widget.schedule;
+    final reg = RegExp(r'(\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2})');
+    final match = reg.firstMatch(raw);
+    if (match != null) {
+      return 'Setiap Hari (${match.group(1)})';
+    }
+    return 'Setiap Hari (09:00 – 17:00)';
   }
 
   String _formatDateKey(DateTime d) {
@@ -746,10 +734,9 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
                     ? () {
                         setState(() {
                           _selectedDate = cellDate;
-                          // Sesuaikan slot terpilih jika di tanggal baru slot tersebut sudah lewat
-                          if (_selectedSlot == null || _isSlotPast(_selectedSlot!)) {
-                            _selectedSlot = _findInitialValidSlot();
-                          }
+                          // Otomatis tentukan slot jam yang valid di tanggal baru
+                          _selectedSlot = _findInitialValidSlot() ??
+                              (_computedSlots.isNotEmpty ? _computedSlots.first : null);
                         });
                         _seedInitialDataIfAvailable();
                       }
