@@ -1,5 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/auth_service.dart';
+import 'consultation_list_screen.dart';
+import 'riwayat_resep_screen.dart';
 
 class MedicalRecordsScreen extends StatefulWidget {
   final String patientName;
@@ -15,235 +19,148 @@ class MedicalRecordsScreen extends StatefulWidget {
 
 class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
   int _selectedFilterIndex = 0;
-  final List<String> _filters = ['Semua', 'Hasil Lab', 'Resep Obat', 'Catatan Dokter'];
+  final List<String> _filters = ['Konsultasi', 'Resep Obat'];
 
-  // Data Riwayat Interaktif
   late List<_MedicalRecordItem> _records;
+  String _patientDisplayName = '';
+  String _dob = '';
+  String _phoneNumber = '';
+  String _email = '';
+  int? _age;
 
   @override
   void initState() {
     super.initState();
+    _patientDisplayName = widget.patientName;
     _records = [];
+    _loadPatientData();
   }
 
-  void _showAddSelfCheckDialog() {
-    final gdpController = TextEditingController();
-    final noteController = TextEditingController();
-    String selectedType = 'Puasa';
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              padding: EdgeInsets.only(
-                top: 20,
-                left: 20,
-                right: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFAF1F1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.bloodtype_outlined,
-                          color: Color(0xFFBA171E),
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Tambah Catatan Glukosa Mandiri',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF141414),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Kadar Gula Darah (mg/dL)',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF555555),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: gdpController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      hintText: 'Contoh: 110',
-                      hintStyle: GoogleFonts.poppins(fontSize: 13, color: Colors.grey),
-                      filled: true,
-                      fillColor: const Color(0xFFFAF1F1),
-                      suffixText: 'mg/dL',
-                      suffixStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFFBA171E)),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Waktu Pemeriksaan',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF555555),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: ['Puasa', '2 Jam PP', 'Sewaktu'].map((type) {
-                      final isSelected = selectedType == type;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(type),
-                          selected: isSelected,
-                          onSelected: (val) {
-                            if (val) setModalState(() => selectedType = type);
-                          },
-                          labelStyle: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                            color: isSelected ? Colors.white : const Color(0xFF555555),
-                          ),
-                          selectedColor: const Color(0xFFBA171E),
-                          backgroundColor: const Color(0xFFFAF1F1),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Catatan Tambahan (Opsional)',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF555555),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: noteController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      hintText: 'Misal: setelah jalan santai pagi...',
-                      hintStyle: GoogleFonts.poppins(fontSize: 13, color: Colors.grey),
-                      filled: true,
-                      fillColor: const Color(0xFFFAF1F1),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final val = gdpController.text.trim();
-                        if (val.isEmpty) return;
-
-                        setState(() {
-                          _records.insert(
-                            0,
-                            _MedicalRecordItem(
-                              date: 'Hari Ini (${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year})',
-                              doctorName: 'Pemeriksaan Mandiri ($selectedType)',
-                              clinic: 'Pemeriksaan Glukometer Mandiri',
-                              status: 'Catatan Pasien',
-                              statusColor: const Color(0xFF1976D2),
-                              gdp: '$val mg/dL',
-                              gdpp: '-',
-                              hba1c: '-',
-                              bloodPressure: '-',
-                              weight: '-',
-                              medicines: const [],
-                              notes: noteController.text.trim().isNotEmpty
-                                  ? noteController.text.trim()
-                                  : 'Pencatatan glukosa mandiri harian.',
-                              isExpanded: true,
-                            ),
-                          );
-                        });
-
-                        Navigator.pop(context);
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Data pemeriksaan berhasil ditambahkan ke Riwayat!',
-                              style: GoogleFonts.poppins(),
-                            ),
-                            backgroundColor: const Color(0xFF2E7D32),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF06292),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: Text(
-                        'Simpan ke Riwayat',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+  int? _calculateAge(String dobStr) {
+    try {
+      final parts = dobStr.split('-');
+      if (parts.length == 3) {
+        final birthDate = DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
         );
-      },
-    );
+        final today = DateTime.now();
+        int age = today.year - birthDate.year;
+        if (today.month < birthDate.month ||
+            (today.month == birthDate.month && today.day < birthDate.day)) {
+          age--;
+        }
+        return age > 0 ? age : null;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  void _loadPatientData() async {
+    // 1. Data bawaan Konsultasi & Resep Obat yang terintegrasi dengan fitur D-Care
+    final initialRecords = [
+      _MedicalRecordItem(
+        date: '18 Mei 2026',
+        doctorName: 'dr. Andini Putri, Sp.PD',
+        clinic: 'Spesialis Penyakit Dalam • Konsultasi Online',
+        status: 'Selesai',
+        statusColor: const Color(0xFF2E7D32),
+        medicines: const [
+          'Metformin 500 mg (2x sehari sesudah makan)',
+          'Glimepiride 1 mg (1x sehari sebelum makan pagi)',
+        ],
+        notes:
+            'Kondisi glukosa darah terpantau stabil. Lanjutkan konsumsi obat secara teratur dan pertahankan jadwal makan 3J.',
+        categoryType: 'Konsultasi',
+      ),
+      _MedicalRecordItem(
+        date: '15 Februari 2026',
+        doctorName: 'dr. Andini Putri, Sp.PD',
+        clinic: 'Spesialis Penyakit Dalam • Kontrol Rutin',
+        status: 'Selesai',
+        statusColor: const Color(0xFF757575),
+        medicines: const [
+          'Metformin 500 mg (2x sehari sesudah makan)',
+          'Vitamin D3 1000 IU (1x sehari sesudah makan)',
+        ],
+        notes:
+            'Kondisi glukosa terkontrol dengan baik. Ditambahkan suplementasi vitamin D3 untuk meningkatkan imunitas tubuh.',
+        categoryType: 'Konsultasi',
+      ),
+      _MedicalRecordItem(
+        date: '18 Mei 2026',
+        doctorName: 'dr. Andini Putri, Sp.PD',
+        clinic: 'Resep Aktif • Kontrol 2 Minggu',
+        status: 'Aktif',
+        statusColor: const Color(0xFF1976D2),
+        medicines: const [
+          'Metformin 500 mg - 2x sehari sesudah makan (30 tablet)',
+          'Glimepiride 1 mg - 1x sehari sebelum makan pagi (30 tablet)',
+        ],
+        notes:
+            'Minum obat secara teratur sesuai jadwal. Kurangi konsumsi minuman berpemanis dan karbohidrat sederhana.',
+        categoryType: 'Resep Obat',
+      ),
+      _MedicalRecordItem(
+        date: '15 Februari 2026',
+        doctorName: 'dr. Andini Putri, Sp.PD',
+        clinic: 'Resep Selesai',
+        status: 'Selesai',
+        statusColor: const Color(0xFF757575),
+        medicines: const [
+          'Metformin 500 mg - 2x sehari sesudah makan (30 tablet)',
+          'Vitamin D3 1000 IU - 1x sehari sesudah makan (30 kapsul)',
+        ],
+        notes:
+            'Resep telah selesai dijalani. Kontrol kembali secara berkala.',
+        categoryType: 'Resep Obat',
+      ),
+    ];
+
+    // 2. Muat data pengguna asli dari Firestore
+    final user = AuthService.instance.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists && doc.data() != null && mounted) {
+          final data = doc.data()!;
+          final fullName = (data['fullName'] ?? data['profileName'])?.toString();
+          final dobStr = data['dob']?.toString() ?? '';
+          final phone = data['phoneNumber']?.toString() ?? '';
+          final mail = data['email']?.toString() ?? user.email ?? '';
+
+          setState(() {
+            if (fullName != null && fullName.trim().isNotEmpty) {
+              _patientDisplayName = fullName.trim();
+            }
+            _dob = dobStr.trim();
+            _phoneNumber = phone.trim();
+            _email = mail.trim();
+            if (_dob.isNotEmpty) {
+              _age = _calculateAge(_dob);
+            }
+            _records = initialRecords;
+          });
+          return;
+        }
+      } catch (e) {
+        debugPrint('Error loading patient data in MedicalRecordsScreen: $e');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _records = initialRecords;
+      });
+    }
   }
 
   void _showDownloadResumeDialog() {
     showDialog(
       context: context,
       builder: (context) {
+        final name = _patientDisplayName.isNotEmpty ? _patientDisplayName : widget.patientName;
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
@@ -261,7 +178,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Dokumen resume medis atas nama ${widget.patientName} (No. RM: RM-2026-0812) siap diunduh atau dibagikan ke dokter.',
+                'Dokumen resume riwayat konsultasi dan resep atas nama $name siap diunduh atau dibagikan ke dokter.',
                 style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF444444)),
               ),
               const SizedBox(height: 16),
@@ -278,7 +195,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Terverifikasi resmi oleh RS D-Care Digital System',
+                        'Terverifikasi resmi oleh D-Care Mobile Health System',
                         style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF2E7D32), fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -306,7 +223,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Resume Riwayat berhasil diunduh (Resume_Riwayat_${widget.patientName.replaceAll(' ', '_')}.pdf)',
+                            'Resume Riwayat berhasil diunduh (Resume_Riwayat_${name.replaceAll(' ', '_')}.pdf)',
                             style: GoogleFonts.poppins(fontSize: 12),
                           ),
                         ),
@@ -333,6 +250,9 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentCategory = _filters[_selectedFilterIndex];
+    final filteredRecords = _records.where((item) => item.categoryType == currentCategory).toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFF0F5),
       body: Stack(
@@ -365,20 +285,22 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Patient Identity Card
+                        // Patient Identity Card (Data Asli dari Database)
                         _buildPatientProfileCard(),
                         const SizedBox(height: 18),
 
-                        // Quick Filter Chips
+                        // Filter Chips: Hanya Konsultasi & Resep Obat
                         _buildFilterChips(),
                         const SizedBox(height: 18),
 
-                        // Title & Timeline Section
+                        // Section Title & Counter
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Riwayat Kunjungan Medis',
+                              currentCategory == 'Konsultasi'
+                                  ? 'Riwayat Konsultasi Dokter'
+                                  : 'Riwayat Resep Obat',
                               style: GoogleFonts.poppins(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -392,7 +314,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                '${_records.length} Catatan',
+                                '${filteredRecords.length} Catatan',
                                 style: GoogleFonts.poppins(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -405,10 +327,10 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                         const SizedBox(height: 12),
 
                         // Records List / Empty State
-                        if (_records.isEmpty)
-                          _buildEmptyRecordsState()
+                        if (filteredRecords.isEmpty)
+                          _buildEmptyRecordsState(currentCategory)
                         else
-                          ..._records.map((item) => _buildRecordCard(item)),
+                          ...filteredRecords.map((item) => _buildRecordCard(item)),
 
                         const SizedBox(height: 30),
                       ],
@@ -421,7 +343,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
         ],
       ),
 
-      // Bottom floating button for quick self-check record
+      // Bottom Action Button sesuai kategori aktif
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
@@ -438,10 +360,36 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
           children: [
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: _showAddSelfCheckDialog,
-                icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 20),
+                onPressed: () {
+                  if (_selectedFilterIndex == 0) {
+                    // Buka layar daftar dokter / konsultasi
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ConsultationListScreen(),
+                      ),
+                    );
+                  } else {
+                    // Buka layar riwayat resep lengkap
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RiwayatResepScreen(),
+                      ),
+                    );
+                  }
+                },
+                icon: Icon(
+                  _selectedFilterIndex == 0
+                      ? Icons.chat_bubble_outline_rounded
+                      : Icons.receipt_long_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 label: Text(
-                  'Catat Gula Darah Mandiri',
+                  _selectedFilterIndex == 0
+                      ? 'Jadwalkan Konsultasi Dokter'
+                      : 'Buka Riwayat Resep Lengkap',
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -537,6 +485,8 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
   }
 
   Widget _buildPatientProfileCard() {
+    final name = _patientDisplayName.isNotEmpty ? _patientDisplayName : widget.patientName;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -562,7 +512,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
                 width: 50,
@@ -580,23 +530,27 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.patientName,
+                      name,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'No. RM: RM-2026-0812',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white.withValues(alpha: 0.85),
+                    if (_email.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        _email,
+                        style: GoogleFonts.poppins(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(height: 4),
+                    ],
+                    const SizedBox(height: 5),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -604,7 +558,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'Diabetes Melitus Tipe 2',
+                        'Pasien Terdaftar',
                         style: GoogleFonts.poppins(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
@@ -623,10 +577,9 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildPatientMetaItem('Usia', '28 Thn'),
-              _buildPatientMetaItem('Gender', 'Laki-laki'),
-              _buildPatientMetaItem('Gol. Darah', 'O+'),
-              _buildPatientMetaItem('Status', 'Rawat Jalan'),
+              _buildPatientMetaItem('Usia', _age != null ? '$_age Thn' : '-'),
+              _buildPatientMetaItem('Tgl. Lahir', _dob.isNotEmpty ? _dob : '-'),
+              _buildPatientMetaItem('No. HP', _phoneNumber.isNotEmpty ? _phoneNumber : '-'),
             ],
           ),
         ],
@@ -640,8 +593,8 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
         Text(
           title,
           style: GoogleFonts.poppins(
-            fontSize: 10,
-            color: Colors.white.withValues(alpha: 0.75),
+            fontSize: 10.5,
+            color: Colors.white.withValues(alpha: 0.8),
           ),
         ),
         const SizedBox(height: 2),
@@ -657,7 +610,9 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
     );
   }
 
-  Widget _buildEmptyRecordsState() {
+  Widget _buildEmptyRecordsState(String category) {
+    final isConsultation = category == 'Konsultasi';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
@@ -681,15 +636,15 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
               color: Color(0xFFFFF0F5),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.medical_services_outlined,
-              color: Color(0xFFD81B60),
+            child: Icon(
+              isConsultation ? Icons.chat_bubble_outline_rounded : Icons.medication_outlined,
+              color: const Color(0xFFD81B60),
               size: 32,
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            'Belum ada riwayat pemeriksaan',
+            isConsultation ? 'Belum ada riwayat konsultasi' : 'Belum ada riwayat resep obat',
             style: GoogleFonts.poppins(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -698,7 +653,9 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Riwayat kunjungan medis dan dokter yang menangani\nakan muncul di sini setelah pemeriksaan dilakukan.',
+            isConsultation
+                ? 'Riwayat konsultasi dengan dokter dan catatan anjuran\nakan muncul di sini setelah konsultasi dilakukan.'
+                : 'Daftar resep obat yang diresepkan oleh dokter\nakan tersimpan secara otomatis di sini.',
             style: GoogleFonts.poppins(
               fontSize: 11.5,
               color: const Color(0xFF757575),
@@ -708,7 +665,19 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
           ),
           const SizedBox(height: 20),
           GestureDetector(
-            onTap: _showAddSelfCheckDialog,
+            onTap: () {
+              if (isConsultation) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ConsultationListScreen()),
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RiwayatResepScreen()),
+                );
+              }
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
@@ -720,10 +689,14 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 16),
+                  Icon(
+                    isConsultation ? Icons.chat_outlined : Icons.receipt_long_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                   const SizedBox(width: 6),
                   Text(
-                    'Catat Pemeriksaan Mandiri',
+                    isConsultation ? 'Konsultasi Sekarang' : 'Lihat Resep',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -740,20 +713,22 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
   }
 
   Widget _buildFilterChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: List.generate(_filters.length, (index) {
-          final isSelected = _selectedFilterIndex == index;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
+    return Row(
+      children: List.generate(_filters.length, (index) {
+        final isSelected = _selectedFilterIndex == index;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: index == 0 ? 0 : 6,
+              right: index == _filters.length - 1 ? 0 : 6,
+            ),
             child: InkWell(
               onTap: () => setState(() => _selectedFilterIndex = index),
               borderRadius: BorderRadius.circular(20),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   color: isSelected ? const Color(0xFFD81B60) : Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -776,27 +751,35 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                       ),
                   ],
                 ),
-                child: Text(
-                  _filters[index],
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected ? Colors.white : const Color(0xFF555555),
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      index == 0 ? Icons.chat_bubble_outline_rounded : Icons.medication_outlined,
+                      size: 15,
+                      color: isSelected ? Colors.white : const Color(0xFFD81B60),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _filters[index],
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected ? Colors.white : const Color(0xFF555555),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          );
-        }),
-      ),
+          ),
+        );
+      }),
     );
   }
 
   Widget _buildRecordCard(_MedicalRecordItem item) {
-    // Saring berdasarkan filter terpilih
-    final showLab = _selectedFilterIndex == 0 || _selectedFilterIndex == 1;
-    final showMeds = _selectedFilterIndex == 0 || _selectedFilterIndex == 2;
-    final showNotes = _selectedFilterIndex == 0 || _selectedFilterIndex == 3;
+    final isConsultation = item.categoryType == 'Konsultasi';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -813,7 +796,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
       ),
       child: Column(
         children: [
-          // Header Kunjungan
+          // Header Kunjungan / Resep
           InkWell(
             onTap: () {
               setState(() {
@@ -832,9 +815,9 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                       color: const Color(0xFFFAF1F1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.medical_information_outlined,
-                      color: Color(0xFFBA171E),
+                    child: Icon(
+                      isConsultation ? Icons.chat_bubble_outline_rounded : Icons.medication_rounded,
+                      color: const Color(0xFFBA171E),
                       size: 24,
                     ),
                   ),
@@ -908,96 +891,62 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Hasil Laboratorium & Tanda Vital
-                  if (showLab) ...[
-                    Text(
-                      'Tanda Vital & Glukosa',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF8F0D12),
-                      ),
+                  // Daftar Obat
+                  if (item.medicines.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.medication_rounded, size: 16, color: Color(0xFF8F0D12)),
+                        const SizedBox(width: 6),
+                        Text(
+                          isConsultation ? 'Obat yang Direkomendasikan' : 'Daftar Obat & Aturan Minum',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF8F0D12),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Container(
+                      width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFAF1F1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildLabCell('Gula Darah Puasa (GDP)', item.gdp, isHighlight: true),
-                              _buildLabCell('Gula Darah 2 Jam PP', item.gdpp),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildLabCell('HbA1c', item.hba1c, isHighlight: true),
-                              _buildLabCell('Tekanan Darah', item.bloodPressure),
-                            ],
-                          ),
-                          if (item.weight != '-') ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: item.medicines.map((med) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabCell('Berat Badan', item.weight),
-                                const Spacer(),
+                                const Text('• ', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFBA171E))),
+                                Expanded(
+                                  child: Text(
+                                    med,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF212121),
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
-                          ],
-                        ],
+                          );
+                        }).toList(),
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                   ],
 
-                  // Resep Obat
-                  if (showMeds && item.medicines.isNotEmpty) ...[
+                  // Catatan / Anjuran Dokter
+                  if (item.notes.isNotEmpty) ...[
                     Text(
-                      'Resep Obat',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF8F0D12),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    ...item.medicines.map(
-                      (med) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.medication_outlined, size: 16, color: Color(0xFFBA171E)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                med,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: const Color(0xFF333333),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                  ],
-
-                  // Catatan Dokter & Diagnosis
-                  if (showNotes) ...[
-                    Text(
-                      'Catatan Dokter & Anjuran',
+                      isConsultation ? 'Catatan & Anjuran Dokter' : 'Petunjuk Penggunaan',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -1017,7 +966,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                         item.notes,
                         style: GoogleFonts.poppins(
                           fontSize: 11.5,
-                          height: 1.4,
+                          height: 1.45,
                           color: const Color(0xFF424242),
                         ),
                       ),
@@ -1031,32 +980,6 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
       ),
     );
   }
-
-  Widget _buildLabCell(String label, String val, {bool isHighlight = false}) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 10.5,
-              color: const Color(0xFF666666),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            val,
-            style: GoogleFonts.poppins(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: isHighlight ? const Color(0xFFBA171E) : const Color(0xFF141414),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _MedicalRecordItem {
@@ -1065,13 +988,9 @@ class _MedicalRecordItem {
   final String clinic;
   final String status;
   final Color statusColor;
-  final String gdp;
-  final String gdpp;
-  final String hba1c;
-  final String bloodPressure;
-  final String weight;
   final List<String> medicines;
   final String notes;
+  final String categoryType;
   bool isExpanded;
 
   _MedicalRecordItem({
@@ -1080,13 +999,8 @@ class _MedicalRecordItem {
     required this.clinic,
     required this.status,
     required this.statusColor,
-    required this.gdp,
-    required this.gdpp,
-    required this.hba1c,
-    required this.bloodPressure,
-    required this.weight,
     required this.medicines,
     required this.notes,
-    this.isExpanded = false,
-  });
+    required this.categoryType,
+  }) : isExpanded = false;
 }

@@ -1283,174 +1283,100 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           top: 14,
           bottom: 22,
         ),
-        child: Column(
+        child: Row(
           children: [
-            // Top Row: Notification Bell, Greeting + Name, Avatar
-            Row(
-              children: [
-                // Notification Bell
-                InkWell(
-                  onTap: _showNotificationDialog,
-                  borderRadius: BorderRadius.circular(25),
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFFFFD1DC),
-                        width: 1.5,
-                      ),
+            // Notification Bell
+            InkWell(
+              onTap: _showNotificationDialog,
+              borderRadius: BorderRadius.circular(25),
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFFFFD1DC),
+                    width: 1.5,
+                  ),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.notifications_none_rounded,
+                      color: Color(0xFF141414),
+                      size: 26,
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Icon(
-                          Icons.notifications_none_rounded,
-                          color: Color(0xFF141414),
-                          size: 26,
-                        ),
-                        if (_unreadBookingCount > 0)
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 18,
-                                minHeight: 18,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${_unreadBookingCount > 9 ? '9+' : _unreadBookingCount}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    height: 1,
-                                  ),
-                                ),
+                    if (_unreadBookingCount > 0)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${_unreadBookingCount > 9 ? '9+' : _unreadBookingCount}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                height: 1,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                const Spacer(),
-                
-                // Greeting & Doctor Name
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      _getGreeting(),
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    Text(
-                      widget.doctorName,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: const Color(0xFF141414),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
                   ],
                 ),
-                
-                const SizedBox(width: 14),
-                
-                // Avatar
-                DoctorAvatarWidget(
-                  photoUrl: _doctorPhotoUrl,
-                  size: 54,
-                  backgroundColor: AppColors.primary,
-                  iconColor: Colors.white,
-                  onTap: () {
-                    setState(() => _selectedTabIndex = 1);
-                  },
+              ),
+            ),
+            
+            const Spacer(),
+            
+            // Greeting & Doctor Name
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _getGreeting(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  widget.doctorName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: const Color(0xFF141414),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
-
-            const SizedBox(height: 24),
-
-            // Search Bar: "Cari pasien..."
-            Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 16),
-                  const Icon(
-                    Icons.search_rounded,
-                    color: Color(0xFFF06292),
-                    size: 22,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val;
-                        });
-                      },
-                      style: GoogleFonts.poppins(
-                        fontSize: 13.5,
-                        color: const Color(0xFF212121),
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Cari pasien...',
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 13.5,
-                          color: const Color(0xFF9E9E9E),
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                  if (_searchQuery.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        _searchController.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 14),
-                        child: Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: Color(0xFF9E9E9E),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                ],
-              ),
+            
+            const SizedBox(width: 14),
+            
+            // Avatar
+            DoctorAvatarWidget(
+              photoUrl: _doctorPhotoUrl,
+              size: 54,
+              backgroundColor: AppColors.primary,
+              iconColor: Colors.white,
+              onTap: () {
+                setState(() => _selectedTabIndex = 1);
+              },
             ),
           ],
         ),
