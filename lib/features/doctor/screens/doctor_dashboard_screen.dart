@@ -8,11 +8,13 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/chat_service.dart';
+import '../../../core/services/consultation_booking_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
 import '../../../core/widgets/medical_document_viewer_screen.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
 import '../../auth/screens/landing_screen.dart';
+import '../../patient/models/consultation_booking_model.dart';
 import 'doctor_all_chats_screen.dart';
 import 'doctor_change_password_screen.dart';
 import 'doctor_prescription_note_screen.dart';
@@ -1644,7 +1646,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             ),
             _buildProfileMenuItem(
               icon: Icons.schedule_outlined,
-              title: 'Jadwal Konsultasi Online',
+              title: 'Jadwal & Booking Pasien',
               subtitle: _doctorSchedule,
               onTap: _showEditScheduleBottomSheet,
             ),
@@ -1790,13 +1792,14 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
-  /// Bottom Sheet untuk Mengubah Jadwal Konsultasi Dokter
+  /// Bottom Sheet untuk Mengubah Jadwal Konsultasi Dokter & Mengakses Jam Dibooking Pasien
   void _showEditScheduleBottomSheet() {
     final TextEditingController scheduleController =
         TextEditingController(text: _doctorSchedule);
     String selectedDays = 'Senin - Jumat';
     String selectedHours = '09:00 - 17:00';
     bool isSaving = false;
+    int activeTab = 0; // 0: Atur Jadwal, 1: Jam Dibooking Pasien
 
     // Deteksi preset hari dari teks yang ada
     if (_doctorSchedule.contains('Senin - Sabtu')) {
@@ -1808,6 +1811,14 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     } else if (_doctorSchedule.contains('Senin - Jumat')) {
       selectedDays = 'Senin - Jumat';
     }
+
+    final effectiveDoctorId = _resolvedDoctorUid ??
+        widget.doctorId ??
+        AuthService.instance.currentUser?.uid ??
+        '';
+    final effectiveDoctorName = _doctorDisplayName.isNotEmpty
+        ? _doctorDisplayName
+        : widget.doctorName;
 
     showModalBottomSheet(
       context: context,
@@ -1825,462 +1836,1259 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             }
 
             return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.90,
+              ),
               padding: EdgeInsets.only(
                 left: 20,
                 right: 20,
                 top: 16,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
               ),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Handle Bar
-                    Center(
-                      child: Container(
-                        width: 44,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE0E0E0),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
+              child: StreamBuilder<List<ConsultationBookingModel>>(
+                stream: ConsultationBookingService.instance.streamAllDoctorBookings(
+                  doctorId: effectiveDoctorId,
+                  doctorName: effectiveDoctorName,
+                ),
+                builder: (context, bookingSnap) {
+                  final bookings = bookingSnap.data ?? [];
+                  final bookingCount = bookings.length;
 
-                    // Header
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Handle Bar
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
                           decoration: BoxDecoration(
-                            color: AppColors.softPinkCard,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(
-                            Icons.edit_calendar_rounded,
-                            color: AppColors.primary,
-                            size: 24,
+                            color: const Color(0xFFE0E0E0),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Ubah Jadwal Konsultasi',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF212121),
-                                ),
-                              ),
-                              Text(
-                                'Jadwal akan langsung otomatis terlihat oleh pasien',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11.5,
-                                  color: const Color(0xFF757575),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Label Pilihan Hari
-                    Text(
-                      'Pilih Hari Ketersediaan',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF333333),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        'Senin - Jumat',
-                        'Senin - Sabtu',
-                        'Senin - Kamis',
-                        'Setiap Hari',
-                      ].map((dayOption) {
-                        final isSelected = selectedDays == dayOption;
-                        return ChoiceChip(
-                          label: Text(
-                            dayOption,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                              color: isSelected
-                                  ? Colors.white
-                                  : const Color(0xFF424242),
-                            ),
-                          ),
-                          selected: isSelected,
-                          selectedColor: AppColors.primary,
-                          backgroundColor: const Color(0xFFF7F7F8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : const Color(0xFFE5E5E5),
-                            ),
-                          ),
-                          onSelected: (selected) {
-                            if (selected) {
-                              updateCombinedText(dayOption, selectedHours);
-                            }
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 18),
+                      const SizedBox(height: 16),
 
-                    // Label Pilihan Jam
-                    Text(
-                      'Pilih Jam Praktik',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF333333),
+                      // Header
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.softPinkCard,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.edit_calendar_rounded,
+                              color: AppColors.primary,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Jadwal & Booking Pasien',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF212121),
+                                  ),
+                                ),
+                                Text(
+                                  'Kelola jam praktik & pantau slot yang dibooking pasien',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    color: const Color(0xFF757575),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(bottomSheetContext),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFF9E9E9E),
+                              size: 22,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        '08:00 - 16:00',
-                        '09:00 - 17:00',
-                        '10:00 - 18:00',
-                        '13:00 - 20:00',
-                      ].map((hourOption) {
-                        final isSelected = selectedHours == hourOption;
-                        return ChoiceChip(
-                          label: Text(
-                            hourOption,
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                              color: isSelected
-                                  ? Colors.white
-                                  : const Color(0xFF424242),
-                            ),
-                          ),
-                          selected: isSelected,
-                          selectedColor: AppColors.primary,
-                          backgroundColor: const Color(0xFFF7F7F8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : const Color(0xFFE5E5E5),
-                            ),
-                          ),
-                          onSelected: (selected) {
-                            if (selected) {
-                              updateCombinedText(selectedDays, hourOption);
-                            }
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
-                    // Tombol Kustom Jam dengan TimePicker
-                    InkWell(
-                      onTap: () async {
-                        final TimeOfDay? start = await showTimePicker(
-                          context: ctx,
-                          initialTime: const TimeOfDay(hour: 9, minute: 0),
-                          helpText: 'PILIH JAM MULAI',
-                        );
-                        if (start == null || !ctx.mounted) return;
-
-                        final TimeOfDay? end = await showTimePicker(
-                          context: ctx,
-                          initialTime: const TimeOfDay(hour: 17, minute: 0),
-                          helpText: 'PILIH JAM SELESAI',
-                        );
-                        if (end == null || !ctx.mounted) return;
-
-                        String formatTime(TimeOfDay t) =>
-                            '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-                        final customHour =
-                            '${formatTime(start)} - ${formatTime(end)}';
-                        updateCombinedText(selectedDays, customHour);
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                      // Tab Switcher Bar: Atur Jadwal vs Jam Dibooking Pasien
+                      Container(
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: AppColors.softPinkCard,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: AppColors.softPinkBorder,
-                            width: 1,
-                          ),
+                          color: const Color(0xFFF5F5F7),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.access_time_rounded,
-                              size: 16,
-                              color: AppColors.primary,
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setModalState(() => activeTab = 0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 9),
+                                  decoration: BoxDecoration(
+                                    color: activeTab == 0
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: activeTab == 0
+                                        ? [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.06),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            )
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_month_outlined,
+                                        size: 16,
+                                        color: activeTab == 0
+                                            ? AppColors.primary
+                                            : const Color(0xFF757575),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Atur Jadwal',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12.5,
+                                          fontWeight: activeTab == 0
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                          color: activeTab == 0
+                                              ? AppColors.primary
+                                              : const Color(0xFF757575),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Pilih Jam Lainnya (TimePicker)',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setModalState(() => activeTab = 1),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 9),
+                                  decoration: BoxDecoration(
+                                    color: activeTab == 1
+                                        ? Colors.white
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: activeTab == 1
+                                        ? [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.06),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            )
+                                          ]
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.access_time_filled_rounded,
+                                        size: 16,
+                                        color: activeTab == 1
+                                            ? AppColors.primary
+                                            : const Color(0xFF757575),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Jam Dibooking',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 12.5,
+                                          fontWeight: activeTab == 1
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                          color: activeTab == 1
+                                              ? AppColors.primary
+                                              : const Color(0xFF757575),
+                                        ),
+                                      ),
+                                      if (bookingCount > 0) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary,
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '$bookingCount',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
+                      const SizedBox(height: 14),
 
-                    // Teks Hasil / Edit Manual
-                    Text(
-                      'Teks Format Jadwal (Dapat Diedit Manual)',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF333333),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: scheduleController,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF212121),
-                      ),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0xFFF9F9FA),
-                        hintText: 'Contoh: Senin - Jumat (09:00 - 17:00)',
-                        prefixIcon: const Icon(
-                          Icons.schedule_outlined,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE0E0E0),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 1.5,
-                          ),
+                      // Tab Content
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: activeTab == 0
+                              ? _buildScheduleSettingsTabContent(
+                                  ctx: ctx,
+                                  setModalState: setModalState,
+                                  scheduleController: scheduleController,
+                                  selectedDays: selectedDays,
+                                  selectedHours: selectedHours,
+                                  isSaving: isSaving,
+                                  bookingCount: bookingCount,
+                                  bookings: bookings,
+                                  onSwitchToBookingsTab: () =>
+                                      setModalState(() => activeTab = 1),
+                                  updateCombinedText: updateCombinedText,
+                                  bottomSheetContext: bottomSheetContext,
+                                )
+                              : _buildDoctorBookedSlotsTabContent(
+                                  ctx: ctx,
+                                  bookings: bookings,
+                                  effectiveDoctorName: effectiveDoctorName,
+                                  bottomSheetContext: bottomSheetContext,
+                                ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Action Buttons (Batal & Simpan)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: isSaving
-                                ? null
-                                : () => Navigator.pop(bottomSheetContext),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              side: const BorderSide(
-                                color: Color(0xFFD0D0D0),
-                              ),
-                            ),
-                            child: Text(
-                              'Batal',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF616161),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: ElevatedButton(
-                            onPressed: isSaving
-                                ? null
-                                : () async {
-                                    final newSchedule =
-                                        scheduleController.text.trim();
-                                    if (newSchedule.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                              'Teks jadwal tidak boleh kosong.'),
-                                          backgroundColor: Colors.orange,
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    setModalState(() => isSaving = true);
-
-                                    try {
-                                      // Ambil UID dokter
-                                      String? targetUid = _resolvedDoctorUid ??
-                                          widget.doctorId ??
-                                          AuthService.instance.currentUser?.uid;
-
-                                      if (targetUid != null &&
-                                          targetUid.isNotEmpty) {
-                                        await UserRepository.instance
-                                            .updateDoctorSchedule(
-                                          targetUid,
-                                          newSchedule,
-                                        );
-                                      } else {
-                                        // Update berdasarkan nama jika UID tidak terdeteksi
-                                        final snap = await FirebaseFirestore
-                                            .instance
-                                            .collection('doctors')
-                                            .where('fullName',
-                                                isEqualTo: widget.doctorName)
-                                            .limit(1)
-                                            .get();
-                                        if (snap.docs.isNotEmpty) {
-                                          await snap.docs.first.reference
-                                              .update({
-                                            'schedule': newSchedule,
-                                            'updatedAt':
-                                                FieldValue.serverTimestamp(),
-                                          });
-                                        }
-                                      }
-
-                                      if (mounted) {
-                                        setState(() {
-                                          _doctorSchedule = newSchedule;
-                                        });
-                                      }
-
-                                      if (bottomSheetContext.mounted) {
-                                        Navigator.pop(bottomSheetContext);
-                                      }
-
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.check_circle_rounded,
-                                                  color: Colors.white,
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(width: 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    'Jadwal dokter berhasil diperbarui & otomatis sinkron ke akun pasien.',
-                                                    style: GoogleFonts.poppins(
-                                                        fontSize: 12.5),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            backgroundColor:
-                                                const Color(0xFF2E7D32),
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                            margin: const EdgeInsets.all(16),
-                                          ),
-                                        );
-                                      }
-                                    } catch (err) {
-                                      setModalState(() => isSaving = false);
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Gagal menyimpan jadwal: $err'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: isSaving
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : Text(
-                                    'Simpan Jadwal',
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                    ],
+                  );
+                },
               ),
             );
           },
         );
       },
+    );
+  }
+
+  /// Tab Konten: Pengaturan Hari & Jam Praktik Dokter
+  Widget _buildScheduleSettingsTabContent({
+    required BuildContext ctx,
+    required StateSetter setModalState,
+    required TextEditingController scheduleController,
+    required String selectedDays,
+    required String selectedHours,
+    required bool isSaving,
+    required int bookingCount,
+    required List<ConsultationBookingModel> bookings,
+    required VoidCallback onSwitchToBookingsTab,
+    required Function(String, String) updateCombinedText,
+    required BuildContext bottomSheetContext,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Kartu status sinkronisasi real-time
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.softPinkCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.softPinkBorder.withValues(alpha: 0.6),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                Icons.sync_rounded,
+                size: 20,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Perubahan jam & hari praktik dokter otomatis menyelaraskan slot ketersediaan di halaman booking pasien secara langsung.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF4A4A4A),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Label Pilihan Hari
+        Text(
+          'Pilih Hari Ketersediaan',
+          style: GoogleFonts.poppins(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF333333),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            'Senin - Jumat',
+            'Senin - Sabtu',
+            'Senin - Kamis',
+            'Setiap Hari',
+          ].map((dayOption) {
+            final isSelected = selectedDays == dayOption;
+            return ChoiceChip(
+              label: Text(
+                dayOption,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? Colors.white : const Color(0xFF424242),
+                ),
+              ),
+              selected: isSelected,
+              selectedColor: AppColors.primary,
+              backgroundColor: const Color(0xFFF7F7F8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.primary
+                      : const Color(0xFFE5E5E5),
+                ),
+              ),
+              onSelected: (selected) {
+                if (selected) {
+                  updateCombinedText(dayOption, selectedHours);
+                }
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 18),
+
+        // Label Pilihan Jam
+        Text(
+          'Pilih Jam Praktik',
+          style: GoogleFonts.poppins(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF333333),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            '08:00 - 16:00',
+            '09:00 - 17:00',
+            '10:00 - 18:00',
+            '13:00 - 20:00',
+          ].map((hourOption) {
+            final isSelected = selectedHours == hourOption;
+            return ChoiceChip(
+              label: Text(
+                hourOption,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? Colors.white : const Color(0xFF424242),
+                ),
+              ),
+              selected: isSelected,
+              selectedColor: AppColors.primary,
+              backgroundColor: const Color(0xFFF7F7F8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.primary
+                      : const Color(0xFFE5E5E5),
+                ),
+              ),
+              onSelected: (selected) {
+                if (selected) {
+                  updateCombinedText(selectedDays, hourOption);
+                }
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 14),
+
+        // Tombol Kustom Jam dengan TimePicker
+        InkWell(
+          onTap: () async {
+            final TimeOfDay? start = await showTimePicker(
+              context: ctx,
+              initialTime: const TimeOfDay(hour: 9, minute: 0),
+              helpText: 'PILIH JAM MULAI',
+            );
+            if (start == null || !ctx.mounted) return;
+
+            final TimeOfDay? end = await showTimePicker(
+              context: ctx,
+              initialTime: const TimeOfDay(hour: 17, minute: 0),
+              helpText: 'PILIH JAM SELESAI',
+            );
+            if (end == null || !ctx.mounted) return;
+
+            String formatTime(TimeOfDay t) =>
+                '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+            final customHour =
+                '${formatTime(start)} - ${formatTime(end)}';
+            updateCombinedText(selectedDays, customHour);
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.softPinkCard,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.softPinkBorder,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.access_time_rounded,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Pilih Jam Lainnya (TimePicker)',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // Teks Hasil / Edit Manual
+        Text(
+          'Teks Format Jadwal (Dapat Diedit Manual)',
+          style: GoogleFonts.poppins(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF333333),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: scheduleController,
+          style: GoogleFonts.poppins(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: const Color(0xFF212121),
+          ),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFFF9F9FA),
+            hintText: 'Contoh: Senin - Jumat (09:00 - 17:00)',
+            prefixIcon: const Icon(
+              Icons.schedule_outlined,
+              color: AppColors.primary,
+              size: 20,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: Color(0xFFE0E0E0),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: AppColors.primary,
+                width: 1.5,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // ─── KARTU AKSES JAM DIBOOKING PASIEN LANGSUNG ──────────────────────
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 22),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: bookings.isNotEmpty
+                ? const Color(0xFFFFF7F9)
+                : const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: bookings.isNotEmpty
+                  ? AppColors.softPinkBorder
+                  : const Color(0xFFE8E8E8),
+              width: 1.2,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: bookings.isNotEmpty
+                          ? AppColors.primary
+                          : const Color(0xFF757575),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.access_time_filled_rounded,
+                        color: Colors.white, size: 14),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Jam yang Telah Dibooking Pasien',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF212121),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: bookings.isNotEmpty
+                          ? AppColors.softPinkCard
+                          : const Color(0xFFEEEEEE),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: bookings.isNotEmpty
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      '${bookings.length} Terisi',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: bookings.isNotEmpty
+                            ? AppColors.primary
+                            : const Color(0xFF757575),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (bookings.isEmpty) ...[
+                Text(
+                  'Belum ada pasien yang membooking jam konsultasi ini. Seluruh slot jam praktik dokter saat ini masih terbuka dan dapat dipesan pasien.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF616161),
+                    height: 1.4,
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  'Slot jam konsultasi yang sudah dipesan pasien (terkoneksi real-time):',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF616161),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: bookings.take(6).map((b) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.schedule,
+                              size: 12, color: AppColors.primary),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${b.dateKey} • ${b.timeSlot}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '(${b.patientName.split(' ').first})',
+                            style: GoogleFonts.poppins(
+                              fontSize: 10.5,
+                              color: const Color(0xFF616161),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                if (bookings.length > 6) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '+ ${bookings.length - 6} booking lainnya',
+                    style: GoogleFonts.poppins(
+                        fontSize: 10.5, color: const Color(0xFF9E9E9E)),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: onSwitchToBookingsTab,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Lihat Rincian Pasien & Keluhan Lengkap',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_forward_rounded,
+                              size: 14, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        // Action Buttons (Batal & Simpan)
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: isSaving
+                    ? null
+                    : () => Navigator.pop(bottomSheetContext),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  side: const BorderSide(
+                    color: Color(0xFFD0D0D0),
+                  ),
+                ),
+                child: Text(
+                  'Batal',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF616161),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        final newSchedule = scheduleController.text.trim();
+                        if (newSchedule.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content:
+                                  Text('Teks jadwal tidak boleh kosong.'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
+                        }
+
+                        setModalState(() => isSaving = true);
+
+                        try {
+                          String? targetUid = _resolvedDoctorUid ??
+                              widget.doctorId ??
+                              AuthService.instance.currentUser?.uid;
+
+                          if (targetUid != null && targetUid.isNotEmpty) {
+                            await UserRepository.instance.updateDoctorSchedule(
+                              targetUid,
+                              newSchedule,
+                            );
+                          } else {
+                            final snap = await FirebaseFirestore.instance
+                                .collection('doctors')
+                                .where('fullName', isEqualTo: widget.doctorName)
+                                .limit(1)
+                                .get();
+                            if (snap.docs.isNotEmpty) {
+                              await snap.docs.first.reference.update({
+                                'schedule': newSchedule,
+                                'updatedAt': FieldValue.serverTimestamp(),
+                              });
+                            }
+                          }
+
+                          if (mounted) {
+                            setState(() {
+                              _doctorSchedule = newSchedule;
+                            });
+                          }
+
+                          if (bottomSheetContext.mounted) {
+                            Navigator.pop(bottomSheetContext);
+                          }
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Jadwal dokter berhasil diperbarui & otomatis sinkron ke booking pasien.',
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 12.5),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFF2E7D32),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                margin: const EdgeInsets.all(16),
+                              ),
+                            );
+                          }
+                        } catch (err) {
+                          setModalState(() => isSaving = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text('Gagal menyimpan jadwal: $err'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        'Simpan Jadwal',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Tab Konten: Daftar Jam yang Telah Dibooking oleh Pasien
+  Widget _buildDoctorBookedSlotsTabContent({
+    required BuildContext ctx,
+    required List<ConsultationBookingModel> bookings,
+    required String effectiveDoctorName,
+    required BuildContext bottomSheetContext,
+  }) {
+    if (bookings.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9F9FA),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.softPinkCard,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.event_available_rounded,
+                size: 36,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Belum Ada Jam Dibooking',
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF333333),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Saat pasien memilih jam konsultasi melalui fitur booking, detail jam, tanggal, dan nama pasien akan otomatis tampil di sini secara real-time.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: const Color(0xFF757575),
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Daftar Booking Aktif (${bookings.length})',
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF333333),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2E7D32),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Real-Time',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF2E7D32),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: bookings.length,
+          separatorBuilder: (_, i) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final b = bookings[index];
+            return Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.softPinkBorder.withValues(alpha: 0.6),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Row 1: Time badge, Date, and Status
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.alarm_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${b.timeSlot} WIB',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          b.date,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF424242),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Terkonfirmasi',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF2E7D32),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Row 2: Patient Info
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: AppColors.softPinkCard,
+                        child: const Icon(
+                          Icons.person_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          b.patientName,
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF212121),
+                          ),
+                        ),
+                      ),
+                      if (b.totalAmount != null)
+                        Text(
+                          'Rp ${b.totalAmount}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF757575),
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  // Row 3: Complaint (if any)
+                  if (b.complaint.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9F9FA),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFECECEC)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 13,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Keluhan: "${b.complaint}"',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                                color: const Color(0xFF616161),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 12),
+
+                  // Action Buttons: Mulai Chat Pasien & Batalkan Sesi
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(bottomSheetContext);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => DoctorChatDetailScreen(
+                                  doctorName: effectiveDoctorName,
+                                  patientName: b.patientName,
+                                  initialMessage:
+                                      'Halo ${b.patientName}, saya $effectiveDoctorName. Jadwal konsultasi Anda jam ${b.timeSlot} (${b.date}) telah saya konfirmasi. Apakah ada keluhan lanjutan yang ingin disampaikan?',
+                                  glucoseNote: b.complaint.isNotEmpty
+                                      ? 'Keluhan: ${b.complaint}'
+                                      : 'Pasien Konsultasi Booking',
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.chat_rounded, size: 15),
+                          label: Text(
+                            'Buka Chat Pasien',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: ctx,
+                            builder: (dCtx) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              title: Text(
+                                'Batalkan Booking?',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              content: Text(
+                                'Apakah Anda yakin ingin membatalkan slot jam ${b.timeSlot} untuk pasien ${b.patientName}?',
+                                style: GoogleFonts.poppins(fontSize: 12.5),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dCtx, false),
+                                  child: Text(
+                                    'Kembali',
+                                    style: GoogleFonts.poppins(
+                                        color: const Color(0xFF757575)),
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(dCtx, true),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Batalkan',
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true) {
+                            try {
+                              await ConsultationBookingService.instance
+                                  .cancelBooking(b.id);
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Booking slot jam ${b.timeSlot} berhasil dibatalkan.',
+                                      style: GoogleFonts.poppins(fontSize: 12),
+                                    ),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Gagal membatalkan: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                          side: const BorderSide(color: Color(0xFFE0E0E0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          'Batalkan',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            color: Colors.red,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 

@@ -155,12 +155,26 @@ class UserRepository {
     });
   }
 
+  /// Stream profil dokter secara real-time
+  Stream<AppUser?> streamDoctor(String uid) {
+    return _db.collection('doctors').doc(uid).snapshots().map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return AppUser.fromMap(doc.data()!, doc.id);
+    });
+  }
+
   /// Perbarui jadwal konsultasi online dokter
   Future<void> updateDoctorSchedule(String uid, String schedule) async {
-    await _db.collection('doctors').doc(uid).update({
+    final batch = _db.batch();
+    batch.set(_db.collection('doctors').doc(uid), {
       'schedule': schedule,
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
+    batch.set(_db.collection('users').doc(uid), {
+      'schedule': schedule,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    await batch.commit();
   }
 
   /// Perbarui foto profil dokter

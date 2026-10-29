@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -48,6 +50,8 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
   String? _selectedSlot;
   final TextEditingController _complaintController = TextEditingController();
   bool _isSubmitting = false;
+  String? _liveSchedule;
+  StreamSubscription? _doctorScheduleSub;
 
   // Daftar default slot jam konsultasi (durasi 25 menit, jeda 5 menit, istirahat 12:00-13:00)
   static const List<String> _allSlots = [
@@ -78,12 +82,97 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
     _selectedSlot = _findInitialValidSlot();
 
     _seedInitialDataIfAvailable();
+    _listenToDoctorSchedule();
+  }
+
+  void _listenToDoctorSchedule() {
+    try {
+      final docId = _effectiveDoctorId;
+      if (docId.isNotEmpty) {
+        _doctorScheduleSub = FirebaseFirestore.instance
+            .collection('doctors')
+            .doc(docId)
+            .snapshots()
+            .listen((snap) {
+          if (snap.exists && snap.data() != null) {
+            final s = snap.data()!['schedule'] as String?;
+            if (s != null && s.isNotEmpty && mounted) {
+              setState(() {
+                _liveSchedule = s;
+                if (_selectedSlot != null &&
+                    !_computedSlots.contains(_selectedSlot)) {
+                  _selectedSlot = _findInitialValidSlot();
+                }
+              });
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('ℹ️ [BookingConsultation] listen doctor schedule: $e');
+    }
   }
 
   @override
   void dispose() {
+    _doctorScheduleSub?.cancel();
     _complaintController.dispose();
     super.dispose();
+  }
+
+  /// Cek apakah dokter membuka jadwal praktik pada hari yang dipilih pada kalender
+  bool get _isDoctorPracticingOnSelectedDate {
+    final sch = _effectiveSchedule.toLowerCase();
+    final weekday = _selectedDate.weekday; // 1 = Senin, ..., 7 = Minggu
+    if (sch.contains('setiap hari')) {
+      return true;
+    }
+    if (sch.contains('senin - kamis') || sch.contains('senin – kamis')) {
+      return weekday >= DateTime.monday && weekday <= DateTime.thursday;
+    }
+    if (sch.contains('senin - sabtu') || sch.contains('senin – sabtu')) {
+      return weekday >= DateTime.monday && weekday <= DateTime.saturday;
+    }
+    if (sch.contains('senin - jumat') || sch.contains('senin – jumat')) {
+      return weekday >= DateTime.monday && weekday <= DateTime.friday;
+    }
+    return true;
+  }
+
+  /// Menghitung slot jam dinamis berdasarkan jadwal praktik dokter saat ini
+  List<String> get _computedSlots {
+    try {
+      final reg = RegExp(r'(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})');
+      final match = reg.firstMatch(_effectiveSchedule);
+      if (match != null) {
+        final startParts = match.group(1)!.split(':');
+        final endParts = match.group(2)!.split(':');
+        int startMinutes =
+            int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+        int endMinutes = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
+
+        if (endMinutes > startMinutes) {
+          final List<String> generated = [];
+          for (int m = startMinutes; m + 30 <= endMinutes; m += 30) {
+            final h = m ~/ 60;
+            final min = m % 60;
+            // Lewati istirahat 12:00 - 13:00 jika jadwal mencakup pagi s/d sore
+            if (startMinutes <= 11 * 60 && endMinutes >= 14 * 60 && (h == 12)) {
+              continue;
+            }
+            final slotStr =
+                '${h.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
+            generated.add(slotStr);
+          }
+          if (generated.isNotEmpty) {
+            return generated;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('ℹ️ [BookingConsultation] parse schedule slots error: $e');
+    }
+    return _allSlots;
   }
 
   /// Cek apakah slot jam tertentu sudah lewat waktu saat ini (jika hari ini dipilih)
@@ -105,7 +194,8 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
 
   /// Cari slot jam pertama yang masih belum lewat waktu
   String? _findInitialValidSlot() {
-    for (final slot in _allSlots) {
+    if (!_isDoctorPracticingOnSelectedDate) return null;
+    for (final slot in _computedSlots) {
       if (!_isSlotPast(slot)) {
         return slot;
       }
@@ -155,6 +245,9 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
   }
 
   String get _effectiveSchedule {
+    if (_liveSchedule != null && _liveSchedule!.isNotEmpty) {
+      return _liveSchedule!;
+    }
     if (widget.doctor != null &&
         widget.doctor!.schedule != null &&
         widget.doctor!.schedule!.isNotEmpty) {
@@ -688,12 +781,40 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
     );
   }
 
-  // ─── 4. Grid Pilihan Jam Real-Time ────────────────────────────────────
-
   Widget _buildTimeSlotsGrid(Set<String> bookedSlots) {
+    // Jika dokter tidak buka pada hari yang dipilih, tampilkan banner
+    if (!_isDoctorPracticingOnSelectedDate) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3E0),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFFB74D), width: 1),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.event_busy_rounded, color: Color(0xFFE65100), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Dokter tidak membuka praktik pada hari ini.\nJadwal: $_effectiveSchedule',
+                style: GoogleFonts.poppins(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF8D4B00),
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final slots = _computedSlots;
     // Hitung apakah semua slot jam hari ini sudah terlewati
-    final allSlotsPast = _isToday(_selectedDate) &&
-        _allSlots.every((s) => _isSlotPast(s));
+    final allSlotsPast = _isToday(_selectedDate) && slots.every((s) => _isSlotPast(s));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -709,7 +830,7 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
             Wrap(
               spacing: spacing,
               runSpacing: 10,
-              children: _allSlots.map((slot) {
+              children: slots.map((slot) {
                 final isBooked = bookedSlots.contains(slot);
                 final isPast = _isSlotPast(slot);
                 final isSelected = !isBooked && !isPast && (_selectedSlot == slot);
