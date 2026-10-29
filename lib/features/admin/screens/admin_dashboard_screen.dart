@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/admin_activity_service.dart';
+import '../../../core/services/article_service.dart';
 import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/profile_image_service.dart';
 import '../../../models/app_user.dart';
@@ -1691,31 +1692,8 @@ class _KelolaPenggunaModalContentState extends State<_KelolaPenggunaModalContent
 /// 2. KOMPONEN KELOLA ARTIKEL EDUKASI DENGAN ISI REAL & INTERAKTIF
 /// =========================================================================
 
-/// Artikel tambahan admin (in-memory, tanpa Firebase)
-class AdminArticle {
-  final String id;
-  final String category;
-  final String title;
-  final String subtitle;
-  final String content;
-  final String readTime;
-  final String reviewer;
-  final DateTime createdAt;
-
-  AdminArticle({
-    required this.id,
-    required this.category,
-    required this.title,
-    required this.subtitle,
-    required this.content,
-    required this.readTime,
-    required this.reviewer,
-    required this.createdAt,
-  });
-}
-
-/// Static list agar artikel tetap ada selama sesi aplikasi berjalan
-final List<AdminArticle> _adminArticles = [];
+// AdminArticle sekarang menggunakan AdminArticleModel dari article_service.dart
+// yang disimpan ke Firestore secara real-time.
 
 class _KelolaArtikelModalContent extends StatefulWidget {
   const _KelolaArtikelModalContent();
@@ -1841,29 +1819,43 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: () {
+                              onPressed: () async {
                                 if (titleCtrl.text.trim().isEmpty || contentCtrl.text.trim().isEmpty) {
                                   ScaffoldMessenger.of(ctx).showSnackBar(
                                     SnackBar(content: Text('Judul dan isi artikel wajib diisi.', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: Colors.red.shade700),
                                   );
                                   return;
                                 }
-                                final newArticle = AdminArticle(
-                                  id: 'ADM-${DateTime.now().millisecondsSinceEpoch}',
+                                final newArticle = AdminArticleModel(
+                                  id: '',
                                   category: selectedCategory,
                                   title: titleCtrl.text.trim(),
                                   subtitle: subtitleCtrl.text.trim(),
                                   content: contentCtrl.text.trim(),
                                   readTime: selectedReadTime,
-                                  reviewer: reviewerCtrl.text.trim().isNotEmpty ? reviewerCtrl.text.trim() : 'Tim Medis LojinDeker',
+                                  reviewer: reviewerCtrl.text.trim().isNotEmpty
+                                      ? reviewerCtrl.text.trim()
+                                      : 'Tim Medis LojinDeker',
                                   createdAt: DateTime.now(),
                                 );
-                                _adminArticles.insert(0, newArticle);
-                                Navigator.pop(ctx);
-                                setState(() {});
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Artikel "${newArticle.title}" berhasil ditambahkan!', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: const Color(0xFF2E7D32)),
-                                );
+                                try {
+                                  await ArticleService.instance.addArticle(newArticle);
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Artikel "${newArticle.title}" berhasil ditambahkan!', style: GoogleFonts.poppins(fontSize: 12)),
+                                        backgroundColor: const Color(0xFF2E7D32),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Gagal menyimpan: $e', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: Colors.red.shade700),
+                                    );
+                                  }
+                                }
                               },
                               icon: const Icon(Icons.save_rounded, color: Colors.white, size: 18),
                               label: Text('Simpan Artikel', style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
@@ -1907,22 +1899,32 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
     );
   }
 
-  void _confirmDelete(AdminArticle article) {
+  void _confirmDelete(AdminArticleModel article) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Text('Hapus Artikel?', style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
-        content: Text('Artikel "${article.title}" akan dihapus.', style: GoogleFonts.poppins(fontSize: 13)),
+        content: Text('Artikel "${article.title}" akan dihapus secara permanen.', style: GoogleFonts.poppins(fontSize: 13)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Batal', style: GoogleFonts.poppins(color: Colors.grey))),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              setState(() => _adminArticles.removeWhere((a) => a.id == article.id));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Artikel dihapus.', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: const Color(0xFF2E7D32)),
-              );
+              try {
+                await ArticleService.instance.deleteArticle(article.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Artikel dihapus.', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: const Color(0xFF2E7D32)),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Gagal menghapus: $e', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: Colors.red.shade700),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             child: Text('Hapus', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -1934,8 +1936,17 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
 
   @override
   Widget build(BuildContext context) {
-    final totalArticles = educationalArticles.length + _adminArticles.length;
+    return StreamBuilder<List<AdminArticleModel>>(
+      stream: ArticleService.instance.streamArticles(),
+      builder: (context, snapshot) {
+        final adminArticles = snapshot.data ?? [];
+        final totalArticles = educationalArticles.length + adminArticles.length;
+        return _buildContent(context, adminArticles, totalArticles);
+      },
+    );
+  }
 
+  Widget _buildContent(BuildContext context, List<AdminArticleModel> adminArticles, int totalArticles) {
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
@@ -1956,7 +1967,6 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                   decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
                 ),
               ),
-
               // Modal Header
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -1977,7 +1987,6 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                         ],
                       ),
                     ),
-                    // Tombol tambah artikel
                     TextButton.icon(
                       onPressed: _showTambahArtikelForm,
                       icon: const Icon(Icons.add_rounded, size: 18, color: Color(0xFFD81B60)),
@@ -1988,17 +1997,15 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                   ],
                 ),
               ),
-
               const Divider(height: 1, color: Color(0xFFF8BBD0)),
-
               // Daftar Artikel
               Expanded(
                 child: ListView(
                   controller: scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   children: [
-                    // Artikel buatan admin
-                    if (_adminArticles.isNotEmpty) ...[
+                    // Artikel buatan admin dari Firestore
+                    if (adminArticles.isNotEmpty) ...[
                       Row(
                         children: [
                           Container(
@@ -2007,11 +2014,11 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                             child: Text('Artikel Admin', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60))),
                           ),
                           const SizedBox(width: 8),
-                          Text('${_adminArticles.length} artikel', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
+                          Text('${adminArticles.length} artikel', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
                         ],
                       ),
                       const SizedBox(height: 12),
-                      ..._adminArticles.map((article) => Padding(
+                      ...adminArticles.map((article) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _buildAdminArticleCard(article),
                       )),
@@ -2019,7 +2026,6 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                       const Divider(color: Color(0xFFF8BBD0)),
                       const SizedBox(height: 8),
                     ],
-
                     // Label artikel bawaan
                     Row(
                       children: [
@@ -2047,8 +2053,8 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
     );
   }
 
-  /// Card artikel buatan admin (bisa dihapus)
-  Widget _buildAdminArticleCard(AdminArticle article) {
+  /// Card artikel buatan admin dari Firestore (bisa dihapus)
+  Widget _buildAdminArticleCard(AdminArticleModel article) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(16),

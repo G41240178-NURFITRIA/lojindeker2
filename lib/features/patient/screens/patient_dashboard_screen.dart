@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/services/article_service.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/profile_image_service.dart';
@@ -33,11 +35,22 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   late String _currentPatientName;
   final ScrollController _homeScrollController = ScrollController();
 
+  // Artikel admin dari Firestore (real-time)
+  List<AdminArticleModel> _adminArticles = [];
+  StreamSubscription<List<AdminArticleModel>>? _articleSub;
+
   @override
   void initState() {
     super.initState();
     _currentPatientName = widget.patientName;
     _loadCurrentProfile();
+    _subscribeToAdminArticles();
+  }
+
+  void _subscribeToAdminArticles() {
+    _articleSub = ArticleService.instance.streamArticles().listen((articles) {
+      if (mounted) setState(() => _adminArticles = articles);
+    });
   }
 
   void _loadCurrentProfile() async {
@@ -63,6 +76,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
   @override
   void dispose() {
+    _articleSub?.cancel();
     _homeScrollController.dispose();
     super.dispose();
   }
@@ -981,7 +995,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   border: Border.all(color: const Color(0xFFF8BBD0)),
                 ),
                 child: Text(
-                  '${educationalArticles.length} Artikel',
+                  '${educationalArticles.length + _adminArticles.length} Artikel',
                   style: GoogleFonts.poppins(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
@@ -993,25 +1007,34 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Horizontal List of Educational Articles (Clickable)
+          // Horizontal List: Artikel admin (Firestore real-time) + artikel bawaan
           SizedBox(
             height: 295,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
-              itemCount: educationalArticles.length,
+              itemCount: _adminArticles.length + educationalArticles.length,
               itemBuilder: (context, index) {
-                final article = educationalArticles[index];
-                return Padding(
-                  padding: EdgeInsets.only(
-                    right: index == educationalArticles.length - 1 ? 0 : 12,
-                  ),
-                  child: _buildHomeArticleCard(article),
-                );
+                final isAdminArticle = index < _adminArticles.length;
+                final isLast = index == _adminArticles.length + educationalArticles.length - 1;
+                if (isAdminArticle) {
+                  final article = _adminArticles[index];
+                  return Padding(
+                    padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                    child: _buildAdminArticleCard(article),
+                  );
+                } else {
+                  final article = educationalArticles[index - _adminArticles.length];
+                  return Padding(
+                    padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                    child: _buildHomeArticleCard(article),
+                  );
+                }
               },
             ),
           ),
           const SizedBox(height: 16),
+
 
           // Kapan Harus Ke Dokter? Card
           Material(
@@ -1265,6 +1288,160 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Card artikel dari admin (Firestore real-time) - dengan bottom sheet detail
+  Widget _buildAdminArticleCard(AdminArticleModel article) {
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => DraggableScrollableSheet(
+            initialChildSize: 0.9,
+            maxChildSize: 0.95,
+            minChildSize: 0.5,
+            expand: false,
+            builder: (_, sc) => Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: sc,
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Badge kategori + waktu baca
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD81B60).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(article.category, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60))),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.timer_outlined, size: 13, color: Color(0xFF9E9E9E)),
+                              const SizedBox(width: 3),
+                              Text(article.readTime, style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(article.title, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF141414), height: 1.3)),
+                          if (article.subtitle.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(article.subtitle, style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF616161), height: 1.5)),
+                          ],
+                          const SizedBox(height: 16),
+                          const Divider(color: Color(0xFFF8BBD0)),
+                          const SizedBox(height: 16),
+                          Text(article.content, style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF424242), height: 1.65)),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              const Icon(Icons.verified_user_rounded, size: 14, color: Color(0xFF2E7D32)),
+                              const SizedBox(width: 6),
+                              Expanded(child: Text('Direview oleh: ${article.reviewer}', style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF424242)))),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 165,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFD81B60).withValues(alpha: 0.3), width: 1.2),
+          boxShadow: [BoxShadow(color: const Color(0xFFD81B60).withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header berwarna dengan badge 'Baru'
+            Stack(
+              children: [
+                Container(
+                  height: 120,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFFD81B60), Color(0xFFF06292)],
+                    ),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+                  ),
+                  child: Center(
+                    child: Icon(Icons.article_rounded, size: 48, color: Colors.white.withValues(alpha: 0.8)),
+                  ),
+                ),
+                Positioned(
+                  top: 8, right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                    child: Text('Baru', style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFFD81B60))),
+                  ),
+                ),
+              ],
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD81B60).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(article.category, style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60))),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(article.title, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF141414), height: 1.25), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    if (article.subtitle.isNotEmpty)
+                      Text(article.subtitle, style: GoogleFonts.poppins(fontSize: 9.5, color: const Color(0xFF757575), height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Text('Baca artikel', style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFFD81B60))),
+                        const SizedBox(width: 3),
+                        const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFD81B60)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
