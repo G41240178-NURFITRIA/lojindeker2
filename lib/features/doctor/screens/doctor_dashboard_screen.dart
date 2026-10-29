@@ -240,6 +240,15 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   void _initDoctorProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final effectiveUid = widget.doctorId ?? AuthService.instance.currentUser?.uid ?? 'default';
+      final cached = prefs.getString('doctor_schedule_$effectiveUid');
+      if (cached != null && cached.isNotEmpty && mounted) {
+        setState(() => _doctorSchedule = cached);
+      }
+    } catch (_) {}
+
     String? uid = widget.doctorId ?? AuthService.instance.currentUser?.uid;
     if (uid != null && uid.isNotEmpty) {
       _resolvedDoctorUid = uid;
@@ -1283,174 +1292,100 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           top: 14,
           bottom: 22,
         ),
-        child: Column(
+        child: Row(
           children: [
-            // Top Row: Notification Bell, Greeting + Name, Avatar
-            Row(
-              children: [
-                // Notification Bell
-                InkWell(
-                  onTap: _showNotificationDialog,
-                  borderRadius: BorderRadius.circular(25),
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFFFFD1DC),
-                        width: 1.5,
-                      ),
+            // Notification Bell
+            InkWell(
+              onTap: _showNotificationDialog,
+              borderRadius: BorderRadius.circular(25),
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFFFFD1DC),
+                    width: 1.5,
+                  ),
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(
+                      Icons.notifications_none_rounded,
+                      color: Color(0xFF141414),
+                      size: 26,
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        const Icon(
-                          Icons.notifications_none_rounded,
-                          color: Color(0xFF141414),
-                          size: 26,
-                        ),
-                        if (_unreadBookingCount > 0)
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 18,
-                                minHeight: 18,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${_unreadBookingCount > 9 ? '9+' : _unreadBookingCount}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    height: 1,
-                                  ),
-                                ),
+                    if (_unreadBookingCount > 0)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${_unreadBookingCount > 9 ? '9+' : _unreadBookingCount}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                height: 1,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                const Spacer(),
-                
-                // Greeting & Doctor Name
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      _getGreeting(),
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    Text(
-                      widget.doctorName,
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: const Color(0xFF141414),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
                   ],
                 ),
-                
-                const SizedBox(width: 14),
-                
-                // Avatar
-                DoctorAvatarWidget(
-                  photoUrl: _doctorPhotoUrl,
-                  size: 54,
-                  backgroundColor: AppColors.primary,
-                  iconColor: Colors.white,
-                  onTap: () {
-                    setState(() => _selectedTabIndex = 1);
-                  },
+              ),
+            ),
+            
+            const Spacer(),
+            
+            // Greeting & Doctor Name
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _getGreeting(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  widget.doctorName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: const Color(0xFF141414),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
-
-            const SizedBox(height: 24),
-
-            // Search Bar: "Cari pasien..."
-            Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 16),
-                  const Icon(
-                    Icons.search_rounded,
-                    color: Color(0xFFF06292),
-                    size: 22,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val;
-                        });
-                      },
-                      style: GoogleFonts.poppins(
-                        fontSize: 13.5,
-                        color: const Color(0xFF212121),
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Cari pasien...',
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 13.5,
-                          color: const Color(0xFF9E9E9E),
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ),
-                  if (_searchQuery.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        _searchController.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 14),
-                        child: Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: Color(0xFF9E9E9E),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                ],
-              ),
+            
+            const SizedBox(width: 14),
+            
+            // Avatar
+            DoctorAvatarWidget(
+              photoUrl: _doctorPhotoUrl,
+              size: 54,
+              backgroundColor: AppColors.primary,
+              iconColor: Colors.white,
+              onTap: () {
+                setState(() => _selectedTabIndex = 1);
+              },
             ),
           ],
         ),
@@ -1461,7 +1396,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   /// 2 Summary Metric Cards (Total pasien & Chat belum dibaca dinamis)
   Widget _buildSummaryCards() {
     final totalPatients = _totalPatientCount;
-    final unreadCount = _chats.fold<int>(0, (sum, chat) => sum + chat.unreadCount);
+    final unreadCount = _chats.fold<int>(0, (acc, chat) => acc + chat.unreadCount);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -2616,11 +2551,28 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                           }
                                         } catch (err) {
                                           setModalState(() => isSaving = false);
+                                          try {
+                                            final prefs = await SharedPreferences.getInstance();
+                                            final fallbackUid = _resolvedDoctorUid ?? widget.doctorId ?? AuthService.instance.currentUser?.uid ?? 'default';
+                                            await prefs.setString('doctor_schedule_' + fallbackUid, newSchedule);
+                                          } catch (_) {}
+                                          if (mounted) {
+                                            setState(() => _doctorSchedule = newSchedule);
+                                          }
+                                          if (bottomSheetContext.mounted) {
+                                            Navigator.pop(bottomSheetContext);
+                                          }
                                           if (mounted) {
                                             messenger.showSnackBar(
                                               SnackBar(
-                                                content: Text('Gagal menyimpan jadwal: $err'),
-                                                backgroundColor: Colors.red,
+                                                content: Text(
+                                                  'Jadwal diperbarui! (Sinkronisasi cloud: terapkan Rules di Firebase Console).',
+                                                  style: GoogleFonts.poppins(fontSize: 12),
+                                                ),
+                                                backgroundColor: const Color(0xFFE65100),
+                                                behavior: SnackBarBehavior.floating,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                margin: const EdgeInsets.all(16),
                                               ),
                                             );
                                           }
@@ -4442,15 +4394,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                       _showDocumentPickerSheet();
                     },
                   ),
-                  _buildAttachmentOption(
-                    icon: Icons.medical_services_rounded,
-                    label: 'Hasil Lab',
-                    colors: const [Color(0xFF26A69A), Color(0xFF00897B)],
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _sendLabSummaryAttachment();
-                    },
-                  ),
                 ],
               ),
             ],
@@ -4846,41 +4789,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         );
       },
     );
-  }
-
-  void _sendLabSummaryAttachment() {
-    final note = widget.glucoseNote.isNotEmpty
-        ? widget.glucoseNote
-        : 'Gula Darah: 110 mg/dL (Terkontrol)';
-    _sendMessage(
-      customText: '📊 Ringkasan Hasil Lab:\n$note\nTanggal: Hari ini\nStatus: Terverifikasi oleh Dokter',
-      type: 'document',
-      attachmentName: 'Ringkasan_Hasil_Lab_${widget.patientName.replaceAll(' ', '_')}.pdf',
-      attachmentSize: '95 KB',
-      attachmentData: 'mock_lab_pdf',
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Ringkasan hasil lab berhasil dikirim ke ruang konsultasi',
-                  style: GoogleFonts.poppins(fontSize: 12.5),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: const Color(0xFF00897B),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
   }
 
   void _openFullScreenImage(Uint8List bytes, String? name) {

@@ -12,7 +12,10 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
     
     function isDoctor() {
@@ -31,8 +34,7 @@ service cloud.firestore {
     // Read: setiap pengguna login dapat melihat data dokter untuk konsultasi
     // Write: hanya admin
     match /doctors/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read, write: if isSignedIn();
     }
     
     // 3. Users Collection (Pasien)
@@ -77,11 +79,9 @@ service cloud.firestore {
     }
     
     // 7. Admin Articles Collection (Artikel Edukasi dari Admin)
-    // Read: semua user yang login (pasien & dokter bisa baca)
-    // Write: hanya admin
     match /admin_articles/{articleId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     // Default fallback deny

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
@@ -14,6 +15,9 @@ typedef AppAvatarWidget = DoctorAvatarWidget;
 /// - File path (khusus mobile / desktop non-web)
 /// - Fallback dinamis (initials / ikon person)
 class DoctorAvatarWidget extends StatelessWidget {
+  /// Cache memory untuk gambar base64 agar tidak di-decode ulang setiap frame/detik
+  static final Map<String, Uint8List> _base64Cache = {};
+
   final String? photoUrl;
   final double size;
   final String? initials;
@@ -87,16 +91,24 @@ class DoctorAvatarWidget extends StatelessWidget {
   Widget _buildAvatarContent() {
     final photo = photoUrl?.trim();
     if (photo != null && photo.isNotEmpty) {
-      // 1. Data URI atau Base64 Image
+      // 1. Data URI atau Base64 Image (dengan caching & gaplessPlayback)
       if (photo.startsWith('data:image') || _isLikelyBase64(photo)) {
         try {
-          final cleanBase64 = photo.contains(',') ? photo.split(',').last : photo;
-          final bytes = base64Decode(cleanBase64);
+          Uint8List? bytes = _base64Cache[photo];
+          if (bytes == null) {
+            final cleanBase64 = photo.contains(',') ? photo.split(',').last : photo;
+            bytes = base64Decode(cleanBase64);
+            if (_base64Cache.length > 60) _base64Cache.clear();
+            _base64Cache[photo] = bytes;
+          }
           return Image.memory(
             bytes,
+            key: ValueKey('b64_${photo.hashCode}'),
             width: size,
             height: size,
             fit: BoxFit.cover,
+            gaplessPlayback: true,
+            filterQuality: FilterQuality.medium,
             errorBuilder: (context, error, stackTrace) => _buildFallback(),
           );
         } catch (e) {
@@ -104,24 +116,30 @@ class DoctorAvatarWidget extends StatelessWidget {
         }
       }
 
-      // 2. Network URL (http / https)
+      // 2. Network URL (http / https) dengan gaplessPlayback
       if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('blob:')) {
         return Image.network(
           photo,
+          key: ValueKey('net_$photo'),
           width: size,
           height: size,
           fit: BoxFit.cover,
+          gaplessPlayback: true,
+          filterQuality: FilterQuality.medium,
           errorBuilder: (context, error, stackTrace) => _buildFallback(),
         );
       }
 
-      // 3. Asset Image
+      // 3. Asset Image dengan gaplessPlayback
       if (photo.startsWith('assets/')) {
         return Image.asset(
           photo,
+          key: ValueKey('ast_$photo'),
           width: size,
           height: size,
           fit: BoxFit.cover,
+          gaplessPlayback: true,
+          filterQuality: FilterQuality.medium,
           errorBuilder: (context, error, stackTrace) => _buildFallback(),
         );
       }

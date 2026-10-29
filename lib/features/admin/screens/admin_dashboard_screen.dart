@@ -12,7 +12,6 @@ import '../../../services/user_repository.dart';
 import '../../auth/screens/landing_screen.dart';
 import '../../patient/screens/article_detail_screen.dart';
 import '../../patient/screens/patient_profile_screen.dart';
-import '../../patient/screens/risk_check_screen.dart';
 import '../../patient/screens/riwayat_risiko_screen.dart';
 import 'add_doctor_screen.dart';
 
@@ -370,10 +369,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                           const SizedBox(width: 14),
                           Expanded(
-                            child: _buildSoftPinkMetricCard(
-                              iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
-                              title: 'Cek Risiko',
-                              value: '$riskCount',
+                            child: GestureDetector(
+                              onTap: () => _showRiskCheckSheet(context),
+                              child: _buildSoftPinkMetricCard(
+                                iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
+                                title: 'Cek Risiko',
+                                value: '$riskCount',
+                              ),
                             ),
                           ),
                         ],
@@ -413,7 +415,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       _buildManagementTile(
                         iconWidget: const _ArticlesOutlineIcon(color: Colors.white, size: 18),
                         title: 'Kelola Artikel Edukasi',
-                        subtitle: '${educationalArticles.length + _adminArticles.length} artikel aktif',
+                        subtitle: '${educationalArticles.length} artikel aktif',
                         onTap: () => _showKelolaArtikelSheet(context),
                       ),
 
@@ -1150,7 +1152,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         iconBg = const Color(0xFF90A4AE);
         break;
       case AdminActivityType.sistemNormal:
-      default:
         icon = Icons.check_circle_rounded;
         iconBg = const Color(0xFFD81B60);
         break;
