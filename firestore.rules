@@ -45,7 +45,11 @@ service cloud.firestore {
     match /doctors/{uid} {
       allow read: if isSignedIn();
       allow create, delete: if isAdmin();
-      allow update: if isOwner(uid) || isAdmin();
+      allow update: if isAdmin() || (
+        isOwner(uid) &&
+        isDoctor() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['schedule', 'photoUrl', 'updatedAt'])
+      );
     }
 
     // =====================================
@@ -59,8 +63,8 @@ service cloud.firestore {
         && request.auth.uid == uid
         && request.resource.data.role == 'pasien';
 
-      // Membaca data pengguna
-      allow read: if isSignedIn();
+      // Membaca data pengguna hanya pemilik, admin, atau dokter
+      allow read: if isOwner(uid) || isAdmin() || isDoctor();
 
       // Mengubah data tanpa mengubah role
       allow update: if (isOwner(uid) || isAdmin())
@@ -71,9 +75,8 @@ service cloud.firestore {
 
       // Subcollections
       match /{allSubcollections=**} {
-        allow read, write: if isOwner(uid)
-          || isAdmin()
-          || isDoctor();
+        allow read: if isOwner(uid) || isAdmin() || isDoctor();
+        allow write: if isOwner(uid) || isAdmin();
       }
     }
 
@@ -89,12 +92,19 @@ service cloud.firestore {
       // Mencegah pengambilan seluruh daftar pengguna
       allow list: if false;
 
-      // Pembuatan atau update lookup oleh pengguna yang login
-      // batch.set() bisa jadi create ATAU update jika doc sudah ada
-      allow create, update: if isSignedIn();
+      // Pembuatan lookup: user login dengan uid cocok, atau admin
+      allow create: if (isSignedIn() && request.resource.data.uid == request.auth.uid)
+        || isAdmin();
 
-      // Hapus hanya oleh admin
-      allow delete: if isAdmin();
+      // Update lookup: pemilik lookup lama dan baru yang sama, atau admin
+      allow update: if (isSignedIn()
+            && resource.data.uid == request.auth.uid
+            && request.resource.data.uid == request.auth.uid)
+        || isAdmin();
+
+      // Hapus lookup: pemilik lookup, atau admin
+      allow delete: if (isSignedIn() && resource.data.uid == request.auth.uid)
+        || isAdmin();
     }
 
     // =====================================

@@ -113,9 +113,21 @@ class _AuthGateState extends State<AuthGate> {
 
             // Jika UID tidak ditemukan di admins, doctors, maupun users
             if (appUser == null) {
+              // Jika proses pendaftaran sedang berjalan, tunggu hingga dokumen Firestore selesai dibuat
+              if (AuthService.instance.isRegistering) {
+                return const Scaffold(
+                  backgroundColor: Color(0xFFFAF1F1),
+                  body: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFBA171E)),
+                    ),
+                  ),
+                );
+              }
               PatientChatNotificationService.instance.stopListening();
               // Sign out agar tidak tersangkut
               WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (AuthService.instance.isRegistering) return;
                 AuthService.instance.signOut();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(

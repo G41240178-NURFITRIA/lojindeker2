@@ -18,6 +18,10 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  /// Menandakan apakah proses pendaftaran sedang berjalan
+  /// agar AuthGate tidak memicu logout paksa sebelum WriteBatch Firestore selesai.
+  bool isRegistering = false;
+
   // ─── Terjemahan error Firebase → Bahasa Indonesia ─────────────────
   String _mapError(String code, [String fallback = 'Terjadi kesalahan autentikasi.']) {
     switch (code) {
@@ -204,6 +208,7 @@ class AuthService {
     }
 
     // ── Buat akun Firebase Auth ───────────────────────────────────
+    isRegistering = true;
     late final FirebaseAuth firebaseAuth;
     try {
       firebaseAuth = _auth;
@@ -270,6 +275,8 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ [AuthService] signUpPatient Firebase: ${e.code}');
       throw Exception(_mapError(e.code, e.message ?? 'Gagal mendaftar.'));
+    } finally {
+      isRegistering = false;
     }
   }
 
