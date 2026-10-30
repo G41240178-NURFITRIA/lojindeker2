@@ -50,7 +50,7 @@ class DoctorDashboardScreen extends StatefulWidget {
 
   const DoctorDashboardScreen({
     super.key,
-    this.doctorName = 'Dr. Kaka Pratama',
+    this.doctorName = 'dr. Yosua',
     this.doctorId,
   });
 
@@ -3884,6 +3884,9 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   }
 
   void _showLogoutConfirmDialog() {
+    final activeDoctorName = _doctorDisplayName.trim().isNotEmpty
+        ? _doctorDisplayName.trim()
+        : (widget.doctorName.trim().isNotEmpty ? widget.doctorName.trim() : 'dr. Yosua');
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -3904,7 +3907,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           ],
         ),
         content: Text(
-          'Apakah Anda yakin ingin keluar dari akun Dr. Kaka Pratama?',
+          'Apakah Anda yakin ingin keluar dari akun $activeDoctorName?',
           style: GoogleFonts.poppins(
             fontSize: 13,
             color: const Color(0xFF666666),
