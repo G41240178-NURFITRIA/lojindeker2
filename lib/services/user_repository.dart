@@ -67,13 +67,13 @@ class UserRepository {
       'createdAt': ts,
     };
     batch.set(
-      _db.collection('loginLookup').doc(user.username.toLowerCase()),
+      _db.collection('loginLookup').doc(user.username.trim().toLowerCase()),
       lookupData,
     );
 
     // 3. loginLookup/{email}
     batch.set(
-      _db.collection('loginLookup').doc(user.email.toLowerCase()),
+      _db.collection('loginLookup').doc(user.email.trim().toLowerCase()),
       lookupData,
     );
 

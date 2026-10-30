@@ -213,10 +213,10 @@ class AuthService {
       );
 
       final firebaseUser = credential.user!;
-      await firebaseUser.updateDisplayName(fullNameClean);
+      try { await firebaseUser.updateDisplayName(fullNameClean); } catch (_) {}
       // Force-refresh ID token agar Firestore Security Rules menerima
       // UID baru sebelum WriteBatch dieksekusi (mencegah permission-denied).
-      await firebaseUser.getIdToken(true);
+      try { await firebaseUser.getIdToken(true); } catch (_) {}
 
       final appUser = AppUser(
         uid: firebaseUser.uid,
