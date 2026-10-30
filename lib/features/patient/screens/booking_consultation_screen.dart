@@ -436,47 +436,69 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
 
               const SizedBox(height: 20),
 
-              // 4. Bagian "Pilih jam" dengan Real-Time Firestore Stream
-              StreamBuilder<List<ConsultationBookingModel>>(
-                stream: ConsultationBookingService.instance.streamBookings(
-                  doctorId: _effectiveDoctorId,
-                  dateKey: dateKey,
-                ),
-                builder: (context, snapshot) {
-                  final bookings = snapshot.data ?? [];
-                  final bookedSlots =
-                      bookings.map((b) => b.timeSlot.trim()).toSet();
+              // 4. Bagian "Pilih jam" dengan Real-Time Firestore Stream (Sinkron Slot Dokter & Booking)
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('doctors')
+                    .doc(_effectiveDoctorId)
+                    .collection('custom_slots')
+                    .doc(dateKey)
+                    .snapshots(),
+                builder: (context, customSnap) {
+                  List<String>? customSlots;
+                  if (customSnap.hasData && customSnap.data!.exists) {
+                    final data = customSnap.data!.data() as Map<String, dynamic>?;
+                    if (data != null && data['slots'] is List && (data['slots'] as List).isNotEmpty) {
+                      customSlots = List<String>.from((data['slots'] as List).map((e) => e.toString()));
+                    }
+                  }
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header Row "Pilih jam" + "Hari ini, Kamis, 24 September"
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  return StreamBuilder<List<ConsultationBookingModel>>(
+                    stream: ConsultationBookingService.instance.streamBookings(
+                      doctorId: _effectiveDoctorId,
+                      dateKey: dateKey,
+                    ),
+                    builder: (context, snapshot) {
+                      final bookings = snapshot.data ?? [];
+                      final bookedSlots =
+                          bookings.map((b) => b.timeSlot.trim()).toSet();
+                      // Tambahkan juga slot yang telah ditandai/dipilih dokter agar berwarna abu-abu persis gambar 2
+                      if (customSlots != null) {
+                        bookedSlots.addAll(customSlots.map((s) => s.trim()));
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Pilih jam',
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: _textDark,
-                            ),
+                          // Header Row "Pilih jam" + "Hari ini, Kamis, 24 September"
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Pilih jam',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: _textDark,
+                                ),
+                              ),
+                              Text(
+                                _formatDateHeaderLabel(_selectedDate),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: _textGrey,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            _formatDateHeaderLabel(_selectedDate),
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w500,
-                              color: _textGrey,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
+                          const SizedBox(height: 12),
 
-                      // Grid 4 Kolom Pilihan Jam
-                      _buildTimeSlotsGrid(bookedSlots),
-                    ],
+                          // Grid 4 Kolom Pilihan Jam
+                          _buildTimeSlotsGrid(bookedSlots, customSlots: customSlots),
+                        ],
+                      );
+                    },
                   );
                 },
               ),
@@ -757,7 +779,7 @@ class _BookingConsultationScreenState extends State<BookingConsultationScreen> {
     );
   }
 
-  Widget _buildTimeSlotsGrid(Set<String> bookedSlots) {
+  Widget _buildTimeSlotsGrid(Set<String> bookedSlots, {List<String>? customSlots}) {
     // Jika dokter tidak buka pada hari yang dipilih, tampilkan banner
     if (!_isDoctorPracticingOnSelectedDate) {
       return Container(

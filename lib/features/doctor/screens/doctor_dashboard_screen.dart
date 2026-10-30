@@ -2168,7 +2168,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     String selectedDays = 'Senin - Jumat';
     String selectedHours = '09:00 - 17:00';
     bool isSaving = false;
-    int activeTab = 0; // 0: Atur Jadwal, 1: Jam Dibooking Pasien
+    int activeTab = 0; // 0: Atur Jadwal, 1: Jam Dibooking Pasien, 2: Per Tanggal
+    // === STATE UNTUK TAB PER TANGGAL ===
+    final now = DateTime.now();
+    DateTime calDisplayedMonth = DateTime(now.year, now.month, 1);
+    DateTime calSelectedDate = DateTime(now.year, now.month, now.day);
+    Set<String> calSelectedSlots = {};
+    bool isLoadingSlots = false;
 
     // Deteksi preset hari dari teks yang ada
     if (_doctorSchedule.contains('Senin - Sabtu')) {
@@ -2189,6 +2195,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
         ? _doctorDisplayName
         : widget.doctorName;
 
+    bool hasInitializedSlots = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2196,6 +2204,36 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
       builder: (bottomSheetContext) {
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            if (!hasInitializedSlots) {
+              hasInitializedSlots = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                try {
+                  final dateKey =
+                      '${calSelectedDate.year.toString()}-${calSelectedDate.month.toString().padLeft(2, '0')}-${calSelectedDate.day.toString().padLeft(2, '0')}';
+                  final snap = await FirebaseFirestore.instance
+                      .collection('doctors')
+                      .doc(effectiveDoctorId)
+                      .collection('custom_slots')
+                      .doc(dateKey)
+                      .get();
+                  final data = snap.data();
+                  final slots = (data != null && data['slots'] is List)
+                      ? Set<String>.from((data['slots'] as List).map((e) => e.toString()))
+                      : <String>{};
+                  if (ctx.mounted) {
+                    setModalState(() {
+                      calSelectedSlots = slots;
+                      isLoadingSlots = false;
+                    });
+                  }
+                } catch (_) {
+                  if (ctx.mounted) {
+                    setModalState(() => isLoadingSlots = false);
+                  }
+                }
+              });
+            }
+
             void updateCombinedText(String days, String hours) {
               setModalState(() {
                 selectedDays = days;
@@ -2336,16 +2374,20 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                             : const Color(0xFF757575),
                                       ),
                                       const SizedBox(width: 6),
-                                      Text(
-                                        'Atur Jadwal',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12.5,
-                                          fontWeight: activeTab == 0
-                                              ? FontWeight.w600
-                                              : FontWeight.w500,
-                                          color: activeTab == 0
-                                              ? AppColors.primary
-                                              : const Color(0xFF757575),
+                                      Flexible(
+                                        child: Text(
+                                          'Atur Jadwal',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12.5,
+                                            fontWeight: activeTab == 0
+                                                ? FontWeight.w600
+                                                : FontWeight.w500,
+                                            color: activeTab == 0
+                                                ? AppColors.primary
+                                                : const Color(0xFF757575),
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -2384,16 +2426,20 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                             : const Color(0xFF757575),
                                       ),
                                       const SizedBox(width: 6),
-                                      Text(
-                                        'Jam Dibooking',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12.5,
-                                          fontWeight: activeTab == 1
-                                              ? FontWeight.w600
-                                              : FontWeight.w500,
-                                          color: activeTab == 1
-                                              ? AppColors.primary
-                                              : const Color(0xFF757575),
+                                      Flexible(
+                                        child: Text(
+                                          'Jam Dibooking',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12.5,
+                                            fontWeight: activeTab == 1
+                                                ? FontWeight.w600
+                                                : FontWeight.w500,
+                                            color: activeTab == 1
+                                                ? AppColors.primary
+                                                : const Color(0xFF757575),
+                                          ),
                                         ),
                                       ),
                                       if (bookingCount > 0) ...[
@@ -2424,9 +2470,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
-
-                      // Tab Content
+                      const SizedBox(height: 14),                      // Tab Content
                       Flexible(
                         child: SingleChildScrollView(
                           child: activeTab == 0
@@ -2439,6 +2483,64 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                   onSwitchToBookingsTab: () =>
                                       setModalState(() => activeTab = 1),
                                   updateCombinedText: updateCombinedText,
+                                  calDisplayedMonth: calDisplayedMonth,
+                                  calSelectedDate: calSelectedDate,
+                                  calSelectedSlots: calSelectedSlots,
+                                  isLoadingSlots: isLoadingSlots,
+                                  onMonthChanged: (newMonth) =>
+                                      setModalState(() => calDisplayedMonth = newMonth),
+                                  onDateChanged: (newDate) async {
+                                    setModalState(() {
+                                      calSelectedDate = newDate;
+                                      calSelectedSlots = {};
+                                      isLoadingSlots = true;
+                                    });
+                                    try {
+                                      final dateKey =
+                                          '${newDate.year.toString()}-${newDate.month.toString().padLeft(2, '0')}-${newDate.day.toString().padLeft(2, '0')}';
+                                      final snap = await FirebaseFirestore.instance
+                                          .collection('doctors')
+                                          .doc(effectiveDoctorId)
+                                          .collection('custom_slots')
+                                          .doc(dateKey)
+                                          .get();
+                                      final data = snap.data();
+                                      final slots = (data != null && data['slots'] is List)
+                                          ? Set<String>.from((data['slots'] as List).map((e) => e.toString()))
+                                          : <String>{};
+                                      setModalState(() {
+                                        calSelectedSlots = slots;
+                                        isLoadingSlots = false;
+                                      });
+                                    } catch (_) {
+                                      setModalState(() => isLoadingSlots = false);
+                                    }
+                                  },
+                                  onSlotToggled: (slot, availableSlots) async {
+                                    final currentChosen = Set<String>.from(calSelectedSlots);
+                                    if (currentChosen.contains(slot)) {
+                                      currentChosen.remove(slot);
+                                    } else {
+                                      currentChosen.add(slot);
+                                    }
+
+                                    setModalState(() => calSelectedSlots = currentChosen);
+                                    final dateKey =
+                                        '${calSelectedDate.year.toString()}-${calSelectedDate.month.toString().padLeft(2, '0')}-${calSelectedDate.day.toString().padLeft(2, '0')}';
+                                    try {
+                                      await FirebaseFirestore.instance
+                                          .collection('doctors')
+                                          .doc(effectiveDoctorId)
+                                          .collection('custom_slots')
+                                          .doc(dateKey)
+                                          .set({
+                                        'slots': currentChosen.toList()..sort(),
+                                        'updatedAt': FieldValue.serverTimestamp(),
+                                      });
+                                    } catch (e) {
+                                      debugPrint('Error saving slot: $e');
+                                    }
+                                  },
                                 )
                               : _buildDoctorBookedSlotsTabContent(
                                   ctx: ctx,
@@ -2449,7 +2551,32 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         ),
                       ),
 
-                      // Tombol Batal & Simpan (hanya tampil di tab Atur Jadwal)
+                      // Tombol Batal & Simpan (tab 0) atau Tutup (tab 2)
+                      if (activeTab == 2) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(bottomSheetContext),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Tutup',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       if (activeTab == 0) ...[
                         const SizedBox(height: 12),
                         Row(
@@ -2640,6 +2767,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     required List<ConsultationBookingModel> bookings,
     required VoidCallback onSwitchToBookingsTab,
     required Function(String, String) updateCombinedText,
+    required DateTime calDisplayedMonth,
+    required DateTime calSelectedDate,
+    required Set<String> calSelectedSlots,
+    required bool isLoadingSlots,
+    required Function(DateTime) onMonthChanged,
+    required Function(DateTime) onDateChanged,
+    required Function(String, List<String>) onSlotToggled,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2826,7 +2960,79 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 22),
+
+        // ═════════════════════════════════════════════════════════════════════
+        // BAGIAN: PILIH TANGGAL & ATUR JAM PRAKTIK (PERSIS GAMBAR 2)
+        // ═════════════════════════════════════════════════════════════════════
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Pilih tanggal',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF212121),
+              ),
+            ),
+            Text(
+              'Kalender Praktik',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF757575),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Widget Kalender Kartu Putih Persis Gambar 2
+        _buildDoctorCalendarCard(
+          displayedMonth: calDisplayedMonth,
+          selectedDate: calSelectedDate,
+          onMonthChanged: onMonthChanged,
+          onDateChanged: onDateChanged,
+        ),
+
         const SizedBox(height: 20),
+
+        // Header Pilihan Jam + Tanggal Terpilih
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Pilih jam',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF212121),
+              ),
+            ),
+            Text(
+              _formatDateLabelForDoctor(calSelectedDate),
+              style: GoogleFonts.poppins(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF757575),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Grid 4 Kolom Pilihan Jam Persis Gambar 2
+        _buildDoctorTimeSlotsGrid(
+          selectedHours: selectedHours,
+          selectedSlots: calSelectedSlots,
+          selectedDate: calSelectedDate,
+          bookings: bookings,
+          isLoadingSlots: isLoadingSlots,
+          onSlotToggled: onSlotToggled,
+        ),
+
+        const SizedBox(height: 22),
 
         // ─── KARTU AKSES JAM DIBOOKING PASIEN LANGSUNG ──────────────────────
         Container(
@@ -3004,6 +3210,355 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helper: Format tanggal untuk header dokter
+  // ─────────────────────────────────────────────────────────────────────────
+  String _formatDateLabelForDoctor(DateTime date) {
+    const dayNames = ['','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+    const monthNames = [
+      '', 'Januari','Februari','Maret','April','Mei','Juni',
+      'Juli','Agustus','September','Oktober','November','Desember'
+    ];
+    final dayName = dayNames[date.weekday];
+    return '$dayName, ${date.day} ${monthNames[date.month]}';
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helper: Widget Kalender Dokter (Persis Gambar 2)
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildDoctorCalendarCard({
+    required DateTime displayedMonth,
+    required DateTime selectedDate,
+    required Function(DateTime) onMonthChanged,
+    required Function(DateTime) onDateChanged,
+  }) {
+    const Color headerPink = Color(0xFFE5406C);
+    const Color selectedSlotPink = Color(0xFFE52865);
+    const Color textDark = Color(0xFF222222);
+    const Color textGrey = Color(0xFF757575);
+
+    const monthNames = [
+      '', 'Januari','Februari','Maret','April','Mei','Juni',
+      'Juli','Agustus','September','Oktober','November','Desember'
+    ];
+    const weekTitles = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
+    final year = displayedMonth.year;
+    final month = displayedMonth.month;
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final firstWeekdayOffset = DateTime(year, month, 1).weekday % 7;
+
+    final now = DateTime.now();
+    final todayMidnight = DateTime(now.year, now.month, now.day);
+    final bool canGoPreviousMonth = !displayedMonth.isBefore(DateTime(todayMidnight.year, todayMidnight.month, 1));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header Bulan & Navigasi < >
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              InkWell(
+                onTap: canGoPreviousMonth
+                    ? () => onMonthChanged(DateTime(displayedMonth.year, displayedMonth.month - 1, 1))
+                    : null,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: canGoPreviousMonth ? const Color(0xFFFDECEF) : const Color(0xFFF5F5F5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.chevron_left_rounded,
+                      size: 20,
+                      color: canGoPreviousMonth ? headerPink : const Color(0xFFC7C7C7),
+                    ),
+                  ),
+                ),
+              ),
+              Text(
+                '${monthNames[month]} $year',
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: textDark,
+                ),
+              ),
+              InkWell(
+                onTap: () => onMonthChanged(DateTime(displayedMonth.year, displayedMonth.month + 1, 1)),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFDECEF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      size: 20,
+                      color: headerPink,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Header Hari (Min, Sen, Sel, Rab, Kam, Jum, Sab)
+          Row(
+            children: weekTitles.map((w) {
+              return Expanded(
+                child: Center(
+                  child: Text(
+                    w,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: textGrey,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+
+          // Grid Tanggal 7 Kolom
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: ((firstWeekdayOffset + daysInMonth) > 35) ? 42 : 35,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 4,
+              childAspectRatio: 1.15,
+            ),
+            itemBuilder: (context, index) {
+              final dayNumber = index - firstWeekdayOffset + 1;
+              if (dayNumber < 1 || dayNumber > daysInMonth) {
+                return const SizedBox.shrink();
+              }
+
+              final cellDate = DateTime(year, month, dayNumber);
+              final isSelected = selectedDate.year == cellDate.year &&
+                  selectedDate.month == cellDate.month &&
+                  selectedDate.day == cellDate.day;
+              final isPast = cellDate.isBefore(todayMidnight);
+
+              return InkWell(
+                onTap: isPast ? null : () => onDateChanged(cellDate),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isSelected ? selectedSlotPink : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$dayNumber',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13.5,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : (isPast ? const Color(0xFFC7C7C7) : textDark),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helper: Grid 4 Kolom Pilihan Jam Dokter (Persis Gambar 2)
+  // ─────────────────────────────────────────────────────────────────────────
+  Widget _buildDoctorTimeSlotsGrid({
+    required String selectedHours,
+    required Set<String> selectedSlots,
+    required DateTime selectedDate,
+    required List<ConsultationBookingModel> bookings,
+    required bool isLoadingSlots,
+    required Function(String, List<String>) onSlotToggled,
+  }) {
+    List<String> generateSlots(String hoursRange) {
+      try {
+        final parts = hoursRange.split(' - ');
+        if (parts.length < 2) return [];
+        final startParts = parts[0].trim().split(':');
+        final endParts = parts[1].trim().split(':');
+        int startH = int.parse(startParts[0]);
+        int startM = int.parse(startParts[1]);
+        int endH = int.parse(endParts[0]);
+        int endM = int.parse(endParts[1]);
+
+        final slots = <String>[];
+        int curH = startH, curM = startM;
+        while (curH < endH || (curH == endH && curM < endM)) {
+          if (!(curH == 12 || (curH == 11 && curM == 30))) {
+            slots.add('${curH.toString().padLeft(2, '0')}:${curM.toString().padLeft(2, '0')}');
+          }
+          curM += 30;
+          if (curM >= 60) { curM -= 60; curH += 1; }
+        }
+        return slots;
+      } catch (_) {
+        return ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30'];
+      }
+    }
+
+    final slots = generateSlots(selectedHours);
+
+    if (isLoadingSlots) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+        ),
+      );
+    }
+
+    final dateKey =
+        '${selectedDate.year.toString()}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const crossAxisCount = 4;
+        const spacing = 8.0;
+        final itemWidth = (constraints.maxWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: spacing,
+              runSpacing: 10,
+              children: slots.map((slot) {
+                // Cek apakah slot ini sudah berhasil dibooking pasien pada tanggal ini
+                final isBookedByPatient = bookings.any((b) =>
+                    b.dateKey.trim() == dateKey &&
+                    b.timeSlot.trim() == slot &&
+                    b.status.toLowerCase() != 'cancelled');
+
+                // Cek apakah slot ini ditandai/dipilih oleh dokter sebagai sudah dipilih / tutup
+                final isChosenByDoctor = selectedSlots.contains(slot);
+
+                // Slot sudah dipilih jika dibooking pasien ATAU dipilih dokter
+                final isChosen = isBookedByPatient || isChosenByDoctor;
+
+                return SizedBox(
+                  width: itemWidth,
+                  height: 38,
+                  child: InkWell(
+                    onTap: isBookedByPatient
+                        ? () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Jam $slot sudah berhasil dibooking oleh pasien.'),
+                                duration: const Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        : () => onSlotToggled(slot, slots),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        // JIKA SUDAH DIPILIH: WARNA ABU-ABU SEBAGAI PENANDA
+                        // JIKA BELUM DIPILIH: WARNA PUTIH BORDER PINK
+                        color: isChosen ? const Color(0xFFF2F3F5) : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isChosen ? const Color(0xFFDCDFE4) : const Color(0xFFF5B5C8),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Text(
+                        slot,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          fontWeight: isChosen ? FontWeight.w600 : FontWeight.w500,
+                          color: isChosen ? const Color(0xFF90949C) : const Color(0xFF222222),
+                          decoration: isChosen ? TextDecoration.lineThrough : null,
+                          decorationColor: const Color(0xFF90949C),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            // Penanda / Legend Status Warna
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border.all(color: const Color(0xFFF5B5C8), width: 1.2),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  'Tersedia',
+                  style: GoogleFonts.poppins(fontSize: 10.5, color: const Color(0xFF616161)),
+                ),
+                const SizedBox(width: 16),
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F3F5),
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border.all(color: const Color(0xFFDCDFE4), width: 1.2),
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  'Sudah Dipilih (Abu-abu)',
+                  style: GoogleFonts.poppins(fontSize: 10.5, fontWeight: FontWeight.w600, color: const Color(0xFF757575)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Klik jam untuk memilih atau mengubah status ketersediaan. Otomatis tersinkron.',
+              style: GoogleFonts.poppins(fontSize: 10, color: const Color(0xFF9E9E9E)),
+            ),
+          ],
+        );
+      },
     );
   }
 
