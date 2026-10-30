@@ -4368,7 +4368,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                 ),
               ),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildAttachmentOption(
                     icon: Icons.camera_alt_rounded,
@@ -4386,15 +4386,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                     onTap: () {
                       Navigator.pop(ctx);
                       _pickAndSendImage(ImageSource.gallery);
-                    },
-                  ),
-                  _buildAttachmentOption(
-                    icon: Icons.insert_drive_file_rounded,
-                    label: 'Dokumen',
-                    colors: const [Color(0xFF42A5F5), Color(0xFF1976D2)],
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _showDocumentPickerSheet();
                     },
                   ),
                 ],
@@ -4606,188 +4597,6 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                 ),
               ],
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showDocumentPickerSheet() {
-    final docs = [
-      {
-        'title': 'Hasil_Pemeriksaan_Lab_Glukosa.pdf',
-        'desc': 'Hasil tes gula darah puasa & HbA1c resmi laboratorium',
-        'size': '245 KB',
-        'icon': Icons.picture_as_pdf_rounded,
-        'color': const Color(0xFFE53935),
-      },
-      {
-        'title': 'Surat_Rujukan_Klinis_SpPD.pdf',
-        'desc': 'Rujukan konsultasi lanjutan poli penyakit dalam',
-        'size': '180 KB',
-        'icon': Icons.description_rounded,
-        'color': const Color(0xFF1E88E5),
-      },
-      {
-        'title': 'Resep_Obat_Resmi_D-Care.pdf',
-        'desc': 'Salinan resep metformin & glimepiride elektronik',
-        'size': '120 KB',
-        'icon': Icons.medication_rounded,
-        'color': const Color(0xFF43A047),
-      },
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.softPinkCard,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.insert_drive_file_rounded,
-                        color: AppColors.primary, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Pilih Dokumen Medis',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                          color: const Color(0xFF212121),
-                        ),
-                      ),
-                      Text(
-                        'Kirim berkas PDF atau rekam medis',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ...docs.map((d) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9F9FB),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: (d['color'] as Color).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        d['icon'] as IconData,
-                        color: d['color'] as Color,
-                        size: 24,
-                      ),
-                    ),
-                    title: Text(
-                      d['title'] as String,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF212121),
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${d['desc']} • ${d['size']}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.send_rounded,
-                        color: AppColors.primary, size: 18),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _sendMessage(
-                        customText: 'Lampiran: ${d['title']}',
-                        type: 'document',
-                        attachmentName: d['title'] as String,
-                        attachmentSize: d['size'] as String,
-                        attachmentData: 'mock_pdf_content',
-                      );
-                    },
-                  ),
-                );
-              }),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _openCameraFlow();
-                },
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.4),
-                      style: BorderStyle.solid,
-                    ),
-                    color: AppColors.softPinkCard.withValues(alpha: 0.35),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.document_scanner_rounded,
-                          color: AppColors.primary, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Foto / Scan Dokumen Fisik',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
           ),
         );
       },
