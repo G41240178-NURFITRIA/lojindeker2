@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../features/patient/models/medication_reminder_model.dart';
 import '../../features/patient/models/risk_assessment_model.dart';
@@ -36,7 +36,7 @@ class PatientRiskRecord {
     required this.glucoseLevel,
     required this.scoreDescription,
     required this.recommendation,
-    this.bmi = '22.4 kg/m² (Normal)',
+    this.bmi = '22.4 kg/mÂ² (Normal)',
     this.bloodPressure = '120/80 mmHg',
     this.familyHistory = 'Tidak Ada',
     this.physicalActivity = 'Rutin (> 3x seminggu)',
@@ -327,13 +327,13 @@ class PatientActivityService {
           latestConsultationNotifier.value = null;
         }
       } catch (e) {
-        debugPrint('ℹ️ [PatientActivityService] Gagal load latest consultation chat: $e');
+        debugPrint('â„¹ï¸ [PatientActivityService] Gagal load latest consultation chat: $e');
         if (!userDoc.exists || userDoc.data() == null || userDoc.data()!['latestDoctorName'] == null) {
           latestConsultationNotifier.value = null;
         }
       }
     } catch (e) {
-      debugPrint('ℹ️ [PatientActivityService] Gagal load dari Firestore (menggunakan data lokal): $e');
+      debugPrint('â„¹ï¸ [PatientActivityService] Gagal load dari Firestore (menggunakan data lokal): $e');
     }
   }
 
@@ -376,9 +376,9 @@ class PatientActivityService {
       status: status,
       score: score,
       glucoseLevel: 'Kadar Gula: Terkontrol',
-      scoreDescription: 'Skor Risiko: $score% • Kategori $status',
+      scoreDescription: 'Skor Risiko: $score% â€¢ Kategori $status',
       recommendation: recommendation,
-      bmi: '${imt.toStringAsFixed(1)} kg/m² ($imtCategory)',
+      bmi: '${imt.toStringAsFixed(1)} kg/mÂ² ($imtCategory)',
       bloodPressure: hypertensionHistory ? 'Tinggi' : 'Normal',
       familyHistory: familyHistory ? 'Ada' : 'Tidak Ada',
       physicalActivity: 'Terkoreksi AI',
@@ -503,12 +503,19 @@ class PatientActivityService {
   Future<void> addReminder(MedicationReminder reminder) async {
     remindersNotifier.value = [reminder, ...remindersNotifier.value];
     _syncReminderToFirestore(reminder);
-    // Daftarkan alarm harian ke sistem HP
+    // Daftarkan alarm harian: (1) notifikasi in-app, (2) alarm native HP
     if (reminder.isActive) {
       await NotificationService().scheduleReminderNotification(
         id: reminder.id.hashCode,
         medicineName: reminder.medicineName,
         dosage: reminder.dosage,
+        timeStr: reminder.time,
+      );
+      // Buka Clock app Android agar user simpan alarm native dengan label sesuai obat
+      await NotificationService.openNativeAlarm(
+        medicineName: reminder.medicineName,
+        dosage: reminder.dosage,
+        schedule: reminder.schedule,
         timeStr: reminder.time,
       );
     }
@@ -549,14 +556,25 @@ class PatientActivityService {
 
     // Aktifkan atau batalkan alarm HP sesuai status toggle
     if (isActive) {
+      // (1) Notifikasi in-app tetap berjalan
       await NotificationService().scheduleReminderNotification(
         id: rem.id.hashCode,
         medicineName: rem.medicineName,
         dosage: rem.dosage,
         timeStr: rem.time,
       );
+      // (2) Buka Clock app Android agar user simpan alarm native dengan label obat
+      await NotificationService.openNativeAlarm(
+        medicineName: rem.medicineName,
+        dosage: rem.dosage,
+        schedule: rem.schedule,
+        timeStr: rem.time,
+      );
     } else {
+      // Batalkan notifikasi in-app
       await NotificationService().cancelReminderNotification(rem.id.hashCode);
+      // Buka daftar alarm HP agar user bisa hapus alarm native secara manual
+      await NotificationService.openNativeAlarmList();
     }
   }
 
@@ -637,7 +655,7 @@ class PatientActivityService {
         reminder: null,
         timeText: 'Selesai',
         labelText: 'Semua diminum',
-        subtitleText: 'Semua obat hari ini sudah diminum ✨',
+        subtitleText: 'Semua obat hari ini sudah diminum âœ¨',
         allTakenToday: true,
         hasActiveReminders: true,
       );

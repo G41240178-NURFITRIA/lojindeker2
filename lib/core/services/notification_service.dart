@@ -1,4 +1,5 @@
-import 'dart:io';
+﻿import 'dart:io';
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -35,7 +36,7 @@ class NotificationService {
         iOS: iosSettings,
       );
 
-      // v22: initialize() — first arg adalah named `settings:`
+      // v22: initialize() â€” first arg adalah named `settings:`
       await _plugin.initialize(
         settings: initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {},
@@ -77,7 +78,7 @@ class NotificationService {
   }
 
   // =====================================================================
-  // ALARM TERJADWAL HARIAN — muncul TEPAT pada jam yang diset pengguna
+  // ALARM TERJADWAL HARIAN â€” muncul TEPAT pada jam yang diset pengguna
   // =====================================================================
 
   Future<void> scheduleReminderNotification({
@@ -138,8 +139,8 @@ class NotificationService {
       try {
         await _plugin.zonedSchedule(
           id: id,
-          title: '⏰ Waktunya Minum Obat!',
-          body: 'Saatnya minum $medicineName ($dosage) — Jadwal $timeStr',
+          title: 'â° Waktunya Minum Obat!',
+          body: 'Saatnya minum $medicineName ($dosage) â€” Jadwal $timeStr',
           scheduledDate: scheduledDate,
           notificationDetails: platformDetails,
           androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -149,8 +150,8 @@ class NotificationService {
         // Fallback jika exact alarm dibatasi oleh izin/baterai di Android: gunakan inexact alarm
         await _plugin.zonedSchedule(
           id: id,
-          title: '⏰ Waktunya Minum Obat!',
-          body: 'Saatnya minum $medicineName ($dosage) — Jadwal $timeStr',
+          title: 'â° Waktunya Minum Obat!',
+          body: 'Saatnya minum $medicineName ($dosage) â€” Jadwal $timeStr',
           scheduledDate: scheduledDate,
           notificationDetails: platformDetails,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -165,7 +166,7 @@ class NotificationService {
   Future<void> cancelReminderNotification(int id) async {
     await init();
     try {
-      // v22: cancel() — named parameter `id:`
+      // v22: cancel() â€” named parameter `id:`
       await _plugin.cancel(id: id);
     } catch (_) {}
   }
@@ -212,10 +213,10 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    // v22: show() — semua named parameters
+    // v22: show() â€” semua named parameters
     await _plugin.show(
       id: id,
-      title: '⏰ Waktunya Minum Obat!',
+      title: 'â° Waktunya Minum Obat!',
       body: 'Saatnya minum $medicineName ($dosage) - Jadwal $time',
       notificationDetails: platformDetails,
     );
@@ -288,10 +289,77 @@ class NotificationService {
 
     await _plugin.show(
       id: id,
-      title: '💬 Balasan dari $doctorName',
+      title: 'ðŸ’¬ Balasan dari $doctorName',
       body: message,
       notificationDetails: platformDetails,
       payload: payload,
     );
   }
+  // =====================================================================
+  // ALARM NATIVE HP (Android Clock App)
+  // Membuka aplikasi Jam bawaan Android dan mengisi alarm secara otomatis
+  // dengan nama label sesuai keterangan pengingat obat.
+  // =====================================================================
+
+  /// Membuka alarm native di aplikasi Clock bawaan Android.
+  /// [medicineName] : nama obat (contoh: "Metformin")
+  /// [dosage]       : dosis (contoh: "1 tablet - Setelah makan")
+  /// [schedule]     : jadwal (contoh: "Setiap 12 jam (2x sehari)")
+  /// [timeStr]      : jam dalam format "HH:mm" (contoh: "08:00")
+  /// Notifikasi in-app tetap berjalan terpisah.
+  static Future<void> openNativeAlarm({
+    required String medicineName,
+    required String dosage,
+    required String schedule,
+    required String timeStr,
+  }) async {
+    if (!Platform.isAndroid) return;
+
+    try {
+      // Bersihkan dan ambil jam & menit (mendukung format "08:00" maupun "08.00")
+      final cleanTime = timeStr.replaceAll('.', ':');
+      final parts = cleanTime.split(':');
+      final hour = int.tryParse(parts[0].trim()) ?? 8;
+      final minute = parts.length > 1 ? (int.tryParse(parts[1].trim()) ?? 0) : 0;
+
+      // Label alarm = nama obat + dosis + jadwal (tampil di aplikasi Jam HP)
+      final String alarmLabel = '💊 $medicineName - $dosage';
+
+      final AndroidIntent intent = AndroidIntent(
+        action: 'android.intent.action.SET_ALARM',
+        flags: <int>[0x10000000], // FLAG_ACTIVITY_NEW_TASK
+        arguments: <String, dynamic>{
+          'android.intent.extra.alarm.HOUR': hour,
+          'android.intent.extra.alarm.MINUTES': minute,
+          'android.intent.extra.alarm.MESSAGE': alarmLabel,
+          'android.intent.extra.alarm.SKIP_UI': false,
+          'android.intent.extra.alarm.VIBRATE': true,
+        },
+      );
+      await intent.launch();
+    } catch (e) {
+      // Fallback: Jika SET_ALARM ditolak oleh beberapa vendor (Xiaomi/Oppo/Vivo), buka halaman daftar alarm
+      try {
+        const AndroidIntent fallbackIntent = AndroidIntent(
+          action: 'android.intent.action.SHOW_ALARMS',
+          flags: <int>[0x10000000],
+        );
+        await fallbackIntent.launch();
+      } catch (_) {}
+    }
+  }
+
+  /// Membuka alarm native HP untuk menonaktifkan / memberi info ke user.
+  /// Android tidak mendukung cancel alarm via intent, jadi cukup tampilkan
+  /// daftar alarm agar user bisa hapus manual.
+  static Future<void> openNativeAlarmList() async {
+    if (!Platform.isAndroid) return;
+    try {
+      const AndroidIntent intent = AndroidIntent(
+        action: 'android.intent.action.SHOW_ALARMS',
+      );
+      await intent.launch();
+    } catch (_) {}
+  }
+
 }
