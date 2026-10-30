@@ -958,13 +958,6 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: 'Tambah Pengingat',
-            icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 24),
-            onPressed: _showAddReminderSheet,
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
