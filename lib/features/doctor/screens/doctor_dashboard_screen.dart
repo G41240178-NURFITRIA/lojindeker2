@@ -68,6 +68,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   String _doctorDisplayName = '';
   String _doctorSpecialty = 'Spesialis Penyakit Dalam (Sp.PD)';
   String? _doctorPhotoUrl;
+  // Data Informasi Praktik & SIP
+  String _sipNumber = '';
+  String _practicePlace = '';
+  String _sipExpiry = '';
+  String _education = '';
+  String _experience = '';
   String? _doctorEmail;
   String? _resolvedDoctorUid;
   StreamSubscription<DocumentSnapshot>? _doctorProfileSubscription;
@@ -319,6 +325,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               (data['email'] as String).trim().isNotEmpty) {
             _doctorEmail = data['email'] as String;
           }
+          // Field Informasi Praktik & SIP
+          _sipNumber = (data['sipNumber'] as String? ?? '').trim();
+          _practicePlace = (data['practicePlace'] as String? ?? '').trim();
+          _sipExpiry = (data['sipExpiry'] as String? ?? '').trim();
+          _education = (data['education'] as String? ?? '').trim();
+          _experience = (data['experience'] as String? ?? '').trim();
         });
         if (previousName != _doctorDisplayName) {
           _subscribeToChats();
@@ -3403,186 +3415,356 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
-  /// Bottom Sheet untuk Informasi Praktik & SIP
+  /// Bottom Sheet untuk Informasi Praktik & SIP (editable)
   void _showPracticeInfoBottomSheet() {
     final doctorName = _doctorDisplayName.isNotEmpty
         ? _doctorDisplayName
         : widget.doctorName;
+
+    // Controllers
+    final sipCtrl = TextEditingController(text: _sipNumber);
+    final placeCtrl = TextEditingController(text: _practicePlace);
+    final expiryCtrl = TextEditingController(text: _sipExpiry);
+    final eduCtrl = TextEditingController(text: _education);
+    final expCtrl = TextEditingController(text: _experience);
+
+    bool isSaving = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (bottomSheetContext) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 16,
-            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 24,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Handle Bar
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE0E0E0),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            Future<void> saveData() async {
+              setSheetState(() => isSaving = true);
+              final uid = _resolvedDoctorUid ??
+                  widget.doctorId ??
+                  AuthService.instance.currentUser?.uid;
+              if (uid == null || uid.isEmpty) {
+                setSheetState(() => isSaving = false);
+                return;
+              }
+              try {
+                await FirebaseFirestore.instance
+                    .collection('doctors')
+                    .doc(uid)
+                    .set({
+                  'sipNumber': sipCtrl.text.trim(),
+                  'practicePlace': placeCtrl.text.trim(),
+                  'sipExpiry': expiryCtrl.text.trim(),
+                  'education': eduCtrl.text.trim(),
+                  'experience': expCtrl.text.trim(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
 
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.softPinkCard,
-                        borderRadius: BorderRadius.circular(14),
+                setState(() {
+                  _sipNumber = sipCtrl.text.trim();
+                  _practicePlace = placeCtrl.text.trim();
+                  _sipExpiry = expiryCtrl.text.trim();
+                  _education = eduCtrl.text.trim();
+                  _experience = expCtrl.text.trim();
+                });
+
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Informasi Praktik & SIP berhasil disimpan.',
+                          style: GoogleFonts.poppins(
+                              fontSize: 12.5, color: Colors.white),
+                        ),
+                        backgroundColor: const Color(0xFF2E7D32),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Icon(
-                        Icons.badge_rounded,
-                        color: AppColors.primary,
-                        size: 24,
+                    );
+                  }
+                }
+              } catch (e) {
+                setSheetState(() => isSaving = false);
+                if (ctx.mounted) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Gagal menyimpan: $e',
+                          style: GoogleFonts.poppins(
+                              fontSize: 12.5, color: Colors.white),
+                        ),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              }
+            }
+
+            InputDecoration fieldDecoration(String label, String hint) {
+              return InputDecoration(
+                labelText: label,
+                hintText: hint,
+                labelStyle: GoogleFonts.poppins(
+                    fontSize: 12, color: const Color(0xFF9E9E9E)),
+                hintStyle: GoogleFonts.poppins(
+                    fontSize: 12, color: const Color(0xFFBDBDBD)),
+                filled: true,
+                fillColor: const Color(0xFFFFF0F5),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFFFD1DC)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFFFD1DC)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: AppColors.primary, width: 1.5),
+                ),
+              );
+            }
+
+            return Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom + 24,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle Bar
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E0E0),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Informasi Praktik & SIP',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF212121),
-                            ),
+                    const SizedBox(height: 18),
+
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.softPinkCard,
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          Text(
-                            'Data verifikasi medis dan lisensi dokter',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.5,
-                              color: const Color(0xFF757575),
+                          child: const Icon(
+                            Icons.badge_rounded,
+                            color: AppColors.primary,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Informasi Praktik & SIP',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF212121),
+                                ),
+                              ),
+                              Text(
+                                'Edit data verifikasi medis dan lisensi dokter',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  color: const Color(0xFF757575),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Verified Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.verified_rounded,
+                            color: Color(0xFF2E7D32),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Dokter terverifikasi & lisensi aktif',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF2E7D32),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 20),
+                    const SizedBox(height: 18),
 
-                // Verified Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                    // Read-only: Nama Lengkap
+                    _buildPracticeInfoItem(
+                      icon: Icons.person_rounded,
+                      label: 'Nama Lengkap',
+                      value: doctorName,
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.verified_rounded,
-                        color: Color(0xFF2E7D32),
-                        size: 20,
+                    // Read-only: Spesialisasi
+                    _buildPracticeInfoItem(
+                      icon: Icons.medical_services_rounded,
+                      label: 'Spesialisasi',
+                      value: _doctorSpecialty,
+                    ),
+
+                    const SizedBox(height: 6),
+                    Text(
+                      'Data yang dapat diedit:',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Dokter terverifikasi & lisensi aktif',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF2E7D32),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Editable fields
+                    TextField(
+                      controller: sipCtrl,
+                      style: GoogleFonts.poppins(fontSize: 13),
+                      decoration: fieldDecoration(
+                          'Nomor SIP', 'cth: 446.1/128/SIP-D/2022'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: placeCtrl,
+                      style: GoogleFonts.poppins(fontSize: 13),
+                      decoration: fieldDecoration(
+                          'Tempat Praktik', 'cth: RS D-Care Sejahtera'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: expiryCtrl,
+                      style: GoogleFonts.poppins(fontSize: 13),
+                      decoration: fieldDecoration(
+                          'Masa Berlaku SIP',
+                          'cth: 01 Januari 2022 - 31 Desember 2027'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: eduCtrl,
+                      style: GoogleFonts.poppins(fontSize: 13),
+                      decoration: fieldDecoration('Pendidikan Terakhir',
+                          'cth: Fakultas Kedokteran UI'),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: expCtrl,
+                      style: GoogleFonts.poppins(fontSize: 13),
+                      decoration: fieldDecoration(
+                          'Pengalaman', 'cth: 8+ Tahun Praktik Klinis'),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: OutlinedButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 13),
+                              side: const BorderSide(
+                                  color: AppColors.primary, width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              'Tutup',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                // Info Items
-                _buildPracticeInfoItem(
-                  icon: Icons.person_rounded,
-                  label: 'Nama Lengkap',
-                  value: doctorName,
-                ),
-                _buildPracticeInfoItem(
-                  icon: Icons.medical_services_rounded,
-                  label: 'Spesialisasi',
-                  value: _doctorSpecialty,
-                ),
-                _buildPracticeInfoItem(
-                  icon: Icons.assignment_rounded,
-                  label: 'Nomor SIP',
-                  value: '446.1/128/SIP-D/2022',
-                ),
-                _buildPracticeInfoItem(
-                  icon: Icons.local_hospital_rounded,
-                  label: 'Tempat Praktik',
-                  value: 'RS D-Care Sejahtera',
-                ),
-                _buildPracticeInfoItem(
-                  icon: Icons.calendar_today_rounded,
-                  label: 'Masa Berlaku SIP',
-                  value: '01 Januari 2022 - 31 Desember 2027',
-                ),
-                _buildPracticeInfoItem(
-                  icon: Icons.school_rounded,
-                  label: 'Pendidikan Terakhir',
-                  value: 'Fakultas Kedokteran Universitas Indonesia',
-                ),
-                _buildPracticeInfoItem(
-                  icon: Icons.work_history_rounded,
-                  label: 'Pengalaman',
-                  value: '8+ Tahun Praktik Klinis',
-                ),
-
-                const SizedBox(height: 20),
-
-                // Close Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(bottomSheetContext),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: isSaving ? null : saveData,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              disabledBackgroundColor:
+                                  AppColors.primary.withValues(alpha: 0.6),
+                              elevation: 0,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 13),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: isSaving
+                                ? const SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Simpan',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      'Tutup',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -3621,7 +3803,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  value,
+                  value.isNotEmpty ? value : '-',
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
