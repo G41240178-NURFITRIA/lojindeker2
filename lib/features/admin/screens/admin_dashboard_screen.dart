@@ -337,45 +337,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                       const SizedBox(height: 14),
 
-                      // 2x2 Grid of Soft Pink Metric Cards (Otomatis Real-Time Display)
+                      // 3 Kotak Soft Pink Metric Cards Sejajar ke Samping (Otomatis Real-Time Display)
                       Row(
                         children: [
                           Expanded(
                             child: _buildSoftPinkMetricCard(
-                              iconWidget: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 28),
+                              iconWidget: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 24),
                               title: 'Total Pengguna',
                               value: '$patientCount',
                             ),
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: _buildSoftPinkMetricCard(
-                              iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 28),
+                              iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 24),
                               title: 'Total Dokter',
                               value: '$doctorCount',
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
+                          const SizedBox(width: 10),
                           Expanded(
                             child: _buildSoftPinkMetricCard(
-                              iconWidget: const _StethoscopeOutlineIcon(color: Colors.white, size: 28),
+                              iconWidget: const _StethoscopeOutlineIcon(color: Colors.white, size: 24),
                               title: 'Konsultasi Hari ini',
                               value: '2',
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => _showRiskCheckSheet(context),
-                              child: _buildSoftPinkMetricCard(
-                                iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 28),
-                                title: 'Cek Risiko',
-                                value: '$riskCount',
-                              ),
                             ),
                           ),
                         ],
@@ -554,15 +539,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  /// 2x2 Soft Pink Metric Card (Otomatis Real-Time Display)
+  /// 3 Kotak Soft Pink Metric Card Sejajar ke Samping (Otomatis Real-Time Display)
   Widget _buildSoftPinkMetricCard({
     required Widget iconWidget,
     required String title,
     required String value,
   }) {
     return Container(
-      height: 116,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      height: 114,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -572,7 +557,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Color(0xFFD81B60), // Rich rose pink
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFFD81B60).withValues(alpha: 0.28),
@@ -585,26 +570,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            height: 28,
+            height: 24,
             child: Center(child: iconWidget),
           ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w500,
-              color: Colors.white,
+          const SizedBox(height: 5),
+          SizedBox(
+            height: 28,
+            child: Center(
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.2,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
             value,
             style: GoogleFonts.poppins(
-              fontSize: 28,
+              fontSize: 22,
               fontWeight: FontWeight.w700,
               color: Colors.white,
             ),
