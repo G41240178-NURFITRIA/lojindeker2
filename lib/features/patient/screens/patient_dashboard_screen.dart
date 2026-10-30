@@ -1888,10 +1888,6 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     );
   }
 
-  Widget _buildBookingCard(ConsultationBookingModel b) {
-    return _BookingHistoryCardItem(booking: b);
-  }
-
   Widget _buildProfileTab() {
     return PatientProfileScreen(
       patientName: _currentPatientName,
@@ -2053,10 +2049,6 @@ class _BookingHistoryCardItemState extends State<_BookingHistoryCardItem> {
           minute = int.tryParse(parts[1].replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
         }
       }
-
-      int year = DateTime.now().year;
-      int month = 1;
-      int day = 1;
 
       if (b.dateKey.contains('-')) {
         final dateParts = b.dateKey.split('-');
@@ -2272,21 +2264,15 @@ class _BookingHistoryCardItemState extends State<_BookingHistoryCardItem> {
   Widget build(BuildContext context) {
     final b = widget.booking;
 
-    // Status badge
-    final (statusLabel, statusBg, statusFg) = switch (b.status) {
-      'completed' => ('Selesai', const Color(0xFFE8F5E9), const Color(0xFF2E7D32)),
-      'cancelled' => ('Dibatalkan', const Color(0xFFFBE9E7), const Color(0xFFBF360C)),
-      _ => ('Menunggu', const Color(0xFFFFF8E1), const Color(0xFFF57F17)),
-    };
-
     final bool isBooked = b.status == 'booked';
     final scheduleStart = _parseBookingDateTime(b);
     final now = DateTime.now();
 
     bool isBeforeSchedule = false;
-    bool isSessionActive = false;
-    bool isSessionPast = false;
-    String countdownText = '';
+    String statusBadgeText = '';
+
+    Color statusBg = const Color(0xFFFFF8E1);
+    Color statusFg = const Color(0xFFF57F17);
 
     if (scheduleStart != null && isBooked) {
       final sessionEnd = scheduleStart.add(const Duration(minutes: 60));
@@ -2299,17 +2285,37 @@ class _BookingHistoryCardItemState extends State<_BookingHistoryCardItem> {
         final seconds = diff.inSeconds % 60;
 
         if (days > 0) {
-          countdownText = '$days hari ${hours.toString().padLeft(2, '0')}j ${minutes.toString().padLeft(2, '0')}m ${seconds.toString().padLeft(2, '0')}d';
+          statusBadgeText = '${days}h ${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
         } else {
-          countdownText = '${hours.toString().padLeft(2, '0')} : ${minutes.toString().padLeft(2, '0')} : ${seconds.toString().padLeft(2, '0')}';
+          statusBadgeText = '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
         }
+        statusBg = const Color(0xFFFFF8E1);
+        statusFg = const Color(0xFFE65100);
       } else if (now.isBefore(sessionEnd)) {
-        isSessionActive = true;
+        statusBadgeText = 'Konsultasi';
+        statusBg = const Color(0xFFE8F5E9);
+        statusFg = const Color(0xFF2E7D32);
       } else {
-        isSessionPast = true;
+        statusBadgeText = 'Selesai';
+        statusBg = const Color(0xFFECEFF1);
+        statusFg = const Color(0xFF546E7A);
       }
     } else if (isBooked) {
-      isSessionActive = true;
+      statusBadgeText = 'Konsultasi';
+      statusBg = const Color(0xFFE8F5E9);
+      statusFg = const Color(0xFF2E7D32);
+    } else if (b.status == 'completed') {
+      statusBadgeText = 'Selesai';
+      statusBg = const Color(0xFFE8F5E9);
+      statusFg = const Color(0xFF2E7D32);
+    } else if (b.status == 'cancelled') {
+      statusBadgeText = 'Dibatalkan';
+      statusBg = const Color(0xFFFBE9E7);
+      statusFg = const Color(0xFFBF360C);
+    } else {
+      statusBadgeText = 'Menunggu';
+      statusBg = const Color(0xFFFFF8E1);
+      statusFg = const Color(0xFFF57F17);
     }
 
     return Container(
@@ -2353,22 +2359,72 @@ class _BookingHistoryCardItemState extends State<_BookingHistoryCardItem> {
                     ),
                   ),
                 ),
+                // ── Badge Jam Mundur (Menggantikan Kata "Menunggu") ──
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                   decoration: BoxDecoration(
                     color: statusBg,
                     borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    statusLabel,
-                    style: GoogleFonts.poppins(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      color: statusFg,
+                    border: Border.all(
+                      color: isBeforeSchedule ? const Color(0xFFFFE082) : Colors.transparent,
+                      width: 1,
                     ),
                   ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isBeforeSchedule) ...[
+                        Icon(Icons.timer_outlined, size: 12, color: statusFg),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        statusBadgeText,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
+                          color: statusFg,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                // ── Tombol Uji Coba Lingkaran Kecil di Pojok Kanan Atas ──
+                if (isBooked && isBeforeSchedule) ...[
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _openLiveChat(forceActive: true, isTrial: true),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Tooltip(
+                        message: 'Uji Coba Buka Chat Sekarang',
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1.5),
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.science_rounded,
+                              size: 15,
+                              color: Color(0xFFD81B60),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2405,123 +2461,6 @@ class _BookingHistoryCardItemState extends State<_BookingHistoryCardItem> {
                       '${b.paymentMethod} • Rp ${(b.totalAmount ?? 0).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}'),
                 ],
 
-                // ── Kotak Info Waktu / Countdown Timer ──
-                if (isBooked && isBeforeSchedule) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF8E1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFFE082), width: 1.2),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFECB3),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.timer_outlined, size: 16, color: Color(0xFFE65100)),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Hitung Mundur Waktu Booking:',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFFE65100),
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                countdownText,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFFBF360C),
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else if (isBooked && isSessionActive) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFA5D6A7), width: 1.2),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF2E7D32)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Waktu Konsultasi Telah Tiba!',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF1B5E20),
-                                ),
-                              ),
-                              Text(
-                                'Ruang chat dokter sudah dibuka dan dapat diakses.',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10.5,
-                                  color: const Color(0xFF2E7D32),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else if (isBooked && isSessionPast) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.history_rounded, size: 18, color: Color(0xFF757575)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Jadwal sesi konsultasi telah lewat.',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: const Color(0xFF616161),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
                 // ── Tombol Aksi ───────────────────────────────────
                 if (isBooked) ...[
                   const SizedBox(height: 14),
@@ -2530,7 +2469,7 @@ class _BookingHistoryCardItemState extends State<_BookingHistoryCardItem> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => _showLockedInfoDialog(context, countdownText),
+                        onPressed: () => _showLockedInfoDialog(context, statusBadgeText),
                         icon: const Icon(Icons.lock_rounded, size: 16),
                         label: Text(
                           'Chat Dokter (Terkunci)',
@@ -2547,31 +2486,6 @@ class _BookingHistoryCardItemState extends State<_BookingHistoryCardItem> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Tombol Uji Coba (Buka Chat Sebelum Waktu Tiba)
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _openLiveChat(forceActive: true, isTrial: true),
-                        icon: const Icon(Icons.science_rounded, size: 16, color: Color(0xFFD81B60)),
-                        label: Text(
-                          '🧪 Uji Coba Buka Chat Sekarang',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFD81B60),
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFFF0F5),
-                          side: const BorderSide(color: Color(0xFFF48FB1), width: 1.2),
-                          padding: const EdgeInsets.symmetric(vertical: 9),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
                         ),
                       ),
                     ),
