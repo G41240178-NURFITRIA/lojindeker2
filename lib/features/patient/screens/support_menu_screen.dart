@@ -544,48 +544,51 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                   ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD81B60).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        article.category,
-                        style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60)),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      article.title,
-                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF141414), height: 1.25),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      article.subtitle.isNotEmpty ? article.subtitle : article.content,
-                      style: GoogleFonts.poppins(fontSize: 9.5, color: const Color(0xFF757575), height: 1.2),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Text(
-                          'Baca artikel',
-                          style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w600, color: const Color(0xFFD81B60)),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD81B60).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        const SizedBox(width: 2),
-                        const Icon(Icons.arrow_forward_rounded, size: 10, color: Color(0xFFD81B60)),
-                      ],
-                    ),
-                  ],
+                        child: Text(
+                          article.category,
+                          style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60)),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        article.title,
+                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF141414), height: 1.25),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      if (article.subtitle.isNotEmpty)
+                        Text(
+                          article.subtitle,
+                          style: GoogleFonts.poppins(fontSize: 9.5, color: const Color(0xFF757575), height: 1.2),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Text(
+                            'Baca artikel',
+                            style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w600, color: const Color(0xFFD81B60)),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.arrow_forward_rounded, size: 10, color: Color(0xFFD81B60)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

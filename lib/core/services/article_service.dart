@@ -26,35 +26,18 @@ class AdminArticleModel {
     this.updatedAt,
   });
 
-  static DateTime _parseDate(dynamic val) {
-    if (val is Timestamp) return val.toDate();
-    if (val is DateTime) return val;
-    if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
-    if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
-    return DateTime.now();
-  }
-
-  static DateTime? _parseNullableDate(dynamic val) {
-    if (val == null) return null;
-    if (val is Timestamp) return val.toDate();
-    if (val is DateTime) return val;
-    if (val is String) return DateTime.tryParse(val);
-    if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
-    return null;
-  }
-
   factory AdminArticleModel.fromFirestore(DocumentSnapshot doc) {
     final data = (doc.data() as Map<String, dynamic>?) ?? {};
     return AdminArticleModel(
       id: doc.id,
-      category: data['category']?.toString() ?? 'Umum',
-      title: data['title']?.toString() ?? '',
-      subtitle: data['subtitle']?.toString() ?? '',
-      content: data['content']?.toString() ?? '',
-      readTime: data['readTime']?.toString() ?? '3 menit baca',
-      reviewer: data['reviewer']?.toString() ?? 'Tim Medis LojinDeker',
-      createdAt: _parseDate(data['createdAt']),
-      updatedAt: _parseNullableDate(data['updatedAt']),
+      category: data['category'] ?? 'Umum',
+      title: data['title'] ?? '',
+      subtitle: data['subtitle'] ?? '',
+      content: data['content'] ?? '',
+      readTime: data['readTime'] ?? '3 menit baca',
+      reviewer: data['reviewer'] ?? 'Tim Medis LojinDeker',
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -106,14 +89,7 @@ class ArticleService {
   /// Stream real-time semua artikel admin, diurutkan terbaru
   Stream<List<AdminArticleModel>> streamArticles() {
     return _col.snapshots().map((snap) {
-      final list = <AdminArticleModel>[];
-      for (final doc in snap.docs) {
-        try {
-          list.add(AdminArticleModel.fromFirestore(doc));
-        } catch (e) {
-          debugPrint('⚠️ [ArticleService] Gagal parsing artikel ${doc.id}: $e');
-        }
-      }
+      final list = snap.docs.map(AdminArticleModel.fromFirestore).toList();
       list.sort((a, b) {
         final dateA = a.updatedAt ?? a.createdAt;
         final dateB = b.updatedAt ?? b.createdAt;

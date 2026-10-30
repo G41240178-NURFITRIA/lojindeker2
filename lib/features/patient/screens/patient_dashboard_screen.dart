@@ -988,75 +988,63 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
           const SizedBox(height: 26),
 
-          // Artikel (langsung ke artikel tanpa judul edukasi) - Real-time StreamBuilder
-          StreamBuilder<List<AdminArticleModel>>(
-            stream: ArticleService.instance.streamArticles(),
-            builder: (context, snapshot) {
-              final adminArticles = snapshot.data ?? _adminArticles;
-              final totalCount = educationalArticles.length + adminArticles.length;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Artikel',
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF141414),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF0F2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFF8BBD0)),
-                        ),
-                        child: Text(
-                          '$totalCount Artikel',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFD81B60),
-                          ),
-                        ),
-                      ),
-                    ],
+          // Artikel (langsung ke artikel tanpa judul edukasi)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Artikel',
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF141414),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF0F2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFF8BBD0)),
+                ),
+                child: Text(
+                  '${educationalArticles.length + _adminArticles.length} Artikel',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFD81B60),
                   ),
-                  const SizedBox(height: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
 
-                  // Horizontal List: Artikel admin (Firestore real-time) + artikel bawaan
-                  SizedBox(
-                    height: 295,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: totalCount,
-                      itemBuilder: (context, index) {
-                        final isAdminArticle = index < adminArticles.length;
-                        final isLast = index == totalCount - 1;
-                        if (isAdminArticle) {
-                          final article = adminArticles[index];
-                          return Padding(
-                            padding: EdgeInsets.only(right: isLast ? 0 : 12),
-                            child: _buildAdminArticleCard(article),
-                          );
-                        } else {
-                          final article = educationalArticles[index - adminArticles.length];
-                          return Padding(
-                            padding: EdgeInsets.only(right: isLast ? 0 : 12),
-                            child: _buildHomeArticleCard(article),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
+          // Horizontal List: Artikel admin (Firestore real-time) + artikel bawaan
+          SizedBox(
+            height: 295,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: _adminArticles.length + educationalArticles.length,
+              itemBuilder: (context, index) {
+                final isAdminArticle = index < _adminArticles.length;
+                final isLast = index == _adminArticles.length + educationalArticles.length - 1;
+                if (isAdminArticle) {
+                  final article = _adminArticles[index];
+                  return Padding(
+                    padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                    child: _buildAdminArticleCard(article),
+                  );
+                } else {
+                  final article = educationalArticles[index - _adminArticles.length];
+                  return Padding(
+                    padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                    child: _buildHomeArticleCard(article),
+                  );
+                }
+              },
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -1320,150 +1308,78 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
   /// Card artikel dari admin (Firestore real-time) - dengan bottom sheet detail real-time
   Widget _buildAdminArticleCard(AdminArticleModel article) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => showAdminArticleDetailSheet(context, article),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: 175,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 145,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFD81B60), Color(0xFFF06292)],
+    return GestureDetector(
+      onTap: () => showAdminArticleDetailSheet(context, article),
+      child: Container(
+        width: 165,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFD81B60).withValues(alpha: 0.3), width: 1.2),
+          boxShadow: [BoxShadow(color: const Color(0xFFD81B60).withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header berwarna dengan badge 'Baru'
+            Stack(
+              children: [
+                Container(
+                  height: 120,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFFD81B60), Color(0xFFF06292)],
+                    ),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
                   ),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(15),
+                  child: Center(
+                    child: Icon(Icons.article_rounded, size: 48, color: Colors.white.withValues(alpha: 0.8)),
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    Center(
-                      child: Icon(
-                        Icons.article_rounded,
-                        size: 48,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                    ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          'Baru',
-                          style: GoogleFonts.poppins(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFFD81B60),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                Positioned(
+                  top: 8, right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                    child: Text('Baru', style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFFD81B60))),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12),
+              ],
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 2.5,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFD81B60).withValues(alpha: 0.12),
+                        color: const Color(0xFFD81B60).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Text(
-                        article.category,
-                        style: GoogleFonts.poppins(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFFD81B60),
-                        ),
-                      ),
+                      child: Text(article.category, style: GoogleFonts.poppins(fontSize: 9.5, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60))),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      article.title,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF141414),
-                        height: 1.25,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(article.title, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF141414), height: 1.25), maxLines: 2, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text(
-                      article.subtitle.isNotEmpty ? article.subtitle : article.content,
-                      style: GoogleFonts.poppins(
-                        fontSize: 9.5,
-                        color: const Color(0xFF757575),
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
+                    if (article.subtitle.isNotEmpty)
+                      Text(article.subtitle, style: GoogleFonts.poppins(fontSize: 9.5, color: const Color(0xFF757575), height: 1.2), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const Spacer(),
                     Row(
                       children: [
-                        Text(
-                          'Baca artikel',
-                          style: GoogleFonts.poppins(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFD81B60),
-                          ),
-                        ),
+                        Text('Baca artikel', style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFFD81B60))),
                         const SizedBox(width: 3),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 12,
-                          color: Color(0xFFD81B60),
-                        ),
+                        const Icon(Icons.arrow_forward_rounded, size: 12, color: Color(0xFFD81B60)),
                       ],
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
