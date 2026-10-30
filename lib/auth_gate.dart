@@ -70,10 +70,7 @@ class _AuthGateState extends State<AuthGate> {
 
     // Jika pada cold start sesi sudah melebihi background timeout (>= 2 menit / 120 detik)
     if (_coldStartTimedOut) {
-      return const LoginScreen(
-        sessionExpiredMessage:
-            'Sesi Anda telah berakhir (tidak aktif lebih dari 2 menit). Silakan login kembali.',
-      );
+      return const LoginScreen();
     }
 
     return StreamBuilder<User?>(

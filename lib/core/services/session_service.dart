@@ -281,9 +281,7 @@ class SessionService with WidgetsBindingObserver {
           '⏳ [SessionService] Background timeout tercapai: diff=${diff.inSeconds}s (maks: ${timeoutLimit.inSeconds}s)',
         );
         await clearBackgroundEnteredAt();
-        await handleTimeout(
-          message: 'Sesi Anda telah berakhir (tidak aktif lebih dari 2 menit). Silakan login kembali.',
-        );
+        await handleTimeout();
         return;
       }
     }
@@ -344,9 +342,7 @@ class SessionService with WidgetsBindingObserver {
               if (remainingSeconds <= 0) {
                 timer.cancel();
                 _dismissWarningDialog();
-                handleTimeout(
-                  message: 'Sesi Anda telah berakhir karena tidak ada aktivitas.',
-                );
+                handleTimeout();
               } else {
                 setDialogState(() {});
               }
@@ -495,7 +491,7 @@ class SessionService with WidgetsBindingObserver {
 
   /// Eksekusi logout akibat timeout sesi, bersihkan stack navigasi, dan kembali ke halaman Login.
   Future<void> handleTimeout({
-    String message = 'Sesi Anda telah berakhir (tidak aktif lebih dari 2 menit). Silakan login kembali.',
+    String? message,
   }) async {
     if (_isLoggingOut) return;
     _isLoggingOut = true;
