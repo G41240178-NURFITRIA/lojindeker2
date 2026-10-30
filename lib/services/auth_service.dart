@@ -156,13 +156,7 @@ class AuthService {
       throw Exception('Semua field wajib diisi.');
     }
 
-    // Username: 4-20 karakter, hanya huruf/angka/_
-    final usernameRegex = RegExp(r'^[a-z0-9_]{4,20}$');
-    if (!usernameRegex.hasMatch(usernameClean)) {
-      throw Exception(
-        'Username harus 4–20 karakter dan hanya boleh mengandung huruf, angka, atau garis bawah.',
-      );
-    }
+    // Username bebas: tidak ada batasan panjang maupun karakter
 
     // Email valid
     final emailRegex = RegExp(r'^[\w._%+\-]+@[\w.\-]+\.[a-zA-Z]{2,}$');
