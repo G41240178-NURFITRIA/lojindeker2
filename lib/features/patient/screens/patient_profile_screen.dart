@@ -373,70 +373,46 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     }
                   },
                 ),
+                const Divider(height: 16),
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F5),
+                      color: const Color(0xFFFFEBEE),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.face_retouching_natural_rounded, color: _darkRose),
+                    child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFD32F2F)),
                   ),
                   title: Text(
-                    'Pilih Avatar Karakter',
-                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                    'Hapus Foto Profil',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFD32F2F),
+                    ),
                   ),
                   subtitle: Text(
-                    'Pilih avatar ilustrasi kesehatan',
+                    'Kembalikan avatar profil ke ikon bawaan',
                     style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
                   ),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(ctx);
-                    _showPresetAvatarsDialog(context);
+                    await ProfileImageService().clearImage(displayName: _currentName);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Foto profil berhasil dihapus.',
+                            style: GoogleFonts.poppins(fontSize: 12.5),
+                          ),
+                          backgroundColor: _darkRose,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      );
+                    }
                   },
                 ),
-                if (ProfileImageService().hasCustomImage()) ...[
-                  const Divider(height: 16),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFEBEE),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFD32F2F)),
-                    ),
-                    title: Text(
-                      'Hapus Foto Profil',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFFD32F2F),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Kembalikan avatar profil ke ikon bawaan',
-                      style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
-                    ),
-                    onTap: () async {
-                      Navigator.pop(ctx);
-                      await ProfileImageService().clearImage(displayName: _currentName);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Foto profil berhasil dihapus.',
-                              style: GoogleFonts.poppins(fontSize: 12.5),
-                            ),
-                            backgroundColor: _darkRose,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ],
               ],
             ),
           ),

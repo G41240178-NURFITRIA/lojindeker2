@@ -689,57 +689,33 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     _pickDoctorImage(ImageSource.camera);
                   },
                 ),
+                const Divider(height: 16),
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
+                      color: const Color(0xFFFFEBEE),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.face_retouching_natural_rounded, color: Color(0xFF2E7D32)),
+                    child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFD32F2F)),
                   ),
                   title: Text(
-                    'Pilih Avatar Siap Pakai',
-                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                    'Hapus Foto Profil',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFD32F2F),
+                    ),
                   ),
                   subtitle: Text(
-                    'Gunakan salah satu avatar dokter profesional',
+                    'Kembalikan avatar profil ke ikon bawaan',
                     style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _showPresetAvatarsDialog();
+                    _updateDoctorPhoto(null);
                   },
                 ),
-                if (_doctorPhotoUrl != null && _doctorPhotoUrl!.isNotEmpty) ...[
-                  const Divider(height: 16),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFEBEE),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFD32F2F)),
-                    ),
-                    title: Text(
-                      'Hapus Foto Profil',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFFD32F2F),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Kembalikan avatar profil ke ikon bawaan',
-                      style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
-                    ),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _updateDoctorPhoto(null);
-                    },
-                  ),
-                ],
               ],
             ),
           ),
@@ -1192,6 +1168,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           patientName: chat.name,
           initialMessage: chat.message,
           glucoseNote: chat.glucoseNote,
+          patientId: chat.patientId,
+          patientPhotoUrl: chat.patientPhotoUrl,
         ),
       ),
     );
@@ -2480,8 +2458,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                   selectedHours: selectedHours,
                                   bookingCount: bookingCount,
                                   bookings: bookings,
-                                  onSwitchToBookingsTab: () =>
-                                      setModalState(() => activeTab = 1),
                                   updateCombinedText: updateCombinedText,
                                   calDisplayedMonth: calDisplayedMonth,
                                   calSelectedDate: calSelectedDate,
@@ -2765,7 +2741,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     required String selectedHours,
     required int bookingCount,
     required List<ConsultationBookingModel> bookings,
-    required VoidCallback onSwitchToBookingsTab,
     required Function(String, String) updateCombinedText,
     required DateTime calDisplayedMonth,
     required DateTime calSelectedDate,
@@ -3174,37 +3149,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         fontSize: 10.5, color: const Color(0xFF9E9E9E)),
                   ),
                 ],
-                const SizedBox(height: 10),
-                InkWell(
-                  onTap: onSwitchToBookingsTab,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Lihat Rincian Pasien & Keluhan Lengkap',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_rounded,
-                              size: 14, color: AppColors.primary),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+
               ],
             ],
           ),
@@ -4699,6 +4644,7 @@ class DoctorChatDetailScreen extends StatefulWidget {
   final String initialMessage;
   final String glucoseNote;
   final String? patientId;
+  final String? patientPhotoUrl;
 
   const DoctorChatDetailScreen({
     super.key,
@@ -4708,6 +4654,7 @@ class DoctorChatDetailScreen extends StatefulWidget {
     required this.initialMessage,
     required this.glucoseNote,
     this.patientId,
+    this.patientPhotoUrl,
   });
 
   @override
@@ -4735,6 +4682,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // Langsung set foto dari widget agar tampil instan tanpa menunggu async
+    if (widget.patientPhotoUrl != null && widget.patientPhotoUrl!.trim().isNotEmpty) {
+      _patientPhoto = widget.patientPhotoUrl;
+    }
     _loadPatientPhoto();
     _activeChatId = widget.chatId;
     if (_activeChatId != null && _activeChatId!.isNotEmpty) {
@@ -4811,6 +4762,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       if (!mounted) return;
       if (chatDoc.exists && chatDoc.data() != null) {
         final data = chatDoc.data()!;
+        final docPhoto = data['patientPhotoUrl']?.toString() ?? data['patientPhoto']?.toString();
+        if (docPhoto != null && docPhoto.trim().isNotEmpty && (_patientPhoto == null || _patientPhoto!.isEmpty)) {
+          setState(() => _patientPhoto = docPhoto.trim());
+        }
         final status = data['status']?.toString() ?? 'active';
         final expTs = data['expiresAt'] as Timestamp?;
         final createdTs = data['createdAt'] as Timestamp?;
@@ -4963,6 +4918,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   }
 
   void _loadPatientPhoto() async {
+    // Gunakan foto profil yang sudah dioper dari dashboard jika ada
+    if (widget.patientPhotoUrl != null && widget.patientPhotoUrl!.trim().isNotEmpty) {
+      _patientPhoto = widget.patientPhotoUrl;
+    }
     try {
       final snap = await FirebaseFirestore.instance
           .collection("users")
