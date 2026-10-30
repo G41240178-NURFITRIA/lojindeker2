@@ -1192,6 +1192,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           patientName: chat.name,
           initialMessage: chat.message,
           glucoseNote: chat.glucoseNote,
+          patientId: chat.patientId,
+          patientPhotoUrl: chat.patientPhotoUrl,
         ),
       ),
     );
@@ -4144,6 +4146,7 @@ class DoctorChatDetailScreen extends StatefulWidget {
   final String initialMessage;
   final String glucoseNote;
   final String? patientId;
+  final String? patientPhotoUrl;
 
   const DoctorChatDetailScreen({
     super.key,
@@ -4153,6 +4156,7 @@ class DoctorChatDetailScreen extends StatefulWidget {
     required this.initialMessage,
     required this.glucoseNote,
     this.patientId,
+    this.patientPhotoUrl,
   });
 
   @override
@@ -4180,6 +4184,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // Langsung set foto dari widget agar tampil instan tanpa menunggu async
+    if (widget.patientPhotoUrl != null && widget.patientPhotoUrl!.trim().isNotEmpty) {
+      _patientPhoto = widget.patientPhotoUrl;
+    }
     _loadPatientPhoto();
     _activeChatId = widget.chatId;
     if (_activeChatId != null && _activeChatId!.isNotEmpty) {
@@ -4256,6 +4264,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
       if (!mounted) return;
       if (chatDoc.exists && chatDoc.data() != null) {
         final data = chatDoc.data()!;
+        final docPhoto = data['patientPhotoUrl']?.toString() ?? data['patientPhoto']?.toString();
+        if (docPhoto != null && docPhoto.trim().isNotEmpty && (_patientPhoto == null || _patientPhoto!.isEmpty)) {
+          setState(() => _patientPhoto = docPhoto.trim());
+        }
         final status = data['status']?.toString() ?? 'active';
         final expTs = data['expiresAt'] as Timestamp?;
         final createdTs = data['createdAt'] as Timestamp?;
@@ -4408,6 +4420,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
   }
 
   void _loadPatientPhoto() async {
+    // Gunakan foto profil yang sudah dioper dari dashboard jika ada
+    if (widget.patientPhotoUrl != null && widget.patientPhotoUrl!.trim().isNotEmpty) {
+      _patientPhoto = widget.patientPhotoUrl;
+    }
     try {
       final snap = await FirebaseFirestore.instance
           .collection("users")
