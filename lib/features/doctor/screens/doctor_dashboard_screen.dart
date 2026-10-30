@@ -689,57 +689,33 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     _pickDoctorImage(ImageSource.camera);
                   },
                 ),
+                const Divider(height: 16),
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
+                      color: const Color(0xFFFFEBEE),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.face_retouching_natural_rounded, color: Color(0xFF2E7D32)),
+                    child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFD32F2F)),
                   ),
                   title: Text(
-                    'Pilih Avatar Siap Pakai',
-                    style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.w600),
+                    'Hapus Foto Profil',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFD32F2F),
+                    ),
                   ),
                   subtitle: Text(
-                    'Gunakan salah satu avatar dokter profesional',
+                    'Kembalikan avatar profil ke ikon bawaan',
                     style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
-                    _showPresetAvatarsDialog();
+                    _updateDoctorPhoto(null);
                   },
                 ),
-                if (_doctorPhotoUrl != null && _doctorPhotoUrl!.isNotEmpty) ...[
-                  const Divider(height: 16),
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFEBEE),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFD32F2F)),
-                    ),
-                    title: Text(
-                      'Hapus Foto Profil',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFFD32F2F),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Kembalikan avatar profil ke ikon bawaan',
-                      style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
-                    ),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      _updateDoctorPhoto(null);
-                    },
-                  ),
-                ],
               ],
             ),
           ),
