@@ -684,9 +684,24 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     'Gunakan kamera untuk mengambil potret langsung',
                     style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
                   ),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(ctx);
-                    _pickDoctorImage(ImageSource.camera);
+                    final resultBase64 = await Navigator.push<String>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const InAppCameraScreen(
+                          title: 'Foto Profil Dokter',
+                          subtitle: 'Posisikan wajah Anda di depan kamera',
+                          preferFrontCamera: true,
+                        ),
+                      ),
+                    );
+                    if (resultBase64 != null && resultBase64.isNotEmpty) {
+                      final dataUri = resultBase64.startsWith('data:')
+                          ? resultBase64
+                          : 'data:image/jpeg;base64,$resultBase64';
+                      await _updateDoctorPhoto(dataUri);
+                    }
                   },
                 ),
                 const Divider(height: 16),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/profile_image_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
+import '../../../core/widgets/in_app_camera_screen.dart';
 
 import 'edit_profile_screen.dart';
 import 'account_settings_screen.dart';
@@ -354,9 +355,21 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   ),
                   onTap: () async {
                     Navigator.pop(ctx);
-                    final path = await ProfileImageService().pickImageFromCamera();
-                    if (path != null) {
-                      await ProfileImageService().saveProfilePhoto(path, displayName: _currentName);
+                    final resultBase64 = await Navigator.push<String>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const InAppCameraScreen(
+                          title: 'Foto Profil',
+                          subtitle: 'Posisikan wajah Anda di depan kamera',
+                          preferFrontCamera: true,
+                        ),
+                      ),
+                    );
+                    if (resultBase64 != null && resultBase64.isNotEmpty) {
+                      final dataUri = resultBase64.startsWith('data:')
+                          ? resultBase64
+                          : 'data:image/jpeg;base64,$resultBase64';
+                      await ProfileImageService().saveProfilePhoto(dataUri, displayName: _currentName);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(

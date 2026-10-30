@@ -13,11 +13,13 @@ import '../constants/app_colors.dart';
 class InAppCameraScreen extends StatefulWidget {
   final String title;
   final String subtitle;
+  final bool preferFrontCamera;
 
   const InAppCameraScreen({
     super.key,
     this.title = 'Kamera Medis D-Care',
     this.subtitle = 'Arahkan kamera ke resep, obat, atau berkas medis Anda',
+    this.preferFrontCamera = false,
   });
 
   @override
@@ -43,6 +45,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
   @override
   void initState() {
     super.initState();
+    _isFrontCamera = widget.preferFrontCamera;
     WidgetsBinding.instance.addObserver(this);
     _shutterAnimController = AnimationController(
       vsync: this,
