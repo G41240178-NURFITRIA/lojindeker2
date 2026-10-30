@@ -698,7 +698,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                       ),
                     );
                   } else if (!isChatUnlocked) {
-                    // Sudah booking tapi belum tiba waktunya: beri info jadwal
+                    // Sudah booking tapi belum tiba waktunya: beri info jadwal + aksi uji coba
                     ScaffoldMessenger.of(context).hideCurrentSnackBar();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -718,7 +718,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Fitur chat akan otomatis terbuka saat jam booking Anda tiba (${activeBooking.timeSlot} WIB, ${activeBooking.date}).',
+                              'Fitur chat otomatis terbuka saat jam booking Anda tiba (${activeBooking.timeSlot} WIB, ${activeBooking.date}).',
                               style: GoogleFonts.poppins(fontSize: 12),
                             ),
                           ],
@@ -726,7 +726,25 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                         backgroundColor: const Color(0xFF2C2C2C),
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        duration: const Duration(seconds: 4),
+                        duration: const Duration(seconds: 5),
+                        action: SnackBarAction(
+                          label: '🧪 Uji Coba',
+                          textColor: const Color(0xFFFF80AB),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => LiveChatScreen(
+                                  doctorName: displayName,
+                                  specialty: specialty,
+                                  initials: initials,
+                                  doctorId: doctor.uid,
+                                  forceActiveSession: true,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     );
                   } else {
