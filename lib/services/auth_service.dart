@@ -207,10 +207,27 @@ class AuthService {
     late final FirebaseAuth firebaseAuth;
     try {
       firebaseAuth = _auth;
-      final credential = await firebaseAuth.createUserWithEmailAndPassword(
+    UserCredential credential;
+    try {
+      credential = await firebaseAuth.createUserWithEmailAndPassword(
         email: emailClean,
         password: password,
       );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        // Coba sign in jika akun Auth sudah terbuat sebelumnya akibat error batch
+        try {
+          credential = await firebaseAuth.signInWithEmailAndPassword(
+            email: emailClean,
+            password: password,
+          );
+        } catch (_) {
+          rethrow;
+        }
+      } else {
+        rethrow;
+      }
+    }
 
       final firebaseUser = credential.user!;
       try { await firebaseUser.updateDisplayName(fullNameClean); } catch (_) {}

@@ -89,11 +89,6 @@ class UserRepository {
       await batch.commit();
     } catch (e) {
       debugPrint('❌ [UserRepository] Batch commit gagal, rollback Auth user: $e');
-      try {
-        await firebaseUser.delete();
-      } catch (deleteErr) {
-        debugPrint('❌ [UserRepository] Gagal menghapus Auth user saat rollback: $deleteErr');
-      }
       rethrow;
     }
   }
