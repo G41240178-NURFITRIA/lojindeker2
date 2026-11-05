@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/admin_activity_service.dart';
@@ -14,6 +15,7 @@ import '../../patient/screens/article_detail_screen.dart';
 import '../../patient/screens/patient_profile_screen.dart';
 import '../../patient/screens/riwayat_risiko_screen.dart';
 import 'add_doctor_screen.dart';
+import 'manage_admins_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -403,6 +405,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         subtitle: '${educationalArticles.length} artikel aktif',
                         onTap: () => _showKelolaArtikelSheet(context),
                       ),
+                      const SizedBox(height: 10),
+                      StreamBuilder<List<AppUser>>(
+                        stream: UserRepository.instance.streamAdmins(),
+                        builder: (context, adminSnap) {
+                          final count = (adminSnap.data != null && adminSnap.data!.isNotEmpty) ? adminSnap.data!.length : 1;
+                          return _buildManagementTile(
+                            iconWidget: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 18),
+                            title: 'Kelola Admin',
+                            subtitle: '$count admin aktif',
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const ManageAdminsScreen()),
+                              );
+                            },
+                          );
+                        },
+                      ),
 
                       const SizedBox(height: 24),
 
@@ -646,6 +665,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Expanded(
                 child: Text(
                   title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
@@ -1724,6 +1745,14 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
     final subtitleCtrl = TextEditingController(text: articleToEdit?.subtitle ?? '');
     final contentCtrl = TextEditingController(text: articleToEdit?.content ?? '');
     final reviewerCtrl = TextEditingController(text: articleToEdit?.reviewer ?? '');
+    final List<String> doctorOptions = ['Lainnya (Ketik Manual)'];
+    String selectedDoctor = 'Lainnya (Ketik Manual)';
+    if (articleToEdit != null && (articleToEdit.reviewer).isNotEmpty) {
+      final existingReviewer = articleToEdit.reviewer.trim();
+      selectedDoctor = existingReviewer;
+      doctorOptions.insert(0, existingReviewer);
+    }
+    bool hasFetchedDoctors = false;
     String selectedCategory = articleToEdit?.category ?? 'Pola Makan';
     String selectedReadTime = articleToEdit?.readTime ?? '3 menit baca';
 
@@ -1741,7 +1770,31 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
+        builder: (ctx, setModalState) {
+          if (!hasFetchedDoctors) {
+            hasFetchedDoctors = true;
+            FirebaseFirestore.instance.collection('doctors').get().then((snap) {
+              bool changed = false;
+              for (final doc in snap.docs) {
+                final data = doc.data();
+                final name = (data['fullName'] as String?)?.trim() ?? '';
+                final spec = (data['specialty'] as String?)?.trim() ?? '';
+                final label = spec.isNotEmpty ? '$name, $spec' : name;
+                if (label.isNotEmpty && !doctorOptions.contains(label)) {
+                  doctorOptions.insert(doctorOptions.length - 1, label);
+                  changed = true;
+                }
+              }
+              if (selectedDoctor == 'Lainnya (Ketik Manual)' && doctorOptions.length > 1) {
+                selectedDoctor = doctorOptions.first;
+                changed = true;
+              }
+              if (changed && ctx.mounted) {
+                setModalState(() {});
+              }
+            }).catchError((_) {});
+          }
+          return Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
           child: Container(
             decoration: const BoxDecoration(
@@ -1840,7 +1893,34 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                           const SizedBox(height: 14),
                           _formLabel('Nama Reviewer / Dokter'),
                           const SizedBox(height: 6),
-                          _formField(reviewerCtrl, 'Contoh: dr. Siti Rahma, Sp.PD'),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFCF8F9),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFF8BBD0)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: doctorOptions.contains(selectedDoctor) ? selectedDoctor : doctorOptions.first,
+                                isExpanded: true,
+                                style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF1F1F1F)),
+                                items: doctorOptions.map((doc) => DropdownMenuItem(
+                                  value: doc,
+                                  child: Text(doc, overflow: TextOverflow.ellipsis),
+                                )).toList(),
+                                onChanged: (v) {
+                                  if (v != null) {
+                                    setModalState(() => selectedDoctor = v);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                          if (selectedDoctor == 'Lainnya (Ketik Manual)') ...[
+                            const SizedBox(height: 8),
+                            _formField(reviewerCtrl, 'Contoh: dr. Siti Rahma, Sp.PD'),
+                          ],
                           const SizedBox(height: 14),
                           _formLabel('Estimasi Waktu Baca'),
                           const SizedBox(height: 6),
@@ -1870,9 +1950,9 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                                   );
                                   return;
                                 }
-                                final reviewerText = reviewerCtrl.text.trim().isNotEmpty
-                                    ? reviewerCtrl.text.trim()
-                                    : 'Tim Medis LojinDeker';
+                                final reviewerText = selectedDoctor == 'Lainnya (Ketik Manual)'
+                                    ? (reviewerCtrl.text.trim().isNotEmpty ? reviewerCtrl.text.trim() : 'Tim Medis LojinDeker')
+                                    : selectedDoctor;
 
                                 try {
                                   if (isEditing) {
@@ -1946,7 +2026,8 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
               ),
             ),
           ),
-        ),
+        );
+        },
       ),
     );
   }

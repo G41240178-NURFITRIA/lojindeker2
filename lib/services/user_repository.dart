@@ -93,6 +93,80 @@ class UserRepository {
     }
   }
 
+
+  // â”€â”€â”€ Admin Tambah Admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  /// Simpan profil admin baru + loginLookup dalam satu batch.
+  Future<void> createAdmin({
+    required AppUser admin,
+  }) async {
+    final batch = _db.batch();
+    final ts = FieldValue.serverTimestamp();
+    final data = <String, dynamic>{
+      ...admin.toMap(),
+      'createdAt': ts,
+      'updatedAt': ts,
+    };
+
+    batch.set(_db.collection('admins').doc(admin.uid), data);
+
+    final lookupData = <String, dynamic>{
+      ...admin.toLookupMap(),
+      'createdAt': ts,
+    };
+
+    batch.set(
+      _db.collection('loginLookup').doc(admin.username.toLowerCase()),
+      lookupData,
+    );
+    batch.set(
+      _db.collection('loginLookup').doc(admin.email.toLowerCase()),
+      lookupData,
+    );
+    if (admin.phoneNumber.trim().isNotEmpty) {
+      batch.set(
+        _db.collection('loginLookup').doc(admin.phoneNumber.trim()),
+        lookupData,
+      );
+    }
+
+    await batch.commit();
+  }
+
+  // â”€â”€â”€ Daftar Admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  Stream<List<AppUser>> streamAdmins() {
+    return _db
+        .collection('admins')
+        .orderBy('fullName')
+        .snapshots()
+        .map((snap) => snap.docs
+            .map((d) => AppUser.fromMap(d.data(), d.id))
+            .toList());
+  }
+
+  /// Hapus akun admin secara permanen
+  Future<void> deleteAdmin(AppUser admin) async {
+    final batch = _db.batch();
+
+    batch.delete(_db.collection('admins').doc(admin.uid));
+
+    if (admin.username.trim().isNotEmpty) {
+      batch.delete(
+        _db.collection('loginLookup').doc(admin.username.toLowerCase()),
+      );
+    }
+    if (admin.email.trim().isNotEmpty) {
+      batch.delete(
+        _db.collection('loginLookup').doc(admin.email.toLowerCase()),
+      );
+    }
+    if (admin.phoneNumber.trim().isNotEmpty) {
+      batch.delete(
+        _db.collection('loginLookup').doc(admin.phoneNumber.trim()),
+      );
+    }
+
+    await batch.commit();
+  }
   // ─── Admin Tambah Dokter ──────────────────────────────────────────
   /// Simpan profil dokter baru + loginLookup dalam satu batch.
   Future<void> createDoctor({

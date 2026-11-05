@@ -23,11 +23,11 @@ service cloud.firestore {
     }
     
     // 1. Admins Collection
-    // Read: pemilik atau admin
-    // Write: false (dibuat manual via Firebase Console)
+    // Read: pengguna login
+    // Write: hanya admin (untuk fitur kelola admin)
     match /admins/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
-      allow write: if false;
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
     }
     
     // 2. Doctors Collection
