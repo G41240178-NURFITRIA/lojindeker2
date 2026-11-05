@@ -1,4 +1,3 @@
-import 'patient_dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/profile_image_service.dart';
@@ -8,6 +7,7 @@ import '../../../core/widgets/in_app_camera_screen.dart';
 import 'edit_profile_screen.dart';
 import 'account_settings_screen.dart';
 import 'consultation_list_screen.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../services/auth_service.dart';
 import '../../auth/screens/landing_screen.dart';
 
@@ -667,7 +667,38 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             ),
             const SizedBox(height: 14),
 
-            // 4. Logout
+            // 4. Uji Coba Notifikasi Layar HP
+            _buildMenuItem(
+              icon: Icons.notifications_active_outlined,
+              title: 'Uji Notifikasi Layar HP',
+              onTap: () async {
+                final granted = await NotificationService().requestPermission();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        granted == false
+                            ? '⚠️ Izin notifikasi belum diizinkan di Pengaturan HP Anda!'
+                            : '🔔 Notifikasi akan muncul dalam 3 detik! Segera tekan tombol Home / keluar aplikasi untuk menguji.',
+                        style: GoogleFonts.poppins(fontSize: 12.5),
+                      ),
+                      backgroundColor: granted == false
+                          ? const Color(0xFFC62828)
+                          : const Color(0xFFD81B60),
+                      duration: const Duration(seconds: 4),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                }
+                await NotificationService().sendTestNotification(delaySeconds: 3);
+              },
+            ),
+            const SizedBox(height: 14),
+
+            // 5. Logout
             _buildMenuItem(
               icon: Icons.logout_rounded,
               title: 'Logout',

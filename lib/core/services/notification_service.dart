@@ -88,6 +88,31 @@ class NotificationService {
     }
   }
 
+  /// Minta izin notifikasi secara eksplisit pada Android 13+ (POST_NOTIFICATIONS)
+  Future<bool?> requestPermission() async {
+    await init();
+    if (Platform.isAndroid) {
+      final androidImpl = _plugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      final granted = await androidImpl?.requestNotificationsPermission();
+      return granted;
+    }
+    return true;
+  }
+
+  /// Mengirim notifikasi uji coba setelah jeda beberapa detik (agar user bisa keluar aplikasi untuk tes)
+  Future<void> sendTestNotification({int delaySeconds = 3}) async {
+    await requestPermission();
+    Future.delayed(Duration(seconds: delaySeconds), () async {
+      await showDoctorReplyNotification(
+        id: 88888,
+        doctorName: 'dr. Yosua (Uji Coba)',
+        message: 'Halo! Ini adalah contoh pesan dokter. Notifikasi di HP Anda sudah aktif dan berhasil! 🎉',
+      );
+    });
+  }
+
   // =====================================================================
   // ALARM TERJADWAL HARIAN â€” muncul TEPAT pada jam yang diset pengguna
   // =====================================================================

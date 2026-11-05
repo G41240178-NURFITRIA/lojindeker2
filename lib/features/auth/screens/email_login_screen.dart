@@ -4,6 +4,8 @@ import '../../../core/services/auth_service.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
+import '../../../core/services/doctor_chat_notification_service.dart';
+import '../../../core/services/patient_chat_notification_service.dart';
 import '../widgets/figma_auth_field.dart';
 import '../widgets/figma_red_button.dart';
 import 'forgot_password_screen.dart';
@@ -64,6 +66,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
           );
           break;
         case AppRole.doctor:
+          DoctorChatNotificationService.instance.startListening(
+            user.uid,
+            doctorName: user.fullName,
+          );
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (_) => DoctorDashboardScreen(
@@ -77,6 +83,10 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
           final displayName = user.fullName.isNotEmpty
               ? user.fullName
               : (email.contains('@') ? email.split('@')[0] : email);
+          PatientChatNotificationService.instance.startListening(
+            user.uid,
+            patientName: displayName,
+          );
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
               builder: (_) => PatientDashboardScreen(

@@ -8,6 +8,7 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/patient_activity_service.dart';
 import '../../../core/services/profile_image_service.dart';
 import '../../../core/services/patient_chat_notification_service.dart';
+import '../../../core/services/notification_service.dart';
 import 'risk_check_screen.dart';
 import 'consultation_list_screen.dart';
 import 'medical_records_screen.dart';
@@ -51,6 +52,12 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
     super.initState();
     _selectedTabIndex = widget.initialTabIndex;
     _currentPatientName = widget.patientName;
+    final initialUser = AuthService.instance.currentUser;
+    if (initialUser != null) {
+      PatientChatNotificationService.instance
+          .startListening(initialUser.uid, patientName: widget.patientName);
+    }
+    NotificationService().requestPermission();
     _loadCurrentProfile();
     _subscribeToAdminArticles();
   }
@@ -79,6 +86,10 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
             setState(() {
               _currentPatientName = profileName.trim();
             });
+            PatientChatNotificationService.instance.startListening(
+              user.uid,
+              patientName: profileName.trim(),
+            );
           }
         }
       } catch (e) {

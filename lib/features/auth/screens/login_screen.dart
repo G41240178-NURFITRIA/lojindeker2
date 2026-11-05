@@ -6,6 +6,8 @@ import '../../../services/auth_service.dart';
 import '../../admin/screens/admin_dashboard_screen.dart';
 import '../../doctor/screens/doctor_dashboard_screen.dart';
 import '../../patient/screens/patient_dashboard_screen.dart';
+import '../../../core/services/doctor_chat_notification_service.dart';
+import '../../../core/services/patient_chat_notification_service.dart';
 import '../widgets/app_logo_badge.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/glossy_login_button.dart';
@@ -106,6 +108,10 @@ class _LoginScreenState extends State<LoginScreen> {
             (route) => false,
           );
         case AppRole.doctor:
+          DoctorChatNotificationService.instance.startListening(
+            appUser.uid,
+            doctorName: appUser.fullName,
+          );
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (_) => DoctorDashboardScreen(
@@ -118,6 +124,10 @@ class _LoginScreenState extends State<LoginScreen> {
             (route) => false,
           );
         case AppRole.pasien:
+          PatientChatNotificationService.instance.startListening(
+            appUser.uid,
+            patientName: appUser.fullName,
+          );
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (_) => PatientDashboardScreen(

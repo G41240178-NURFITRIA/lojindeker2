@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/services/doctor_chat_notification_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/services/consultation_booking_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
 import '../../../core/widgets/in_app_camera_screen.dart';
@@ -108,6 +109,13 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     super.initState();
     _doctorDisplayName = widget.doctorName;
     _doctorEmail = AuthService.instance.currentUser?.email;
+    final initialDocUid =
+        widget.doctorId ?? AuthService.instance.currentUser?.uid;
+    if (initialDocUid != null && initialDocUid.isNotEmpty) {
+      DoctorChatNotificationService.instance
+          .startListening(initialDocUid, doctorName: widget.doctorName);
+    }
+    NotificationService().requestPermission();
     _initDoctorProfile();
     _subscribeToChats();
     _subscribeToPatientCount();
