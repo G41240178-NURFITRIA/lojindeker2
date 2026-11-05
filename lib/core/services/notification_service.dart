@@ -273,7 +273,16 @@ class NotificationService {
   }) async {
     await init();
 
-    const AndroidNotificationDetails androidDetails =
+    final BigTextStyleInformation bigTextStyle = BigTextStyleInformation(
+      message,
+      htmlFormatBigText: false,
+      contentTitle: '💬 Balasan dari $doctorName',
+      htmlFormatContentTitle: false,
+      summaryText: 'Pesan Konsultasi',
+      htmlFormatSummaryText: false,
+    );
+
+    final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'doctor_chat_channel_v2',
       'Pesan Konsultasi Dokter',
@@ -283,6 +292,8 @@ class NotificationService {
       playSound: true,
       enableVibration: true,
       showWhen: true,
+      visibility: NotificationVisibility.public,
+      styleInformation: bigTextStyle,
       category: AndroidNotificationCategory.message,
     );
 
@@ -293,14 +304,14 @@ class NotificationService {
       interruptionLevel: InterruptionLevel.timeSensitive,
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(
+    final NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
 
     await _plugin.show(
       id: id,
-      title: 'ðŸ’¬ Balasan dari $doctorName',
+      title: '💬 Balasan dari $doctorName',
       body: message,
       notificationDetails: platformDetails,
       payload: payload,
@@ -382,7 +393,16 @@ class NotificationService {
   }) async {
     await init();
 
-    const AndroidNotificationDetails androidDetails =
+    final BigTextStyleInformation bigTextStyle = BigTextStyleInformation(
+      message,
+      htmlFormatBigText: false,
+      contentTitle: '💬 Pesan dari $patientName',
+      htmlFormatContentTitle: false,
+      summaryText: 'Konsultasi Pasien',
+      htmlFormatSummaryText: false,
+    );
+
+    final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'patient_chat_channel_v2',
       'Pesan dari Pasien',
@@ -392,6 +412,8 @@ class NotificationService {
       playSound: true,
       enableVibration: true,
       showWhen: true,
+      visibility: NotificationVisibility.public,
+      styleInformation: bigTextStyle,
       category: AndroidNotificationCategory.message,
     );
 
@@ -402,7 +424,7 @@ class NotificationService {
       interruptionLevel: InterruptionLevel.timeSensitive,
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(
+    final NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
