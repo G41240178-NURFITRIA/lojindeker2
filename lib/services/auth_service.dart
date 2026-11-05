@@ -300,6 +300,106 @@ class AuthService {
     );
   }
 
+
+  // â”€â”€â”€ Admin Tambah Admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  /// Membuat akun admin via Firebase App sekunder agar admin utama tidak ter-logout.
+  Future<AppUser> createAdminAsAdmin({
+    required String username,
+    required String fullName,
+    required String email,
+    required String password,
+    String? phoneNumber,
+    String? dob,
+  }) async {
+    final usernameClean = username.trim().toLowerCase();
+    final emailClean = email.trim().toLowerCase();
+    final phoneClean = (phoneNumber ?? '').trim();
+    final fullNameClean = fullName.trim();
+    final dobClean = (dob ?? '').trim();
+
+    if (usernameClean.isEmpty || fullNameClean.isEmpty || emailClean.isEmpty || password.isEmpty) {
+      throw Exception('Nama, username, email, dan password wajib diisi.');
+    }
+
+    if (password.length < 8) {
+      throw Exception('Password minimal 8 karakter.');
+    }
+
+    // Validasi keunikan
+    final repo = UserRepository.instance;
+    if (!await repo.isUsernameAvailable(usernameClean)) {
+      throw Exception('Username "$usernameClean" sudah digunakan.');
+    }
+    if (!await repo.isEmailAvailable(emailClean)) {
+      throw Exception('Email "$emailClean" sudah terdaftar.');
+    }
+    if (phoneClean.isNotEmpty && !await repo.isPhoneAvailable(phoneClean)) {
+      throw Exception('Nomor HP "$phoneClean" sudah terdaftar.');
+    }
+
+    // Buat Firebase App sekunder agar admin tidak ter-logout
+    FirebaseApp? secondaryApp;
+    try {
+      final mainOptions = Firebase.app().options;
+      const secondaryName = 'secondary_admin_creation';
+
+      try {
+        final old = Firebase.app(secondaryName);
+        await old.delete();
+      } catch (_) {}
+
+      secondaryApp = await Firebase.initializeApp(
+        name: secondaryName,
+        options: mainOptions,
+      );
+
+      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+
+      final credential = await secondaryAuth.createUserWithEmailAndPassword(
+        email: emailClean,
+        password: password,
+      );
+
+      final uid = credential.user!.uid;
+      await credential.user!.updateDisplayName(fullNameClean);
+
+      // Sign out dari instance sekunder
+      await secondaryAuth.signOut();
+
+      final newAdmin = AppUser(
+        uid: uid,
+        fullName: fullNameClean,
+        username: usernameClean,
+        email: emailClean,
+        phoneNumber: phoneClean,
+        dob: dobClean,
+        role: AppRole.admin,
+        isActive: true,
+      );
+
+      await repo.createAdmin(admin: newAdmin);
+
+      debugPrint('âœ… [AuthService] Admin dibuat oleh admin utama: $uid');
+
+      // Catat aktivitas penambahan admin ke log
+      try {
+        AdminActivityService.instance.logAdminBaru(
+          fullName: fullNameClean,
+          username: usernameClean,
+          email: emailClean,
+        );
+      } catch (_) {}
+
+      return newAdmin;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_mapError(e.code, e.message ?? 'Gagal membuat akun admin.'));
+    } finally {
+      try {
+        await secondaryApp?.delete();
+      } catch (_) {}
+    }
+  }
+
   // ─── Admin Tambah Dokter ──────────────────────────────────────────
   /// Membuat akun dokter via Firebase App sekunder agar admin tidak ter-logout.
   Future<AppUser> createDoctorAsAdmin({

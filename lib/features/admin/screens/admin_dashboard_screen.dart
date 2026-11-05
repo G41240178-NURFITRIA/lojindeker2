@@ -14,6 +14,7 @@ import '../../patient/screens/article_detail_screen.dart';
 import '../../patient/screens/patient_profile_screen.dart';
 import '../../patient/screens/riwayat_risiko_screen.dart';
 import 'add_doctor_screen.dart';
+import 'manage_admins_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -402,6 +403,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         title: 'Kelola Artikel Edukasi',
                         subtitle: '${educationalArticles.length} artikel aktif',
                         onTap: () => _showKelolaArtikelSheet(context),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildManagementTile(
+                        iconWidget: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 18),
+                        title: 'Kelola Admin',
+                        subtitle: 'Tambah & kelola hak akses admin',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const ManageAdminsScreen()),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 24),

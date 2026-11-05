@@ -179,6 +179,19 @@ class AdminActivityService {
       );
 
   /// Dokter baru ditambahkan oleh admin
+
+  /// Admin baru ditambahkan oleh admin
+  Future<void> logAdminBaru({
+    required String fullName,
+    required String username,
+    String email = '',
+  }) =>
+      logActivity(
+        type: AdminActivityType.pasienBaru,
+        title: 'Admin Baru Ditambahkan',
+        subtitle: '$fullName â€¢ @$username',
+        metadata: {'fullName': fullName, 'username': username, 'email': email},
+      );
   Future<void> logDokterBaru({
     required String fullName,
     required String specialization,
