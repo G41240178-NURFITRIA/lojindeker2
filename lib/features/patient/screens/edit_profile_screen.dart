@@ -4,6 +4,7 @@ import '../../../core/widgets/in_app_camera_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/admin_activity_service.dart';
 import '../../../models/app_user.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
@@ -308,6 +309,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             .set(updateData, SetOptions(merge: true));
 
         await currentUser.updateDisplayName(updatedName);
+
+        // Audit Trail: Catat perubahan data profil pengguna
+        try {
+          final changes = <String>[];
+          if (updatedName != (appUser?.fullName ?? '')) changes.add('Nama');
+          if (_phoneController.text.trim().isNotEmpty) changes.add('No. Telepon');
+          if (_dobController.text.trim().isNotEmpty) changes.add('Tgl Lahir');
+          if (_selectedImagePath != null) changes.add('Foto Profil');
+
+          final detail = changes.isNotEmpty
+              ? 'Memperbarui ${changes.join(', ')}'
+              : 'Memperbarui informasi profil';
+
+          await AdminActivityService.instance.logUbahProfil(
+            fullName: updatedName,
+            detailPerubahan: detail,
+            email: currentUser.email ?? '',
+            role: appUser?.role.firestoreValue ?? 'pasien',
+          );
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('Error updating profile in Firestore: $e');

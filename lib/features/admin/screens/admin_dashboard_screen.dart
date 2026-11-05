@@ -450,94 +450,55 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.5), width: 1),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFD81B60).withValues(alpha: 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                      StreamBuilder<List<AdminActivityLog>>(
+                        stream: AdminActivityService.instance.streamActivities(limit: 5),
+                        builder: (context, snapshot) {
+                          final logs = snapshot.data ?? [];
+                          if (logs.isEmpty) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.5), width: 1),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Belum ada log aktivitas tercatat.',
+                                  style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF757575)),
+                                ),
+                              ),
+                            );
+                          }
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.5), width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFD81B60).withValues(alpha: 0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            // Activity 1: Patient registration
-                            _buildActivityItem(
-                              iconWidget: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white, size: 18),
-                              title: patients.isNotEmpty
-                                  ? 'Pasien terdaftar: ${patients.first.fullName}'
-                                  : 'Pengguna baru terdaftar',
-                              subtitle: patients.isNotEmpty
-                                  ? patients.first.email
-                                  : 'User dengan email rina@gmail.com',
-                              timeAgo: 'Baru saja',
-                              onTap: () => _showKelolaPenggunaSheet(context),
+                            child: Column(
+                              children: [
+                                for (int i = 0; i < logs.length; i++) ...[
+                                  _buildRealtimeActivityItem(context, logs[i]),
+                                  if (i < logs.length - 1)
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 6),
+                                      child: Divider(height: 1, color: Color(0xFFFCE4EC)),
+                                    ),
+                                ],
+                              ],
                             ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Divider(height: 1, color: Color(0xFFFCE4EC)),
-                            ),
-                            // Activity 2: Doctor added
-                            _buildActivityItem(
-                              iconWidget: const _DoctorOutlineIcon(color: Colors.white, size: 18),
-                              title: doctors.isNotEmpty
-                                  ? 'Dokter aktif: ${doctors.first.fullName}'
-                                  : 'Dokter baru ditambahkan',
-                              subtitle: doctors.isNotEmpty
-                                  ? (doctors.first.specialization ?? 'Spesialis Penyakit Dalam')
-                                  : 'dr. Kaka Pratama - Spesialis',
-                              timeAgo: '1 jam lalu',
-                              onTap: () {
-                                if (doctors.isNotEmpty) {
-                                  _showDoctorDetailSheet(context, doctors.first);
-                                } else {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => const AddDoctorScreen(initialIndex: 1)),
-                                  );
-                                }
-                              },
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Divider(height: 1, color: Color(0xFFFCE4EC)),
-                            ),
-                            // Activity 3: Cek Risiko
-                            _buildActivityItem(
-                              iconWidget: const Icon(Icons.health_and_safety_rounded, color: Colors.white, size: 18),
-                              title: latestRisk != null
-                                  ? 'Cek Risiko: ${latestRisk.status}'
-                                  : 'Cek Risiko',
-                              subtitle: latestRisk != null
-                                  ? 'Kadar gula: ${latestRisk.glucoseLevel} • ${latestRisk.scoreDescription}'
-                                  : 'Evaluasi mandiri risiko pasien selesai',
-                              timeAgo: latestRisk != null ? latestRisk.date : '3 jam lalu',
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const RiwayatRisikoScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: Divider(height: 1, color: Color(0xFFFCE4EC)),
-                            ),
-                            // Activity 4: Educational Article Published
-                            _buildActivityItem(
-                              iconWidget: const _ArticlesOutlineIcon(color: Colors.white, size: 18),
-                              title: 'Artikel Edukasi Diperbarui',
-                              subtitle: '3 materi edukasi aktif & siap diakses pasien',
-                              timeAgo: 'Hari ini',
-                              onTap: () => _showKelolaArtikelSheet(context),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 28),
@@ -687,6 +648,145 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   /// Activity List Item (Interactive)
+  Widget _buildRealtimeActivityItem(BuildContext context, AdminActivityLog log) {
+    IconData icon;
+    Color iconBg;
+    switch (log.type) {
+      case AdminActivityType.pasienBaru:
+        icon = Icons.person_add_alt_1_rounded;
+        iconBg = const Color(0xFF42A5F5);
+        break;
+      case AdminActivityType.dokterBaru:
+        icon = Icons.medical_services_rounded;
+        iconBg = const Color(0xFF66BB6A);
+        break;
+      case AdminActivityType.adminBaru:
+        icon = Icons.admin_panel_settings_rounded;
+        iconBg = const Color(0xFF8E24AA);
+        break;
+      case AdminActivityType.cekRisiko:
+        icon = Icons.health_and_safety_rounded;
+        iconBg = const Color(0xFFEF5350);
+        break;
+      case AdminActivityType.konsultasi:
+        icon = Icons.chat_bubble_rounded;
+        iconBg = const Color(0xFF7E57C2);
+        break;
+      case AdminActivityType.statusPengguna:
+      case AdminActivityType.statusDokter:
+        icon = Icons.manage_accounts_rounded;
+        iconBg = const Color(0xFFFF7043);
+        break;
+      case AdminActivityType.resetSandi:
+        icon = Icons.lock_reset_rounded;
+        iconBg = const Color(0xFF26C6DA);
+        break;
+      case AdminActivityType.ubahSandi:
+        icon = Icons.password_rounded;
+        iconBg = const Color(0xFF00897B);
+        break;
+      case AdminActivityType.ubahProfil:
+        icon = Icons.badge_rounded;
+        iconBg = const Color(0xFFFB8C00);
+        break;
+      case AdminActivityType.hapusAkun:
+        icon = Icons.person_remove_rounded;
+        iconBg = const Color(0xFFC62828);
+        break;
+      case AdminActivityType.artikelBaru:
+        icon = Icons.post_add_rounded;
+        iconBg = const Color(0xFF43A047);
+        break;
+      case AdminActivityType.ubahArtikel:
+        icon = Icons.edit_note_rounded;
+        iconBg = const Color(0xFF1E88E5);
+        break;
+      case AdminActivityType.hapusArtikel:
+        icon = Icons.delete_sweep_rounded;
+        iconBg = const Color(0xFFE53935);
+        break;
+      case AdminActivityType.login:
+        icon = Icons.login_rounded;
+        iconBg = const Color(0xFF8BC34A);
+        break;
+      case AdminActivityType.logout:
+        icon = Icons.logout_rounded;
+        iconBg = const Color(0xFF90A4AE);
+        break;
+      case AdminActivityType.sistemNormal:
+        icon = Icons.check_circle_rounded;
+        iconBg = const Color(0xFFD81B60);
+        break;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _showAllActivitiesSheet(context, [], []),
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(child: Icon(icon, color: Colors.white, size: 18)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      log.title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF141414),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      log.subtitle,
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: const Color(0xFF757575),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                log.relativeTime,
+                style: GoogleFonts.poppins(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFFD81B60),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFFBDBDBD),
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildActivityItem({
     required Widget iconWidget,
     required String title,
@@ -1130,6 +1230,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         icon = Icons.medical_services_rounded;
         iconBg = const Color(0xFF66BB6A);
         break;
+      case AdminActivityType.adminBaru:
+        icon = Icons.admin_panel_settings_rounded;
+        iconBg = const Color(0xFF8E24AA);
+        break;
       case AdminActivityType.cekRisiko:
         icon = Icons.health_and_safety_rounded;
         iconBg = const Color(0xFFEF5350);
@@ -1146,6 +1250,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case AdminActivityType.resetSandi:
         icon = Icons.lock_reset_rounded;
         iconBg = const Color(0xFF26C6DA);
+        break;
+      case AdminActivityType.ubahSandi:
+        icon = Icons.password_rounded;
+        iconBg = const Color(0xFF00897B);
+        break;
+      case AdminActivityType.ubahProfil:
+        icon = Icons.badge_rounded;
+        iconBg = const Color(0xFFFB8C00);
+        break;
+      case AdminActivityType.hapusAkun:
+        icon = Icons.person_remove_rounded;
+        iconBg = const Color(0xFFC62828);
+        break;
+      case AdminActivityType.artikelBaru:
+        icon = Icons.post_add_rounded;
+        iconBg = const Color(0xFF43A047);
+        break;
+      case AdminActivityType.ubahArtikel:
+        icon = Icons.edit_note_rounded;
+        iconBg = const Color(0xFF1E88E5);
+        break;
+      case AdminActivityType.hapusArtikel:
+        icon = Icons.delete_sweep_rounded;
+        iconBg = const Color(0xFFE53935);
         break;
       case AdminActivityType.login:
         icon = Icons.login_rounded;
@@ -1664,10 +1792,11 @@ class _KelolaPenggunaModalContentState extends State<_KelolaPenggunaModalContent
                   if (confirm == true) {
                     try {
                       await UserRepository.instance.deletePatient(patient);
-                      // Catat ke log admin
-                      AdminActivityService.instance.logStatusPengguna(
+                      // Audit Trail: Catat akun pasien dihapus permanen
+                      AdminActivityService.instance.logHapusAkun(
                         fullName: patient.fullName,
-                        isActive: false,
+                        role: 'Pasien',
+                        email: patient.email,
                       );
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -1958,6 +2087,11 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                                       updatedAt: DateTime.now(),
                                     );
                                     await ArticleService.instance.updateArticle(updatedArticle);
+                                    // Audit Trail: Catat artikel edukasi diperbarui
+                                    AdminActivityService.instance.logUbahArtikel(
+                                      title: updatedArticle.title,
+                                      reviewer: reviewerText,
+                                    );
                                     if (ctx.mounted) Navigator.pop(ctx);
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1979,6 +2113,11 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                                       createdAt: DateTime.now(),
                                     );
                                     await ArticleService.instance.addArticle(newArticle);
+                                    // Audit Trail: Catat artikel baru diterbitkan
+                                    AdminActivityService.instance.logArtikelBaru(
+                                      title: newArticle.title,
+                                      reviewer: reviewerText,
+                                    );
                                     if (ctx.mounted) Navigator.pop(ctx);
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(context).showSnackBar(
@@ -2057,6 +2196,10 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
               Navigator.pop(ctx);
               try {
                 await ArticleService.instance.deleteArticle(article.id);
+                // Audit Trail: Catat artikel edukasi dihapus
+                AdminActivityService.instance.logHapusArtikel(
+                  title: article.title,
+                );
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Artikel dihapus.', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: const Color(0xFF2E7D32)),
@@ -2487,7 +2630,7 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
 /// =========================================================================
 /// 3. KOMPONEN AKTIVITAS TERBARU DENGAN ISI REAL & INTERAKTIF
 /// =========================================================================
-class _AktivitasTerbaruModalContent extends StatelessWidget {
+class _AktivitasTerbaruModalContent extends StatefulWidget {
   final List<AppUser> patients;
   final List<AppUser> doctors;
   final VoidCallback onOpenPengguna;
@@ -2505,9 +2648,16 @@ class _AktivitasTerbaruModalContent extends StatelessWidget {
   });
 
   @override
+  State<_AktivitasTerbaruModalContent> createState() => _AktivitasTerbaruModalContentState();
+}
+
+class _AktivitasTerbaruModalContentState extends State<_AktivitasTerbaruModalContent> {
+  String _selectedCategory = 'Semua';
+
+  @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.85,
+      initialChildSize: 0.88,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (_, scrollController) {
@@ -2542,7 +2692,7 @@ class _AktivitasTerbaruModalContent extends StatelessWidget {
                         color: const Color(0xFFFCE4EC),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.history_rounded, color: Color(0xFFD81B60), size: 22),
+                      child: const Icon(Icons.verified_user_rounded, color: Color(0xFFD81B60), size: 22),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -2550,7 +2700,7 @@ class _AktivitasTerbaruModalContent extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Semua Aktivitas Terbaru',
+                            'Audit Trail & Aktivitas Sistem',
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -2558,7 +2708,7 @@ class _AktivitasTerbaruModalContent extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'Log kegiatan sistem & interaksi pengguna',
+                            'Riwayat spesifik keamanan sandi, akun & sistem',
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               color: const Color(0xFF757575),
@@ -2575,58 +2725,114 @@ class _AktivitasTerbaruModalContent extends StatelessWidget {
                 ),
               ),
 
+              // Filter Category Chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                child: Row(
+                  children: [
+                    _buildFilterChip('Semua'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Sandi & Auth'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Akun & Profil'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Artikel Edukasi'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Konsultasi & Cek'),
+                  ],
+                ),
+              ),
+
               const Divider(height: 1, color: Color(0xFFF8BBD0)),
 
-              // Activity Feed List
+              // Activity Feed List from Firestore
               Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  children: [
-                    _buildFullActivityCard(
-                      icon: Icons.person_add_alt_1_rounded,
-                      title: patients.isNotEmpty
-                          ? 'Pendaftaran Pasien: ${patients.first.fullName}'
-                          : 'Pasien baru mendaftar di sistem',
-                      subtitle: patients.isNotEmpty
-                          ? 'Email: ${patients.first.email} • Status akun aktif'
-                          : 'User dengan email rina@gmail.com telah terdaftar',
-                      time: '5 Menit yang lalu',
-                      actionLabel: 'Kelola Pengguna',
-                      onTap: onOpenPengguna,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFullActivityCard(
-                      icon: Icons.medical_services_rounded,
-                      title: doctors.isNotEmpty
-                          ? 'Dokter Aktif: ${doctors.first.fullName}'
-                          : 'Akun Dokter Baru Ditambahkan',
-                      subtitle: doctors.isNotEmpty
-                          ? '${doctors.first.specialization ?? 'Spesialis'} • Siap melayani konsultasi'
-                          : 'dr. Kaka Pratama - Spesialis Penyakit Dalam',
-                      time: '1 Jam yang lalu',
-                      actionLabel: 'Kelola Dokter',
-                      onTap: onOpenDokter,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFullActivityCard(
-                      icon: Icons.health_and_safety_rounded,
-                      title: 'Cek Risiko Selesai',
-                      subtitle: 'Pasien menyelesaikan evaluasi mandiri faktor risiko diabetes.',
-                      time: '3 Jam yang lalu',
-                      actionLabel: 'Lihat Riwayat',
-                      onTap: onOpenRiskAI,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFullActivityCard(
-                      icon: Icons.article_rounded,
-                      title: 'Pembaruan Artikel Edukasi',
-                      subtitle: 'Materi edukasi "Pola Makan Sehat", "Aktivitas Fisik", & "Monitoring" aktif.',
-                      time: 'Hari ini, 09:00',
-                      actionLabel: 'Buka Artikel',
-                      onTap: onOpenArtikel,
-                    ),
-                  ],
+                child: StreamBuilder<List<AdminActivityLog>>(
+                  stream: AdminActivityService.instance.streamActivities(limit: 100),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: CircularProgressIndicator(color: Color(0xFFD81B60)),
+                        ),
+                      );
+                    }
+
+                    final allLogs = snapshot.data ?? [];
+                    final filteredLogs = allLogs.where((log) {
+                      if (_selectedCategory == 'Semua') return true;
+                      if (_selectedCategory == 'Sandi & Auth') {
+                        return log.type == AdminActivityType.resetSandi ||
+                            log.type == AdminActivityType.ubahSandi ||
+                            log.type == AdminActivityType.login ||
+                            log.type == AdminActivityType.logout;
+                      }
+                      if (_selectedCategory == 'Akun & Profil') {
+                        return log.type == AdminActivityType.pasienBaru ||
+                            log.type == AdminActivityType.dokterBaru ||
+                            log.type == AdminActivityType.adminBaru ||
+                            log.type == AdminActivityType.ubahProfil ||
+                            log.type == AdminActivityType.statusPengguna ||
+                            log.type == AdminActivityType.statusDokter ||
+                            log.type == AdminActivityType.hapusAkun;
+                      }
+                      if (_selectedCategory == 'Artikel Edukasi') {
+                        return log.type == AdminActivityType.artikelBaru ||
+                            log.type == AdminActivityType.ubahArtikel ||
+                            log.type == AdminActivityType.hapusArtikel;
+                      }
+                      if (_selectedCategory == 'Konsultasi & Cek') {
+                        return log.type == AdminActivityType.cekRisiko ||
+                            log.type == AdminActivityType.konsultasi;
+                      }
+                      return true;
+                    }).toList();
+
+                    if (filteredLogs.isEmpty) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFCE4EC),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.history_toggle_off_rounded, size: 40, color: Color(0xFFD81B60)),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Belum ada log untuk kategori ini',
+                                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Aktivitas terkait akan tercatat otomatis secara real-time.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF757575)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      itemCount: filteredLogs.length,
+                      separatorBuilder: (ctx, i) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final log = filteredLogs[index];
+                        return _buildDetailedAuditCard(log);
+                      },
+                    );
+                  },
                 ),
               ),
             ],
@@ -2636,91 +2842,203 @@ class _AktivitasTerbaruModalContent extends StatelessWidget {
     );
   }
 
-  Widget _buildFullActivityCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required String time,
-    required String actionLabel,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildFilterChip(String label) {
+    final isSelected = _selectedCategory == label;
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      onTap: () => setState(() => _selectedCategory = label),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.6)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFD81B60).withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: isSelected ? const Color(0xFFD81B60) : const Color(0xFFFCE4EC),
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFCE4EC),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: const Color(0xFFD81B60), size: 20),
+        child: Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFFD81B60),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailedAuditCard(AdminActivityLog log) {
+    IconData icon;
+    Color iconBg;
+    String badgeCategory;
+
+    switch (log.type) {
+      case AdminActivityType.pasienBaru:
+        icon = Icons.person_add_alt_1_rounded;
+        iconBg = const Color(0xFF42A5F5);
+        badgeCategory = 'Pendaftaran';
+        break;
+      case AdminActivityType.dokterBaru:
+        icon = Icons.medical_services_rounded;
+        iconBg = const Color(0xFF66BB6A);
+        badgeCategory = 'Akun Dokter';
+        break;
+      case AdminActivityType.adminBaru:
+        icon = Icons.admin_panel_settings_rounded;
+        iconBg = const Color(0xFF8E24AA);
+        badgeCategory = 'Hak Akses';
+        break;
+      case AdminActivityType.cekRisiko:
+        icon = Icons.health_and_safety_rounded;
+        iconBg = const Color(0xFFEF5350);
+        badgeCategory = 'Kesehatan';
+        break;
+      case AdminActivityType.konsultasi:
+        icon = Icons.chat_bubble_rounded;
+        iconBg = const Color(0xFF7E57C2);
+        badgeCategory = 'Layanan';
+        break;
+      case AdminActivityType.statusPengguna:
+      case AdminActivityType.statusDokter:
+        icon = Icons.manage_accounts_rounded;
+        iconBg = const Color(0xFFFF7043);
+        badgeCategory = 'Status Akun';
+        break;
+      case AdminActivityType.resetSandi:
+        icon = Icons.lock_reset_rounded;
+        iconBg = const Color(0xFF26C6DA);
+        badgeCategory = 'Keamanan';
+        break;
+      case AdminActivityType.ubahSandi:
+        icon = Icons.password_rounded;
+        iconBg = const Color(0xFF00897B);
+        badgeCategory = 'Ubah Sandi';
+        break;
+      case AdminActivityType.ubahProfil:
+        icon = Icons.badge_rounded;
+        iconBg = const Color(0xFFFB8C00);
+        badgeCategory = 'Data Profil';
+        break;
+      case AdminActivityType.hapusAkun:
+        icon = Icons.person_remove_rounded;
+        iconBg = const Color(0xFFC62828);
+        badgeCategory = 'Hapus Akun';
+        break;
+      case AdminActivityType.artikelBaru:
+        icon = Icons.post_add_rounded;
+        iconBg = const Color(0xFF43A047);
+        badgeCategory = 'Artikel Edukasi';
+        break;
+      case AdminActivityType.ubahArtikel:
+        icon = Icons.edit_note_rounded;
+        iconBg = const Color(0xFF1E88E5);
+        badgeCategory = 'Artikel Edukasi';
+        break;
+      case AdminActivityType.hapusArtikel:
+        icon = Icons.delete_sweep_rounded;
+        iconBg = const Color(0xFFE53935);
+        badgeCategory = 'Artikel Edukasi';
+        break;
+      case AdminActivityType.login:
+        icon = Icons.login_rounded;
+        iconBg = const Color(0xFF8BC34A);
+        badgeCategory = 'Autentikasi';
+        break;
+      case AdminActivityType.logout:
+        icon = Icons.logout_rounded;
+        iconBg = const Color(0xFF90A4AE);
+        badgeCategory = 'Autentikasi';
+        break;
+      case AdminActivityType.sistemNormal:
+        icon = Icons.check_circle_rounded;
+        iconBg = const Color(0xFFD81B60);
+        badgeCategory = 'Sistem';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFD81B60).withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF1F1F1F),
-                          ),
-                        ),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFCE4EC),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      Text(
-                        time,
-                        style: GoogleFonts.poppins(fontSize: 10.5, color: const Color(0xFF9E9E9E)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.poppins(fontSize: 11.5, color: const Color(0xFF616161)),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        actionLabel,
+                      child: Text(
+                        badgeCategory,
                         style: GoogleFonts.poppins(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFFD81B60),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.arrow_forward_rounded, size: 14, color: Color(0xFFD81B60)),
-                    ],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        log.title,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1F1F1F),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      log.relativeTime,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: const Color(0xFFB0BEC5),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  log.subtitle,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: const Color(0xFF616161),
                   ),
-                ],
-              ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

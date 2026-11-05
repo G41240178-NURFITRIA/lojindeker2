@@ -1,15 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-/// Tipe/kategori aktivitas yang dicatat di log admin
+/// Tipe/kategori aktivitas audit trail yang dicatat di log admin
 enum AdminActivityType {
   pasienBaru,       // Pasien baru mendaftar
   dokterBaru,       // Dokter baru ditambahkan admin
+  adminBaru,        // Admin baru ditambahkan
   cekRisiko,        // Pasien melakukan cek risiko diabetes
   konsultasi,       // Pasien memulai/menyelesaikan konsultasi
   statusPengguna,   // Admin aktifkan/nonaktifkan akun pasien
   statusDokter,     // Admin aktifkan/nonaktifkan akun dokter
-  resetSandi,       // Admin reset sandi pasien
+  resetSandi,       // Admin/User meminta link reset sandi
+  ubahSandi,        // User/Dokter/Admin berhasil mengubah kata sandi
+  ubahProfil,       // Perubahan data akun/profil pengguna
+  hapusAkun,        // Akun dihapus dari sistem
+  artikelBaru,      // Artikel edukasi baru diterbitkan
+  ubahArtikel,      // Artikel edukasi diperbarui
+  hapusArtikel,     // Artikel edukasi dihapus
   login,            // User login ke sistem
   logout,           // User logout dari sistem
   sistemNormal,     // Status sistem normal (default)
@@ -39,6 +46,8 @@ class AdminActivityLog {
         return 'person_add';
       case AdminActivityType.dokterBaru:
         return 'doctor';
+      case AdminActivityType.adminBaru:
+        return 'admin_add';
       case AdminActivityType.cekRisiko:
         return 'health_safety';
       case AdminActivityType.konsultasi:
@@ -48,6 +57,17 @@ class AdminActivityLog {
         return 'toggle';
       case AdminActivityType.resetSandi:
         return 'lock_reset';
+      case AdminActivityType.ubahSandi:
+        return 'password_changed';
+      case AdminActivityType.ubahProfil:
+        return 'edit_profile';
+      case AdminActivityType.hapusAkun:
+        return 'delete_account';
+      case AdminActivityType.artikelBaru:
+      case AdminActivityType.ubahArtikel:
+        return 'article';
+      case AdminActivityType.hapusArtikel:
+        return 'article_delete';
       case AdminActivityType.login:
         return 'login';
       case AdminActivityType.logout:
@@ -118,7 +138,7 @@ class AdminActivityLog {
   }
 }
 
-/// Service untuk mencatat dan membaca log aktivitas admin dari Firestore.
+/// Service untuk mencatat dan membaca log aktivitas audit trail admin dari Firestore.
 /// Koleksi Firestore: `admin_activity_log`
 class AdminActivityService {
   AdminActivityService._internal();
@@ -127,8 +147,8 @@ class AdminActivityService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   static const String _collection = 'admin_activity_log';
 
-  /// Stream real-time log aktivitas terbaru (maks 50 entri terbaru)
-  Stream<List<AdminActivityLog>> streamActivities({int limit = 50}) {
+  /// Stream real-time log aktivitas terbaru (maks 100 entri terbaru)
+  Stream<List<AdminActivityLog>> streamActivities({int limit = 100}) {
     return _db
         .collection(_collection)
         .orderBy('timestamp', descending: true)
@@ -179,19 +199,6 @@ class AdminActivityService {
       );
 
   /// Dokter baru ditambahkan oleh admin
-
-  /// Admin baru ditambahkan oleh admin
-  Future<void> logAdminBaru({
-    required String fullName,
-    required String username,
-    String email = '',
-  }) =>
-      logActivity(
-        type: AdminActivityType.pasienBaru,
-        title: 'Admin Baru Ditambahkan',
-        subtitle: '$fullName â€¢ @$username',
-        metadata: {'fullName': fullName, 'username': username, 'email': email},
-      );
   Future<void> logDokterBaru({
     required String fullName,
     required String specialization,
@@ -202,6 +209,19 @@ class AdminActivityService {
         title: 'Dokter Baru Ditambahkan',
         subtitle: '$fullName • $specialization',
         metadata: {'fullName': fullName, 'specialization': specialization, 'email': email},
+      );
+
+  /// Admin baru ditambahkan oleh admin
+  Future<void> logAdminBaru({
+    required String fullName,
+    required String username,
+    String email = '',
+  }) =>
+      logActivity(
+        type: AdminActivityType.adminBaru,
+        title: 'Admin Baru Ditambahkan',
+        subtitle: '$fullName • @$username',
+        metadata: {'fullName': fullName, 'username': username, 'email': email},
       );
 
   /// Pasien melakukan cek risiko diabetes
@@ -229,43 +249,126 @@ class AdminActivityService {
         metadata: {'patientName': patientName, 'doctorName': doctorName},
       );
 
+  /// Perubahan kata sandi pengguna (Password Changed)
+  Future<void> logUbahSandi({
+    required String email,
+    String fullName = '',
+    String role = 'pengguna',
+  }) =>
+      logActivity(
+        type: AdminActivityType.ubahSandi,
+        title: 'Kata Sandi Diperbarui',
+        subtitle: '${fullName.isNotEmpty ? "$fullName ($role)" : email} telah memperbarui kata sandi',
+        metadata: {'email': email, 'fullName': fullName, 'role': role},
+      );
+
+  /// Permintaan reset kata sandi (Reset Password Link)
+  Future<void> logResetSandi({
+    required String email,
+    String fullName = '',
+    String role = 'pasien',
+  }) =>
+      logActivity(
+        type: AdminActivityType.resetSandi,
+        title: 'Reset Sandi Dikirim',
+        subtitle: '${fullName.isNotEmpty ? "$fullName • " : ""}$email ($role)',
+        metadata: {'email': email, 'fullName': fullName, 'role': role},
+      );
+
+  /// Perubahan data akun / profil pengguna (Username, Profil, No HP, dll)
+  Future<void> logUbahProfil({
+    required String fullName,
+    required String detailPerubahan,
+    String email = '',
+    String role = 'pengguna',
+  }) =>
+      logActivity(
+        type: AdminActivityType.ubahProfil,
+        title: 'Profil Akun Diperbarui',
+        subtitle: '$fullName ($role) • $detailPerubahan',
+        metadata: {
+          'fullName': fullName,
+          'email': email,
+          'role': role,
+          'detail': detailPerubahan,
+        },
+      );
+
   /// Admin mengubah status aktif pengguna (pasien)
   Future<void> logStatusPengguna({
     required String fullName,
     required bool isActive,
+    String email = '',
   }) =>
       logActivity(
         type: AdminActivityType.statusPengguna,
-        title: isActive ? 'Pengguna Diaktifkan' : 'Pengguna Dinonaktifkan',
-        subtitle: '$fullName • Status diperbarui oleh admin',
-        metadata: {'fullName': fullName, 'isActive': isActive},
+        title: isActive ? 'Akun Pengguna Diaktifkan' : 'Akun Pengguna Dinonaktifkan',
+        subtitle: '$fullName • ${isActive ? "Akses login dibuka kembali" : "Akses login ditangguhkan"}',
+        metadata: {'fullName': fullName, 'isActive': isActive, 'email': email},
       );
 
   /// Admin mengubah status aktif dokter
   Future<void> logStatusDokter({
     required String fullName,
     required bool isActive,
+    String email = '',
   }) =>
       logActivity(
         type: AdminActivityType.statusDokter,
-        title: isActive ? 'Dokter Diaktifkan' : 'Dokter Dinonaktifkan',
-        subtitle: '$fullName • Status diperbarui oleh admin',
-        metadata: {'fullName': fullName, 'isActive': isActive},
+        title: isActive ? 'Akun Dokter Diaktifkan' : 'Akun Dokter Dinonaktifkan',
+        subtitle: '$fullName • ${isActive ? "Dokter siap menerima konsultasi" : "Status dokter dinonaktifkan"}',
+        metadata: {'fullName': fullName, 'isActive': isActive, 'email': email},
       );
 
-  /// Admin reset sandi pasien
-  Future<void> logResetSandi({
-    required String email,
-    String fullName = '',
+  /// Akun pengguna / dokter / admin dihapus permanen
+  Future<void> logHapusAkun({
+    required String fullName,
+    required String role,
+    String email = '',
   }) =>
       logActivity(
-        type: AdminActivityType.resetSandi,
-        title: 'Reset Sandi Dikirim',
-        subtitle: '${fullName.isNotEmpty ? "$fullName • " : ""}$email',
-        metadata: {'email': email, 'fullName': fullName},
+        type: AdminActivityType.hapusAkun,
+        title: 'Akun Dihapus',
+        subtitle: '$fullName ($role) • ${email.isNotEmpty ? email : "Dihapus oleh admin"}',
+        metadata: {'fullName': fullName, 'role': role, 'email': email},
       );
 
-  /// User (pasien/dokter) login ke sistem
+  /// Artikel edukasi baru dipublikasikan
+  Future<void> logArtikelBaru({
+    required String title,
+    required String reviewer,
+  }) =>
+      logActivity(
+        type: AdminActivityType.artikelBaru,
+        title: 'Artikel Edukasi Diterbitkan',
+        subtitle: '"$title" • Direview oleh $reviewer',
+        metadata: {'title': title, 'reviewer': reviewer},
+      );
+
+  /// Artikel edukasi diperbarui
+  Future<void> logUbahArtikel({
+    required String title,
+    required String reviewer,
+  }) =>
+      logActivity(
+        type: AdminActivityType.ubahArtikel,
+        title: 'Artikel Edukasi Diperbarui',
+        subtitle: '"$title" • Direview oleh $reviewer',
+        metadata: {'title': title, 'reviewer': reviewer},
+      );
+
+  /// Artikel edukasi dihapus
+  Future<void> logHapusArtikel({
+    required String title,
+  }) =>
+      logActivity(
+        type: AdminActivityType.hapusArtikel,
+        title: 'Artikel Edukasi Dihapus',
+        subtitle: 'Materi "$title" telah dihapus dari sistem',
+        metadata: {'title': title},
+      );
+
+  /// User (pasien/dokter/admin) login ke sistem
   Future<void> logLogin({
     required String fullName,
     required String role,

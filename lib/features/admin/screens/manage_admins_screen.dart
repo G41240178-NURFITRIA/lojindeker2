@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../core/services/admin_activity_service.dart';
 import '../../../models/app_user.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
@@ -143,6 +144,12 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> with SingleTick
     if (confirmed == true) {
       try {
         await UserRepository.instance.deleteAdmin(admin);
+        // Audit Trail: Catat admin dihapus
+        AdminActivityService.instance.logHapusAkun(
+          fullName: admin.fullName,
+          role: 'Admin',
+          email: admin.email,
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

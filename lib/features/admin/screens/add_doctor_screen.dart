@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/admin_activity_service.dart';
 import '../../../models/app_user.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/user_repository.dart';
@@ -133,6 +134,12 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
     final nextStatus = !doctor.isActive;
     try {
       await UserRepository.instance.setDoctorActive(doctor.uid, isActive: nextStatus);
+      // Audit Trail: Catat perubahan status dokter
+      AdminActivityService.instance.logStatusDokter(
+        fullName: doctor.fullName,
+        isActive: nextStatus,
+        email: doctor.email,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -188,6 +195,12 @@ class _AddDoctorScreenState extends State<AddDoctorScreen> with SingleTickerProv
     if (confirm == true) {
       try {
         await AuthService.instance.sendPasswordResetEmail(doctor.email);
+        // Audit Trail: Catat pengiriman reset password dokter
+        AdminActivityService.instance.logResetSandi(
+          email: doctor.email,
+          fullName: doctor.fullName,
+          role: 'Dokter',
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -566,6 +566,16 @@ class AuthService {
         await current.reauthenticateWithCredential(cred);
         await current.updatePassword(newPassClean);
         debugPrint('✅ [AuthService] Kata sandi berhasil diperbarui untuk ${current.email}');
+
+        // Audit Trail: Catat perubahan kata sandi
+        try {
+          final appUser = await UserRepository.instance.findByUid(current.uid);
+          await AdminActivityService.instance.logUbahSandi(
+            email: current.email!,
+            fullName: appUser?.fullName ?? current.displayName ?? '',
+            role: appUser?.role.firestoreValue ?? 'pengguna',
+          );
+        } catch (_) {}
       } else {
         // Fallback jika session re-auth diperlukan
         final result = await _auth.signInWithEmailAndPassword(
@@ -574,6 +584,17 @@ class AuthService {
         );
         await result.user?.updatePassword(newPassClean);
         debugPrint('✅ [AuthService] Kata sandi berhasil diperbarui via signIn fallback untuk $email');
+
+        // Audit Trail: Catat perubahan kata sandi
+        try {
+          final uid = result.user?.uid;
+          final appUser = uid != null ? await UserRepository.instance.findByUid(uid) : null;
+          await AdminActivityService.instance.logUbahSandi(
+            email: email,
+            fullName: appUser?.fullName ?? '',
+            role: appUser?.role.firestoreValue ?? 'pengguna',
+          );
+        } catch (_) {}
       }
     } on FirebaseAuthException catch (e) {
       debugPrint('❌ [AuthService] changePassword error: ${e.code}');
