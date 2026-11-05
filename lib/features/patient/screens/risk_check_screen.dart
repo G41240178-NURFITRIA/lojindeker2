@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'risk_detail_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../services/user_repository.dart';
 
 // ─── URL API otomatis sesuai platform ───────────────────────────────────────
 // Web/Desktop  → localhost:5000
@@ -27,6 +29,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
+  DateTime? _selectedBirthDate;
 
   // Selected states
   double? _calculatedImt;
@@ -46,6 +49,102 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
   static const Color _lightPinkBg = Color(0xFFFFF0F5); // Card blush lembut
   static const Color _borderPink = Color(0xFFF8BBD0);  // Border soft pink
   static const Color _textDark = Color(0xFF212121);    // Teks hitam pekat
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserDob();
+  }
+
+  /// Memuat tanggal lahir pasien dari Firestore secara otomatis jika sudah tersimpan di profil
+  Future<void> _loadUserDob() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final appUser = await UserRepository.instance.findByUid(user.uid);
+        if (appUser != null && appUser.dob.isNotEmpty && mounted) {
+          final parsed = DateTime.tryParse(appUser.dob);
+          if (parsed != null) {
+            final age = _calculateAge(parsed);
+            setState(() {
+              _selectedBirthDate = parsed;
+              _ageController.text = age.toString();
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Hitung usia secara presisi berdasarkan tanggal lahir
+  int _calculateAge(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+    if (now.month < birthDate.month ||
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+    return age < 0 ? 0 : age;
+  }
+
+  /// Format tanggal ke Bahasa Indonesia (Contoh: 12 Mei 1998)
+  String _formatIndoDate(DateTime date) {
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  /// Menampilkan dialog Date Picker kalender untuk memilih tanggal lahir
+  Future<void> _pickBirthDate() async {
+    final now = DateTime.now();
+    final initial = _selectedBirthDate ?? DateTime(now.year - 25, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1900),
+      lastDate: now,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _primaryPink,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: _textDark,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: _deepPink,
+                textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      final age = _calculateAge(picked);
+      setState(() {
+        _selectedBirthDate = picked;
+        _ageController.text = age.toString();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -107,6 +206,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
       _weightController.clear();
       _heightController.clear();
       _ageController.clear();
+      _selectedBirthDate = null;
       _calculatedImt = null;
       _imtCategory = null;
       _familyHistory = null;
@@ -296,11 +396,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
               // 3. Usia
               _buildQuestionTitle('3. Usia'),
               const SizedBox(height: 10),
-              _buildInputField(
-                controller: _ageController,
-                hintText: 'Contoh : 45',
-                isInteger: true,
-              ),
+              _buildAgePickerField(),
               const SizedBox(height: 22),
 
               // 4. Jenis Kelamin (Laki-Laki / Perempuan tanpa icon, persis Image 1)
@@ -417,6 +513,102 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: const Color(0xFF555555),
+      ),
+    );
+  }
+
+  /// Widget pemilih tanggal lahir kalender dengan perhitungan usia otomatis
+  Widget _buildAgePickerField() {
+    final hasDate = _selectedBirthDate != null && _ageController.text.isNotEmpty;
+
+    return InkWell(
+      onTap: _pickBirthDate,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: hasDate ? _primaryPink : _borderPink,
+            width: hasDate ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.calendar_month_rounded,
+              color: _primaryPink,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: hasDate
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${_ageController.text} Tahun',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: _textDark,
+                          ),
+                        ),
+                        Text(
+                          'Lahir: ${_formatIndoDate(_selectedBirthDate!)}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF757575),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    )
+                  : Text(
+                      'Pilih tanggal lahir (otomatis hitung usia)',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFFBDBDBD),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _lightPinkBg,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _borderPink.withOpacity(0.5)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    hasDate ? Icons.edit_calendar_rounded : Icons.date_range_rounded,
+                    size: 14,
+                    color: _deepPink,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    hasDate ? 'Ubah' : 'Pilih',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: _deepPink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
