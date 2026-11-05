@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -61,7 +61,7 @@ class NotificationService {
 
         const AndroidNotificationChannel doctorChatChannel =
             AndroidNotificationChannel(
-          'doctor_chat_channel',
+          'doctor_chat_channel_v2',
           'Pesan Konsultasi Dokter',
           description: 'Notifikasi balasan pesan konsultasi dari dokter',
           importance: Importance.max,
@@ -69,6 +69,17 @@ class NotificationService {
           enableVibration: true,
         );
         await androidImpl?.createNotificationChannel(doctorChatChannel);
+
+        const AndroidNotificationChannel patientChatChannel =
+            AndroidNotificationChannel(
+          'patient_chat_channel_v2',
+          'Pesan dari Pasien',
+          description: 'Notifikasi pesan baru dari pasien',
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+        );
+        await androidImpl?.createNotificationChannel(patientChatChannel);
       }
 
       _isInitialized = true;
@@ -264,7 +275,7 @@ class NotificationService {
 
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'doctor_chat_channel',
+      'doctor_chat_channel_v2',
       'Pesan Konsultasi Dokter',
       channelDescription: 'Notifikasi balasan pesan konsultasi dari dokter',
       importance: Importance.max,
@@ -362,4 +373,46 @@ class NotificationService {
     } catch (_) {}
   }
 
+  /// Menampilkan notifikasi sistem saat dokter menerima pesan chat dari pasien
+  Future<void> showPatientMessageNotification({
+    required int id,
+    required String patientName,
+    required String message,
+    String? payload,
+  }) async {
+    await init();
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'patient_chat_channel_v2',
+      'Pesan dari Pasien',
+      channelDescription: 'Notifikasi pesan baru dari pasien',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      showWhen: true,
+      category: AndroidNotificationCategory.message,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      interruptionLevel: InterruptionLevel.timeSensitive,
+    );
+
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _plugin.show(
+      id: id,
+      title: '💬 Pesan dari $patientName',
+      body: message,
+      notificationDetails: platformDetails,
+      payload: payload,
+    );
+  }
 }

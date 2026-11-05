@@ -18,6 +18,7 @@ class PatientChatNotificationService {
 
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _chatSubscription;
   String? _currentPatientUid;
+  String? _currentPatientName;
 
   /// ID chat yang saat ini sedang aktif dibuka oleh pasien (agar tidak memicu notif berulang)
   String? activeChatId;
@@ -35,18 +36,20 @@ class PatientChatNotificationService {
   Timer? _bannerAutoDismissTimer;
 
   /// Mulai memantau percakapan pasien saat login
-  void startListening(String patientUid) {
-    if (_currentPatientUid == patientUid && _chatSubscription != null) {
+  void startListening(String patientUid, {String? patientName}) {
+    if (_currentPatientUid == patientUid &&
+        _chatSubscription != null &&
+        (_currentPatientName == patientName || patientName == null)) {
       return;
     }
 
     stopListening();
     _currentPatientUid = patientUid;
+    _currentPatientName = patientName;
     _isFirstSnapshot = true;
 
     _chatSubscription = FirebaseFirestore.instance
         .collection('consultation_chats')
-        .where('patientId', isEqualTo: patientUid)
         .snapshots()
         .listen(
       (snapshot) {
@@ -62,9 +65,29 @@ class PatientChatNotificationService {
       QuerySnapshot<Map<String, dynamic>> snapshot) {
     int totalUnread = 0;
     final Map<String, int> doctorMap = {};
+    final pUid = _currentPatientUid ?? '';
+    final pName = (_currentPatientName ?? '').trim().toLowerCase();
 
     for (final doc in snapshot.docs) {
       final data = doc.data();
+      final docPatientId = data['patientId']?.toString() ?? '';
+      final docPatientName =
+          (data['patientName']?.toString() ?? '').trim().toLowerCase();
+
+      // Cek apakah percakapan ini milik pasien yang sedang login
+      bool isMyChat = false;
+      if (pUid.isNotEmpty && docPatientId == pUid) {
+        isMyChat = true;
+      } else if (pName.isNotEmpty &&
+          docPatientName.isNotEmpty &&
+          (docPatientName == pName ||
+              docPatientName.contains(pName) ||
+              pName.contains(docPatientName))) {
+        isMyChat = true;
+      }
+
+      if (!isMyChat) continue;
+
       final unread = (data['unreadCountForPatient'] as num?)?.toInt() ?? 0;
       totalUnread += unread;
 
@@ -89,22 +112,31 @@ class PatientChatNotificationService {
             unread > 0 &&
             lastMsg.isNotEmpty &&
             lastMsg != previousMsg) {
-          // Hanya beri notifikasi jika user tidak sedang membuka chat ini
-          if (activeChatId != doc.id) {
-            final docDoctorName =
-                data['doctorName']?.toString() ?? 'Dokter Spesialis';
-            final docSpecialty = data['doctorSpecialty']?.toString() ??
-                'Spesialis Penyakit Dalam';
-            final docDoctorId = data['doctorId']?.toString();
+          final lifecycle = WidgetsBinding.instance.lifecycleState;
+          final bool isAppInBackground =
+              lifecycle != null && lifecycle != AppLifecycleState.resumed;
+          final bool isCurrentChatOpen =
+              (activeChatId != null && activeChatId == doc.id);
 
-            // 1. Notifikasi Sistem HP (Status Bar / Background / Minimize)
+          final docDoctorName =
+              data['doctorName']?.toString() ?? 'Dokter Spesialis';
+          final docSpecialty = data['doctorSpecialty']?.toString() ??
+              'Spesialis Penyakit Dalam';
+          final docDoctorId = data['doctorId']?.toString();
+
+          // 1. Notifikasi Sistem HP (Status Bar / Background / Minimize / Keluar Aplikasi)
+          // Muncul di HP pasien saat keluar dari aplikasi atau saat tidak sedang melihat chat tersebut
+          if (isAppInBackground || !isCurrentChatOpen) {
             NotificationService().showDoctorReplyNotification(
               id: doc.id.hashCode,
               doctorName: docDoctorName,
               message: lastMsg,
             );
+          }
 
-            // 2. Notifikasi Melayang di Dalam Aplikasi (In-App Banner)
+          // 2. Notifikasi Melayang di Dalam Aplikasi (In-App Banner)
+          // Hanya tampilkan jika aplikasi sedang aktif dibuka (foreground) dan tidak di dalam chat itu
+          if (!isAppInBackground && !isCurrentChatOpen) {
             showInAppNotification(
               doctorName: docDoctorName,
               doctorSpecialty: docSpecialty,
@@ -128,6 +160,7 @@ class PatientChatNotificationService {
     _chatSubscription?.cancel();
     _chatSubscription = null;
     _currentPatientUid = null;
+    _currentPatientName = null;
     _isFirstSnapshot = true;
     _lastKnownMessages.clear();
     unreadTotalNotifier.value = 0;

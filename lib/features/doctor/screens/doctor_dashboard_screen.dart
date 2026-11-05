@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/chat_service.dart';
+import '../../../core/services/doctor_chat_notification_service.dart';
 import '../../../core/services/consultation_booking_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
 import '../../../core/widgets/in_app_camera_screen.dart';
@@ -4719,6 +4720,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
+              DoctorChatNotificationService.instance.stopListening();
               await AuthService.instance.signOut();
               if (!mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
@@ -4821,6 +4823,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     _msgSubscription?.cancel();
     _chatDocSubscription?.cancel();
 
+    DoctorChatNotificationService.instance.activeChatId = cid;
     ChatService.instance.markAsReadByDoctor(cid);
     _msgSubscription = ChatService.instance
         .streamMessages(cid)
@@ -5009,6 +5012,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 
   @override
   void dispose() {
+    DoctorChatNotificationService.instance.activeChatId = null;
     _countdownTimer?.cancel();
     _chatDocSubscription?.cancel();
     _msgSubscription?.cancel();
