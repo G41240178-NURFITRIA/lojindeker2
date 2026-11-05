@@ -406,13 +406,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         onTap: () => _showKelolaArtikelSheet(context),
                       ),
                       const SizedBox(height: 10),
-                      _buildManagementTile(
-                        iconWidget: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 18),
-                        title: 'Kelola Admin',
-                        subtitle: 'Tambah & kelola hak akses admin',
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const ManageAdminsScreen()),
+                      StreamBuilder<List<AppUser>>(
+                        stream: UserRepository.instance.streamAdmins(),
+                        builder: (context, adminSnap) {
+                          final count = (adminSnap.data != null && adminSnap.data!.isNotEmpty) ? adminSnap.data!.length : 1;
+                          return _buildManagementTile(
+                            iconWidget: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 18),
+                            title: 'Kelola Admin',
+                            subtitle: '$count admin aktif',
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const ManageAdminsScreen()),
+                              );
+                            },
                           );
                         },
                       ),
@@ -620,6 +626,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Expanded(
                 child: Text(
                   title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,

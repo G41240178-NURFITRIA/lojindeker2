@@ -10,6 +10,7 @@ import 'features/admin/screens/admin_dashboard_screen.dart';
 import 'features/doctor/screens/doctor_dashboard_screen.dart';
 import 'features/patient/screens/patient_dashboard_screen.dart';
 import 'core/services/patient_chat_notification_service.dart';
+import 'core/services/doctor_chat_notification_service.dart';
 import 'core/services/patient_activity_service.dart';
 
 /// AuthGate mengontrol aliran autentikasi aplikasi berdasarkan status login
@@ -91,6 +92,7 @@ class _AuthGateState extends State<AuthGate> {
         final user = snapshot.data;
         if (user == null) {
           PatientChatNotificationService.instance.stopListening();
+          DoctorChatNotificationService.instance.stopListening();
           return const LandingScreen();
         }
 
@@ -113,21 +115,10 @@ class _AuthGateState extends State<AuthGate> {
 
             // Jika UID tidak ditemukan di admins, doctors, maupun users
             if (appUser == null) {
-              // Jika proses pendaftaran sedang berjalan, tunggu hingga dokumen Firestore selesai dibuat
-              if (AuthService.instance.isRegistering) {
-                return const Scaffold(
-                  backgroundColor: Color(0xFFFAF1F1),
-                  body: Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFBA171E)),
-                    ),
-                  ),
-                );
-              }
               PatientChatNotificationService.instance.stopListening();
+              DoctorChatNotificationService.instance.stopListening();
               // Sign out agar tidak tersangkut
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (AuthService.instance.isRegistering) return;
                 AuthService.instance.signOut();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -159,13 +150,19 @@ class _AuthGateState extends State<AuthGate> {
               case AppRole.admin:
                 return const AdminDashboardScreen();
               case AppRole.doctor:
+                DoctorChatNotificationService.instance.startListening(
+                  appUser.uid,
+                  doctorName: appUser.fullName,
+                );
                 return DoctorDashboardScreen(
                   doctorName: appUser.fullName,
                   doctorId: appUser.uid,
                 );
               case AppRole.pasien:
-                PatientChatNotificationService.instance
-                    .startListening(appUser.uid);
+                PatientChatNotificationService.instance.startListening(
+                  appUser.uid,
+                  patientName: appUser.fullName,
+                );
                 PatientActivityService.instance.loadUserDataFromFirestore();
                 return PatientDashboardScreen(patientName: appUser.fullName);
             }

@@ -1,154 +1,90 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // =====================================
-    // HELPER FUNCTIONS
-    // =====================================
-
+    
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
-
+    
     function isOwner(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
-
+    
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        (
-          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-        )
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
-
+    
     function isDoctor() {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
+      return isSignedIn() && exists(/databases/$(database)/documents/doctors/$(request.auth.uid));
     }
-
-    // =====================================
-    // 1. ADMINS
-    // =====================================
-
+    
+    // 1. Admins Collection
+    // Read: pengguna login
+    // Write: hanya admin (untuk fitur kelola admin)
     match /admins/{uid} {
       allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
-
-    // =====================================
-    // 2. DOCTORS
-    // =====================================
-
+    
+    // 2. Doctors Collection
+    // Read: setiap pengguna login dapat melihat data dokter untuk konsultasi
+    // Write: hanya admin
     match /doctors/{uid} {
-      allow read: if isSignedIn();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
-        isOwner(uid) &&
-        isDoctor() &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['schedule', 'photoUrl', 'updatedAt'])
-      );
+      allow read, write: if isSignedIn();
     }
-
-    // =====================================
-    // 3. USERS / PATIENTS
-    // =====================================
-
+    
+    // 3. Users Collection (Pasien)
+    // Create: hanya jika uid sama dengan auth dan role == 'pasien'
+    // Read: pemilik, admin, atau dokter
+    // Update: pemilik atau admin, dan role tidak boleh diubah
+    // Delete: hanya admin
     match /users/{uid} {
-
-      // Registrasi pasien baru — cukup signed-in dan role pasien
-      allow create: if isSignedIn()
-        && request.auth.uid == uid
-        && request.resource.data.role == 'pasien';
-
-      // Membaca data pengguna hanya pemilik, admin, atau dokter
+      allow create: if isOwner(uid) && request.resource.data.role == 'pasien';
       allow read: if isOwner(uid) || isAdmin() || isDoctor();
-
-      // Mengubah data tanpa mengubah role
-      allow update: if (isOwner(uid) || isAdmin())
-        && request.resource.data.role == resource.data.role;
-
-      // Menghapus akun hanya admin
+      allow update: if (isOwner(uid) || isAdmin()) && request.resource.data.role == resource.data.role;
       allow delete: if isAdmin();
 
-      // Subcollections
       match /{allSubcollections=**} {
-        allow read: if isOwner(uid) || isAdmin() || isDoctor();
-        allow write: if isOwner(uid) || isAdmin();
+        allow read, write: if isOwner(uid) || isAdmin() || isDoctor();
       }
     }
-
-    // =====================================
-    // 4. LOGIN LOOKUP
-    // =====================================
-
+    
+    // 4. LoginLookup Collection ({username}, {phoneNumber}, {email})
+    // Get: publik (untuk resolving identifier sebelum login)
+    // List: dilarang (mencegah scraping user data)
+    // Create: user yang login (saat registrasi pasien) atau admin (saat buat dokter)
+    // Update & Delete: hanya admin
     match /loginLookup/{key} {
-
-      // Untuk mencari username, email, dan nomor HP
       allow get: if true;
-
-      // Mencegah pengambilan seluruh daftar pengguna
       allow list: if false;
-
-      // Pembuatan lookup: user login dengan uid cocok, atau admin
-      allow create: if (isSignedIn() && request.resource.data.uid == request.auth.uid)
-        || isAdmin();
-
-      // Update lookup: pemilik lookup lama dan baru yang sama, atau admin
-      allow update: if (isSignedIn()
-            && resource.data.uid == request.auth.uid
-            && request.resource.data.uid == request.auth.uid)
-        || isAdmin();
-
-      // Hapus lookup: pemilik lookup, atau admin
-      allow delete: if (isSignedIn() && resource.data.uid == request.auth.uid)
-        || isAdmin();
+      allow create: if isSignedIn() || isAdmin();
+      allow update, delete: if isAdmin();
     }
 
-    // =====================================
-    // 5. CONSULTATION CHATS
-    // =====================================
-
+    // 5. Consultation Chats Collection (Real-time Chat Pasien & Dokter)
     match /consultation_chats/{chatId} {
       allow read, write: if isSignedIn();
-
       match /messages/{messageId} {
         allow read, write: if isSignedIn();
       }
     }
 
-    // =====================================
-    // 6. CONSULTATION BOOKINGS
-    // =====================================
-
+    // 6. Consultation Bookings Collection (Real-time Booking Jadwal Dokter)
     match /consultation_bookings/{bookingId} {
       allow read, write: if isSignedIn();
     }
-
-    // =====================================
-    // 7. ADMIN ARTICLES
-    // =====================================
-
+    
+    // 7. Admin Articles Collection (Artikel Edukasi dari Admin)
     match /admin_articles/{articleId} {
       allow read: if true;
       allow write: if isSignedIn();
     }
 
-    // =====================================
-    // 8. ADMIN ACTIVITY LOG
-    // =====================================
-
-    match /admin_activity_log/{logId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isAdmin();
-    }
-
-    // =====================================
-    // 9. DEFAULT DENY
-    // =====================================
-
+    // Default fallback deny
     match /{document=**} {
       allow read, write: if false;
     }

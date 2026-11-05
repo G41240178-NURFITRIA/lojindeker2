@@ -48,7 +48,7 @@ def predict():
         hipertensi = data.get("Hipertensi", False)         # True/False
         kardio     = data.get("Riwayat Kardiovaskuler", False)
         merokok    = data.get("Riwayat Merokok", False)
-        keluarga   = data.get("Riwayat Keluarga", False)
+        keluarga   = data.get("Riwayat Keluarga Diabetes", data.get("Riwayat Keluarga", False))
 
         # ── Konversi ke format yang dipakai saat training ────────────────────
         # JK: model pakai "Laki - Laki" (spasi di sekitar strip)

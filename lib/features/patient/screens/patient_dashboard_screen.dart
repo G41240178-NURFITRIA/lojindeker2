@@ -807,47 +807,66 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                 final riskLabel = latestRisk.status;
                 final riskColor = latestRisk.statusColor;
                 final riskDate = latestRisk.date;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        text: 'Resiko Diabetes : ',
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF141414),
-                        ),
-                        children: [
-                          TextSpan(
-                            text: riskLabel,
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: riskColor,
-                            ),
+                return InkWell(
+                  onTap: () => _showRiskDetailSheet(context, latestRisk),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              RichText(
+                                text: TextSpan(
+                                  text: 'Resiko Diabetes : ',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF141414),
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: riskLabel,
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: riskColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Berdasarkan hasil pengecekan terakhir',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  color: const Color(0xFF757575),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                riskDate,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF424242),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Color(0xFFBDBDBD),
+                          size: 20,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Berdasarkan hasil pengecekan terakhir',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11.5,
-                        color: const Color(0xFF757575),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      riskDate,
-                      style: GoogleFonts.poppins(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF424242),
-                      ),
-                    ),
-                  ],
+                  ),
                 );
               },
             ),
@@ -1461,6 +1480,335 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
         ),
       ),
+    );
+  }
+
+
+  // ── Bottom Sheet: Detail Faktor Risiko ──────────────────────────────────
+  void _showRiskDetailSheet(BuildContext context, PatientRiskRecord risk) {
+    final Color statusColor = risk.statusColor;
+    final Color statusBg = statusColor.withValues(alpha: 0.1);
+
+    final List<Map<String, dynamic>> factors = [
+      {
+        'icon': Icons.monitor_weight_rounded,
+        'label': 'Berat Badan',
+        'value': risk.weight != null ? '${risk.weight!.toStringAsFixed(1)} kg' : '-',
+        'color': const Color(0xFF1565C0),
+        'bg': const Color(0xFFE3F2FD),
+      },
+      {
+        'icon': Icons.height_rounded,
+        'label': 'Tinggi Badan',
+        'value': risk.height != null ? '${risk.height!.toStringAsFixed(0)} cm' : '-',
+        'color': const Color(0xFF1565C0),
+        'bg': const Color(0xFFE3F2FD),
+      },
+      {
+        'icon': Icons.accessibility_new_rounded,
+        'label': 'IMT / BMI',
+        'value': risk.imt != null
+            ? '${risk.imt!.toStringAsFixed(1)} kg/m²  ${risk.imtCategory ?? ''}'
+            : risk.bmi,
+        'color': const Color(0xFF6A1B9A),
+        'bg': const Color(0xFFF3E5F5),
+      },
+      {
+        'icon': Icons.cake_rounded,
+        'label': 'Usia',
+        'value': risk.age != null ? '${risk.age} tahun' : '-',
+        'color': const Color(0xFF00695C),
+        'bg': const Color(0xFFE0F2F1),
+      },
+      {
+        'icon': Icons.wc_rounded,
+        'label': 'Jenis Kelamin',
+        'value': risk.gender ?? '-',
+        'color': const Color(0xFF00695C),
+        'bg': const Color(0xFFE0F2F1),
+      },
+      {
+        'icon': Icons.favorite_rounded,
+        'label': 'Tekanan Darah',
+        'value': risk.bloodPressure,
+        'color': const Color(0xFFC62828),
+        'bg': const Color(0xFFFFEBEE),
+      },
+      {
+        'icon': Icons.bloodtype_rounded,
+        'label': 'Kadar Gula',
+        'value': risk.glucoseLevel,
+        'color': const Color(0xFFE65100),
+        'bg': const Color(0xFFFFF3E0),
+      },
+      {
+        'icon': Icons.family_restroom_rounded,
+        'label': 'Riwayat Keluarga Diabetes',
+        'value': risk.familyHistory,
+        'color': const Color(0xFF4527A0),
+        'bg': const Color(0xFFEDE7F6),
+      },
+      {
+        'icon': Icons.directions_run_rounded,
+        'label': 'Aktivitas Fisik',
+        'value': risk.physicalActivity,
+        'color': const Color(0xFF2E7D32),
+        'bg': const Color(0xFFE8F5E9),
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.82,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 8),
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFBDBDBD),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                    decoration: BoxDecoration(
+                      color: statusBg,
+                      border: Border(
+                        bottom: BorderSide(color: statusColor.withValues(alpha: 0.15)),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Detail Riwayat Cek Risiko',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF141414),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'Risiko ${risk.status}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '${risk.date}  ${risk.time}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                color: const Color(0xFF757575),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.bar_chart_rounded, color: statusColor, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  risk.scoreDescription,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF212121),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(20),
+                      children: [
+                        Text(
+                          'Faktor yang Mempengaruhi Status',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF424242),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...factors.map((f) => Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFAFAFA),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFEEEEEE)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: f['bg'] as Color,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        f['icon'] as IconData,
+                                        color: f['color'] as Color,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            f['label'] as String,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 11,
+                                              color: const Color(0xFF757575),
+                                            ),
+                                          ),
+                                          Text(
+                                            f['value'] as String,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF212121),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFFF06292).withValues(alpha: 0.08),
+                                const Color(0xFFD81B60).withValues(alpha: 0.04),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: const Color(0xFFF06292).withValues(alpha: 0.3)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.lightbulb_rounded,
+                                      color: Color(0xFFD81B60), size: 18),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Rekomendasi',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFFD81B60),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                risk.recommendation,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: const Color(0xFF424242),
+                                  height: 1.6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const RiwayatRisikoScreen()),
+                              );
+                            },
+                            icon: const Icon(Icons.history_edu_rounded, size: 18),
+                            label: Text(
+                              'Lihat Semua Riwayat Cek Risiko',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFD81B60),
+                              side: const BorderSide(color: Color(0xFFD81B60)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
