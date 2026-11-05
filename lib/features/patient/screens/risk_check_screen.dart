@@ -284,8 +284,12 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
               _buildImtActionRow(),
               const SizedBox(height: 22),
 
-              // 2. Riwayat Keluarga
-              _buildQuestionTitle('2. Riwayat Keluarga'),
+              // 2. Riwayat Keluarga Diabetes
+              _buildQuestionTitle(
+                '2. Riwayat Keluarga Diabetes',
+                subtitle:
+                    'Memiliki anggota keluarga kandung (orang tua / saudara) dengan riwayat diabetes',
+              ),
               const SizedBox(height: 10),
               _buildRadioToggle(
                 currentValue: _familyHistory,
@@ -399,14 +403,30 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
     );
   }
 
-  Widget _buildQuestionTitle(String title) {
-    return Text(
-      title,
-      style: GoogleFonts.poppins(
-        fontSize: 13.5,
-        fontWeight: FontWeight.w600,
-        color: _textDark,
-      ),
+  Widget _buildQuestionTitle(String title, {String? subtitle}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            color: _textDark,
+          ),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 3),
+          Text(
+            subtitle,
+            style: GoogleFonts.poppins(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w400,
+              color: const Color(0xFF757575),
+            ),
+          ),
+        ],
+      ],
     );
   }
 

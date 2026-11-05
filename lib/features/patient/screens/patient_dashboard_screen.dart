@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -1543,7 +1543,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       },
       {
         'icon': Icons.family_restroom_rounded,
-        'label': 'Riwayat Keluarga',
+        'label': 'Riwayat Keluarga Diabetes',
         'value': risk.familyHistory,
         'color': const Color(0xFF4527A0),
         'bg': const Color(0xFFEDE7F6),
