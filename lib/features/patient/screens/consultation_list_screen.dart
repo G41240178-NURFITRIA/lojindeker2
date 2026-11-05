@@ -29,6 +29,12 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   Timer? _checkUnlockTimer;
   Timer? _scheduleTimer;
 
+  // ── Search & Filter ──
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  /// 0 = Semua, 1 = Aktif, 2 = Tidak Aktif
+  int _filterIndex = 0;
+
   // Warna sesuai tema Soft Pink
   static const Color _primaryPink = Color(0xFFF06292);
   static const Color _bgScreen = Color(0xFFF7EEEC);
@@ -37,8 +43,6 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
   static const Color _innerBoxBg = Color(0xFFFAF1F0);
   static const Color _greenOnlineBg = Color(0xFFD4F7E7);
   static const Color _greenText = Color(0xFF00B074);
-  static const Color _navIconActive = Color(0xFFE56A6F);
-  static const Color _navIconInactive = Color(0xFFEFB3B5);
 
   @override
   void initState() {
@@ -71,6 +75,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
     _bookingsSub?.cancel();
     _checkUnlockTimer?.cancel();
     _scheduleTimer?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -273,9 +278,9 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
 
           final docs = snapshot.data?.docs ?? [];
 
-          List<AppUser> doctorList = [];
+          List<AppUser> allDoctors = [];
           if (docs.isNotEmpty) {
-            doctorList = docs
+            allDoctors = docs
                 .map((d) => AppUser.fromMap(
                       d.data() as Map<String, dynamic>,
                       d.id,
@@ -283,7 +288,7 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
                 .toList();
           } else {
             // Default dokter terdaftar jika Firestore belum diisi dokter manual
-            doctorList = const [
+            allDoctors = const [
               AppUser(
                 uid: 'doctor_yosua',
                 fullName: 'dr. Yosua',
@@ -311,18 +316,232 @@ class _ConsultationListScreenState extends State<ConsultationListScreen> {
             ];
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            physics: const BouncingScrollPhysics(),
-            itemCount: doctorList.length,
-            itemBuilder: (context, index) {
-              final doctor = doctorList[index];
-              return _buildDoctorCard(context, doctor);
-            },
+          // ── Terapkan Filter & Search ──
+          List<AppUser> filteredDoctors = allDoctors;
+
+          // Filter berdasarkan status aktif/tidak aktif
+          if (_filterIndex == 1) {
+            filteredDoctors = filteredDoctors
+                .where((d) => _isDoctorOnlineBySchedule(d))
+                .toList();
+          } else if (_filterIndex == 2) {
+            filteredDoctors = filteredDoctors
+                .where((d) => !_isDoctorOnlineBySchedule(d))
+                .toList();
+          }
+
+          // Filter berdasarkan pencarian
+          if (_searchQuery.isNotEmpty) {
+            final q = _searchQuery.toLowerCase();
+            filteredDoctors = filteredDoctors.where((d) {
+              final name = (d.fullName.isNotEmpty ? d.fullName : d.username).toLowerCase();
+              final spec = (d.specialization ?? '').toLowerCase();
+              return name.contains(q) || spec.contains(q);
+            }).toList();
+          }
+
+          // Urutkan: dokter aktif di atas
+          filteredDoctors.sort((a, b) {
+            final aOnline = _isDoctorOnlineBySchedule(a) ? 0 : 1;
+            final bOnline = _isDoctorOnlineBySchedule(b) ? 0 : 1;
+            return aOnline.compareTo(bOnline);
+          });
+
+          return Column(
+            children: [
+              // ── Search Bar & Filter ──
+              Container(
+                color: _bgScreen,
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                child: Column(
+                  children: [
+                    // Search Bar
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                        style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF333333)),
+                        decoration: InputDecoration(
+                          hintText: 'Cari nama dokter atau spesialisasi...',
+                          hintStyle: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: const Color(0xFFBBBBBB),
+                          ),
+                          prefixIcon: const Icon(Icons.search_rounded, size: 22, color: Color(0xFFD81B60)),
+                          suffixIcon: _searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF999999)),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Filter Chips
+                    Row(
+                      children: [
+                        _buildFilterChip(0, 'Semua', Icons.people_rounded, allDoctors.length),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(1, 'Aktif', Icons.circle, allDoctors.where((d) => _isDoctorOnlineBySchedule(d)).length),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(2, 'Tidak Aktif', Icons.circle_outlined, allDoctors.where((d) => !_isDoctorOnlineBySchedule(d)).length),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+
+              // ── Daftar Dokter ──
+              Expanded(
+                child: filteredDoctors.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(40),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _searchQuery.isNotEmpty
+                                    ? Icons.search_off_rounded
+                                    : Icons.person_off_rounded,
+                                size: 56,
+                                color: Colors.grey.shade300,
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                _searchQuery.isNotEmpty
+                                    ? 'Dokter tidak ditemukan'
+                                    : _filterIndex == 1
+                                        ? 'Tidak ada dokter yang aktif saat ini'
+                                        : 'Tidak ada dokter yang tidak aktif saat ini',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade500,
+                                ),
+                              ),
+                              if (_searchQuery.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Coba kata kunci lain atau hapus pencarian.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: filteredDoctors.length,
+                        itemBuilder: (context, index) {
+                          final doctor = filteredDoctors[index];
+                          return _buildDoctorCard(context, doctor);
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
       bottomNavigationBar: _buildBottomNavigationBar(context),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(int index, String label, IconData icon, int count) {
+    final isSelected = _filterIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _filterIndex = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFD81B60) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? const Color(0xFFD81B60) : const Color(0xFFE8E8E8),
+              width: 1.2,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFFD81B60).withValues(alpha: 0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (index == 1)
+                Container(
+                  width: 7,
+                  height: 7,
+                  margin: const EdgeInsets.only(right: 5),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white : _greenText,
+                    shape: BoxShape.circle,
+                  ),
+                )
+              else if (index == 2)
+                Container(
+                  width: 7,
+                  height: 7,
+                  margin: const EdgeInsets.only(right: 5),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white70 : const Color(0xFFBBBBBB),
+                    shape: BoxShape.circle,
+                  ),
+                )
+              else
+                Icon(
+                  icon,
+                  size: 14,
+                  color: isSelected ? Colors.white : const Color(0xFF999999),
+                ),
+              if (index == 0) const SizedBox(width: 4),
+              Text(
+                '$label ($count)',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : const Color(0xFF666666),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
