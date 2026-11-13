@@ -4857,14 +4857,23 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                 })
             .toList();
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
+      void executeScroll() {
+        if (!mounted || !_scrollController.hasClients) return;
+        final target = _scrollController.position.maxScrollExtent;
+        if (target > 0) {
           _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent + 40,
-            duration: const Duration(milliseconds: 300),
+            target,
+            duration: const Duration(milliseconds: 250),
             curve: Curves.easeOut,
           );
         }
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        executeScroll();
+        Future.delayed(const Duration(milliseconds: 120), () {
+          if (mounted) executeScroll();
+        });
       });
     });
 
@@ -5906,7 +5915,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+              padding: const EdgeInsets.only(left: 14, right: 14, top: 16, bottom: 24),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               itemCount: _messages.isEmpty ? 2 : _messages.length + 1,
               itemBuilder: (ctx, idx) {
                 if (idx == 0) return _buildDateSeparator('Hari ini');
@@ -6011,10 +6023,11 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     final String? attachmentName = m['attachmentName'] as String?;
     final String? attachmentSize = m['attachmentSize'] as String?;
 
-    Uint8List? imageBytes;
-    if (type == 'image' && attachmentData != null && attachmentData.isNotEmpty) {
+    Uint8List? imageBytes = m['_cachedBytes'] as Uint8List?;
+    if (type == 'image' && imageBytes == null && attachmentData != null && attachmentData.isNotEmpty) {
       try {
         imageBytes = base64Decode(attachmentData);
+        m['_cachedBytes'] = imageBytes;
       } catch (_) {}
     }
 
@@ -6060,15 +6073,39 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      constraints: const BoxConstraints(
-                        maxHeight: 200,
-                        maxWidth: 240,
-                      ),
+                      width: 220,
+                      height: 180,
                       color: Colors.black12,
                       child: Stack(
                         alignment: Alignment.bottomRight,
                         children: [
-                          Image.memory(imageBytes, fit: BoxFit.cover),
+                          Image.memory(
+                            imageBytes,
+                            width: 220,
+                            height: 180,
+                            fit: BoxFit.cover,
+                            gaplessPlayback: true,
+                            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                              if (wasSynchronouslyLoaded || frame != null) {
+                                return child;
+                              }
+                              return Container(
+                                width: 220,
+                                height: 180,
+                                color: Colors.black12,
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                           Container(
                             padding: const EdgeInsets.all(4),
                             margin: const EdgeInsets.all(6),
