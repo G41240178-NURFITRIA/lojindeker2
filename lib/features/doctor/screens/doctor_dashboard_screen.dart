@@ -5537,6 +5537,8 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         builder: (_) => PatientHistoryScreen(
           patientName: widget.patientName,
           glucoseNote: widget.glucoseNote,
+          patientId: widget.patientId,
+          doctorName: widget.doctorName,
         ),
       ),
     );
@@ -6451,11 +6453,15 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 class PatientHistoryScreen extends StatefulWidget {
   final String patientName;
   final String glucoseNote;
+  final String? patientId;
+  final String? doctorName;
 
   const PatientHistoryScreen({
     super.key,
     required this.patientName,
     required this.glucoseNote,
+    this.patientId,
+    this.doctorName,
   });
 
   @override
@@ -6467,6 +6473,92 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   final List<String> _tabs = ['Semua', 'Hasil lab', 'Resep obat'];
   final List<Map<String, dynamic>> _customVisits = [];
   final List<Map<String, dynamic>> _customResepList = [];
+  StreamSubscription? _prescriptionsSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeFirestorePrescriptions();
+  }
+
+  @override
+  void dispose() {
+    _prescriptionsSub?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeFirestorePrescriptions() {
+    _prescriptionsSub?.cancel();
+    _prescriptionsSub = FirebaseFirestore.instance
+        .collection('prescriptions')
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      final targetName = widget.patientName.trim().toLowerCase();
+      final targetId = (widget.patientId ?? '').trim();
+
+      final List<Map<String, dynamic>> loadedResep = [];
+      final List<Map<String, dynamic>> loadedVisits = [];
+
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final pId = (data['patientId'] ?? '').toString().trim();
+        final pName = (data['patientName'] ?? '').toString().trim().toLowerCase();
+
+        bool isMatch = false;
+        if (targetId.isNotEmpty && pId.isNotEmpty && targetId == pId) {
+          isMatch = true;
+        } else if (targetName.isNotEmpty && pName.isNotEmpty &&
+            (targetName == pName || targetName.contains(pName) || pName.contains(targetName))) {
+          isMatch = true;
+        }
+
+        if (!isMatch) continue;
+
+        final rawMeds = (data['medicines'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+            (data['items'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+            [];
+        final dateStr = data['date']?.toString() ?? 'Hari ini';
+        final note = data['notes']?.toString() ?? '';
+        final status = data['visitStatus']?.toString() ?? data['status']?.toString() ?? 'Terkontrol baik';
+        final dName = data['doctorName']?.toString() ?? widget.doctorName ?? 'Dokter';
+
+        if (rawMeds.isNotEmpty) {
+          loadedResep.add({
+            'date': dateStr,
+            'items': rawMeds,
+          });
+        }
+
+        loadedVisits.add({
+          'date': dateStr,
+          'status': status,
+          'statusColor': (status.toLowerCase().contains('baik') || status.toLowerCase() == 'aktif')
+              ? const Color(0xFF4CAF50)
+              : const Color(0xFFFF9800),
+          'doctorName': dName,
+          'hospital': data['clinic']?.toString() ?? 'Poli Penyakit Dalam, RS D-Care',
+          'vitalItems': const [
+            _VitalItem('Gula darah puasa', '110 mg/dL'),
+            _VitalItem('Gula darah 2 jam PP', '140 mg/dL'),
+            _VitalItem('HbA1c', '6.4%'),
+            _VitalItem('Tekanan darah', '120/80 mmHg'),
+          ],
+          'prescriptions': rawMeds,
+          'doctorNote': note.isNotEmpty ? note : 'Tidak ada catatan tambahan.',
+        });
+      }
+
+      setState(() {
+        _customResepList.clear();
+        _customResepList.addAll(loadedResep);
+        _customVisits.clear();
+        _customVisits.addAll(loadedVisits);
+      });
+    }, onError: (e) {
+      debugPrint('⚠️ Error listen prescriptions in doctor: $e');
+    });
+  }
 
   Future<void> _openPrescriptionNoteScreen() async {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
@@ -6486,44 +6578,102 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
       final String note = result['note'] ?? '';
       final String status = result['status'] ?? 'Terkontrol baik';
 
-      setState(() {
-        if (meds.isNotEmpty) {
-          _customResepList.insert(0, {
-            'date': 'Hari ini',
-            'items': meds,
-          });
-        }
-        if (note.isNotEmpty || meds.isNotEmpty) {
-          _customVisits.insert(0, {
-            'date': 'Hari ini',
-            'status': status,
-            'statusColor': status == 'Terkontrol baik'
-                ? const Color(0xFF4CAF50)
-                : const Color(0xFFFF9800),
-            'doctorName': 'dr. Saya (Dokter)',
-            'hospital': 'Poli Penyakit Dalam, RS D-Care',
-            'vitalItems': const [
-              _VitalItem('Gula darah puasa', '110 mg/dL'),
-              _VitalItem('Gula darah 2 jam PP', '140 mg/dL'),
-              _VitalItem('HbA1c', '6.4%'),
-              _VitalItem('Tekanan darah', '120/80 mmHg'),
-            ],
-            'prescriptions': meds,
-            'doctorNote': note.isNotEmpty ? note : 'Tidak ada catatan tambahan.',
-          });
-        }
-      });
+      // 1. Simpan ke Firestore agar terhubung secara real-time ke akun pasien
+      await _savePrescriptionToFirestore(
+        meds: meds,
+        note: note,
+        status: status,
+      );
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Resep & catatan berhasil disimpan ke riwayat.',
+            'Resep & catatan berhasil disimpan ke rekam medis pasien!',
             style: GoogleFonts.poppins(color: Colors.white),
           ),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  Future<void> _savePrescriptionToFirestore({
+    required List<String> meds,
+    required String note,
+    required String status,
+  }) async {
+    try {
+      String resolvedPatientId = widget.patientId ?? '';
+
+      // Cari patientId jika belum terisi
+      if (resolvedPatientId.isEmpty) {
+        final querySnap = await FirebaseFirestore.instance
+            .collection('users')
+            .where('fullName', isEqualTo: widget.patientName)
+            .limit(1)
+            .get();
+        if (querySnap.docs.isNotEmpty) {
+          resolvedPatientId = querySnap.docs.first.id;
+        } else {
+          final querySnap2 = await FirebaseFirestore.instance
+              .collection('users')
+              .where('username', isEqualTo: widget.patientName)
+              .limit(1)
+              .get();
+          if (querySnap2.docs.isNotEmpty) {
+            resolvedPatientId = querySnap2.docs.first.id;
+          }
+        }
+      }
+
+      final now = DateTime.now();
+      const months = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      final dateFormatted = '${now.day} ${months[now.month - 1]} ${now.year}';
+      final prescriptionId = 'rx_${now.millisecondsSinceEpoch}';
+
+      final Map<String, dynamic> docData = {
+        'id': prescriptionId,
+        'patientId': resolvedPatientId,
+        'patientName': widget.patientName,
+        'doctorId': AuthService.instance.currentUser?.uid ?? '',
+        'doctorName': widget.doctorName ?? 'dr. Spesialis',
+        'doctorSpecialty': 'Spesialis Penyakit Dalam',
+        'clinic': 'Poli Penyakit Dalam, RS D-Care',
+        'status': 'Aktif',
+        'visitStatus': status,
+        'medicines': meds,
+        'items': meds,
+        'notes': note.isNotEmpty ? note : 'Konsumsi obat teratur sesuai petunjuk dokter.',
+        'date': dateFormatted,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      // 1. Simpan di root collection prescriptions
+      await FirebaseFirestore.instance
+          .collection('prescriptions')
+          .doc(prescriptionId)
+          .set(docData);
+
+      // 2. Simpan di subcollection users/{patientId}/prescriptions jika ID pasien diketahui
+      if (resolvedPatientId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(resolvedPatientId)
+            .collection('prescriptions')
+            .doc(prescriptionId)
+            .set(docData);
+      }
+
+      debugPrint('✅ [Prescription] Berhasil menyimpan resep ke Firestore: $prescriptionId');
+    } catch (e) {
+      debugPrint('⚠️ [Prescription] Gagal menyimpan resep ke Firestore: $e');
     }
   }
 

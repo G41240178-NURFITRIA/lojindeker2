@@ -1,4 +1,4 @@
-import 'patient_dashboard_screen.dart';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -66,74 +66,104 @@ class _RiwayatResepScreenState extends State<RiwayatResepScreen> {
 
   List<PrescriptionModel> _prescriptions = [];
   bool _isLoading = true;
+  StreamSubscription? _userPrescriptionsSub;
+  StreamSubscription? _rootPrescriptionsSub;
+  final Map<String, PrescriptionModel> _prescriptionMap = {};
 
   @override
   void initState() {
     super.initState();
-    _loadPrescriptions();
+    _subscribePrescriptions();
   }
 
-  Future<void> _loadPrescriptions() async {
+  @override
+  void dispose() {
+    _userPrescriptionsSub?.cancel();
+    _rootPrescriptionsSub?.cancel();
+    super.dispose();
+  }
+
+  void _subscribePrescriptions() {
     final user = AuthService.instance.currentUser;
     if (user == null) {
       if (mounted) setState(() => _isLoading = false);
       return;
     }
 
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('prescriptions')
-          .get();
+    _userPrescriptionsSub?.cancel();
+    _userPrescriptionsSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('prescriptions')
+        .snapshots()
+        .listen((snap) {
+      for (final doc in snap.docs) {
+        _parseAndInsert(doc.id, doc.data());
+      }
+      _syncList();
+    }, onError: (e) {
+      debugPrint('Error listen user prescriptions: $e');
+      if (mounted) setState(() => _isLoading = false);
+    });
 
-      final List<PrescriptionModel> list = [];
+    _rootPrescriptionsSub?.cancel();
+    _rootPrescriptionsSub = FirebaseFirestore.instance
+        .collection('prescriptions')
+        .snapshots()
+        .listen((snap) {
+      final uid = user.uid;
       for (final doc in snap.docs) {
         final data = doc.data();
-        final rawMeds = (data['medicines'] as List<dynamic>?) ?? [];
-        final meds = rawMeds.map((m) {
-          if (m is Map) {
-            return MedicineModel(
-              name: m['name']?.toString() ?? 'Obat',
-              dosage: m['dosage']?.toString() ?? '',
-              instruction: m['instruction']?.toString() ?? '',
-              quantity: m['quantity']?.toString() ?? '',
-              isBottle: m['isBottle'] == true,
-            );
-          }
-          final str = m.toString();
-          return MedicineModel(
-            name: str,
-            dosage: '',
-            instruction: 'Sesuai anjuran',
-            quantity: '',
-          );
-        }).toList();
+        final pId = (data['patientId'] ?? '').toString().trim();
+        if (pId.isNotEmpty && pId == uid) {
+          _parseAndInsert(doc.id, data);
+        }
+      }
+      _syncList();
+    }, onError: (e) {
+      debugPrint('Error listen root prescriptions: $e');
+      if (mounted) setState(() => _isLoading = false);
+    });
+  }
 
-        list.add(
-          PrescriptionModel(
-            id: doc.id,
-            date: data['date']?.toString() ?? 'Hari ini',
-            doctorName: data['doctorName']?.toString() ?? 'dr. Spesialis',
-            doctorSpecialty: data['doctorSpecialty']?.toString() ?? 'Sp. Penyakit Dalam',
-            status: data['status']?.toString() ?? 'Aktif',
-            notes: data['notes']?.toString() ?? 'Konsumsi obat secara teratur sesuai petunjuk dokter.',
-            medicines: meds,
-          ),
+  void _parseAndInsert(String id, Map<String, dynamic> data) {
+    final rawMeds = (data['medicines'] as List<dynamic>?) ?? [];
+    final meds = rawMeds.map((m) {
+      if (m is Map) {
+        return MedicineModel(
+          name: m['name']?.toString() ?? 'Obat',
+          dosage: m['dosage']?.toString() ?? '',
+          instruction: m['instruction']?.toString() ?? '',
+          quantity: m['quantity']?.toString() ?? '',
+          isBottle: m['isBottle'] == true,
         );
       }
+      final str = m.toString();
+      return MedicineModel(
+        name: str,
+        dosage: '',
+        instruction: 'Sesuai anjuran',
+        quantity: '',
+      );
+    }).toList();
 
-      if (mounted) {
-        setState(() {
-          _prescriptions = list;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading prescriptions in RiwayatResepScreen: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    _prescriptionMap[id] = PrescriptionModel(
+      id: id,
+      date: data['date']?.toString() ?? 'Hari ini',
+      doctorName: data['doctorName']?.toString() ?? 'dr. Spesialis',
+      doctorSpecialty: data['doctorSpecialty']?.toString() ?? 'Sp. Penyakit Dalam',
+      status: data['status']?.toString() ?? 'Aktif',
+      notes: data['notes']?.toString() ?? 'Konsumsi obat secara teratur sesuai petunjuk dokter.',
+      medicines: meds,
+    );
+  }
+
+  void _syncList() {
+    if (mounted) {
+      setState(() {
+        _prescriptions = _prescriptionMap.values.toList();
+        _isLoading = false;
+      });
     }
   }
 
