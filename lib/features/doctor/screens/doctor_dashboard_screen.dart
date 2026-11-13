@@ -1542,18 +1542,42 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
   /// Section Header: "Pesan terbaru" & "Lihat semua"
   Widget _buildSectionHeader() {
+    final unreadTotal = _chats.where((c) => c.unreadCount > 0).length;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Pesan terbaru',
-            style: GoogleFonts.poppins(
-              fontSize: 15.5,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF212121),
-            ),
+          Row(
+            children: [
+              Text(
+                'Pesan terbaru',
+                style: GoogleFonts.poppins(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF212121),
+                ),
+              ),
+              if (unreadTotal > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$unreadTotal baru',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           InkWell(
             onTap: () {
@@ -1570,20 +1594,29 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   ),
                 ),
               ).then((_) {
-                // Refresh state when coming back if needed
                 setState(() {});
               });
             },
             borderRadius: BorderRadius.circular(6),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              child: Text(
-                'Lihat semua',
-                style: GoogleFonts.poppins(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
+              child: Row(
+                children: [
+                  Text(
+                    'Lihat semua',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 11,
+                    color: AppColors.primary,
+                  ),
+                ],
               ),
             ),
           ),
@@ -1592,34 +1625,54 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
-  /// Chat List items (Kartu soft pink persis seperti pada gambar referensi)
+  /// Chat List items (Menampilkan pesan yang belum terbaca / unread di beranda)
   Widget _buildChatList() {
     List<DoctorPatientChat> list;
     if (_searchQuery.trim().isNotEmpty) {
       list = _filteredChats;
     } else {
-      final unread = _chats.where((chat) => chat.unreadCount > 0).toList();
-      list = unread.isNotEmpty ? unread : _chats;
+      // Di Pesan Terbaru beranda dokter: HANYA tampilkan pesan yang belum terbaca
+      list = _chats.where((chat) => chat.unreadCount > 0).toList();
     }
 
     if (list.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
         child: Center(
           child: Column(
             children: [
-              Icon(
-                Icons.chat_bubble_outline_rounded,
-                size: 44,
-                color: AppColors.primary.withValues(alpha: 0.5),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.softPinkCard,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.mark_email_read_outlined,
+                  size: 28,
+                  color: AppColors.primary,
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
                 _searchQuery.trim().isNotEmpty
                     ? 'Pasien "$_searchQuery" tidak ditemukan'
-                    : 'Belum ada pesan konsultasi baru',
+                    : 'Tidak ada pesan belum terbaca',
                 style: GoogleFonts.poppins(
                   fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF424242),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _searchQuery.trim().isNotEmpty
+                    ? 'Coba periksa kembali kata kunci pencarian'
+                    : 'Semua pesan sudah dibaca. Tekan "Lihat semua" untuk melihat riwayat konsultasi.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 11.5,
                   color: const Color(0xFF757575),
                 ),
               ),
@@ -4837,25 +4890,53 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         .streamMessages(cid)
         .listen((items) {
       if (!mounted) return;
+      // Jika ada pesan dari pasien saat dokter sedang di chat, tandai terbaca
+      if (items.any((m) => m.isPatient && !m.isRead)) {
+        ChatService.instance.markAsReadByDoctor(cid);
+      }
       final currentUid = ChatService.instance.currentUid ?? '';
+      final validItems = items
+          .where((m) =>
+              !m.isDeletedFor('doctor') &&
+              (currentUid.isEmpty || !m.isDeletedFor(currentUid)))
+          .toList();
+
       setState(() {
-        _messages = items
-            .where((m) =>
-                !m.isDeletedFor('doctor') &&
-                (currentUid.isEmpty || !m.isDeletedFor(currentUid)))
-            .map((m) => {
-                  'id': m.id,
-                  'text': m.text,
-                  'isDoctor': m.isDoctor,
-                  'isSystem': m.isSystem,
-                  'time': m.time,
-                  'read': m.isRead,
-                  'type': m.type,
-                  'attachmentData': m.attachmentData,
-                  'attachmentName': m.attachmentName,
-                  'attachmentSize': m.attachmentSize,
-                })
-            .toList();
+        _messages = List.generate(validItems.length, (index) {
+          final m = validItems[index];
+          bool isReadComputed = m.isRead;
+
+          if (m.isPatient) {
+            // Pesan dari pasien: tampilkan sebagai sudah terbaca (optimistic)
+            // karena dokter sedang membuka chat ini sekarang
+            isReadComputed = true;
+          } else if (m.isDoctor) {
+            // Pesan dari dokter: jika di Firestore sudah isRead = true, pakai true.
+            // Jika belum, cek apakah ada pesan balasan dari pasien setelah pesan ini.
+            // Jika pasien sudah mengirim pesan berikutnya, berarti pesan dokter ini sudah terbaca!
+            if (!isReadComputed) {
+              final hasSubsequentPatientMsg = validItems
+                  .sublist(index + 1)
+                  .any((later) => later.isPatient);
+              if (hasSubsequentPatientMsg) {
+                isReadComputed = true;
+              }
+            }
+          }
+
+          return {
+            'id': m.id,
+            'text': m.text,
+            'isDoctor': m.isDoctor,
+            'isSystem': m.isSystem,
+            'time': m.time,
+            'read': isReadComputed,
+            'type': m.type,
+            'attachmentData': m.attachmentData,
+            'attachmentName': m.attachmentName,
+            'attachmentSize': m.attachmentSize,
+          };
+        });
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
@@ -5099,6 +5180,7 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           attachmentName: attachmentName,
           attachmentSize: attachmentSize,
         );
+        ChatService.instance.markAsReadByDoctor(_activeChatId!);
       } catch (e) {
         debugPrint('⚠️ Error sending doctor message: $e');
       }

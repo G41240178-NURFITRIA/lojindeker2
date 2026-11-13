@@ -839,7 +839,32 @@ class ChatService {
           .collection('consultation_chats')
           .doc(chatId)
           .update({'unreadCountForDoctor': 0});
-    } catch (_) {}
+
+      // Update seluruh pesan dari pasien agar isRead = true
+      final messagesSnap = await _db
+          .collection('consultation_chats')
+          .doc(chatId)
+          .collection('messages')
+          .get();
+
+      final toUpdate = messagesSnap.docs.where((d) {
+        final data = d.data();
+        final role = data['senderRole']?.toString().toLowerCase().trim() ?? '';
+        final isFromPatient = role == 'pasien' || role == 'patient';
+        final isRead = data['isRead'] as bool? ?? false;
+        return isFromPatient && !isRead;
+      }).toList();
+
+      if (toUpdate.isNotEmpty) {
+        final batch = _db.batch();
+        for (final doc in toUpdate) {
+          batch.update(doc.reference, {'isRead': true});
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] markAsReadByDoctor error: $e');
+    }
   }
 
   /// Tandai chat telah dibaca oleh pasien
@@ -849,6 +874,31 @@ class ChatService {
           .collection('consultation_chats')
           .doc(chatId)
           .update({'unreadCountForPatient': 0});
-    } catch (_) {}
+
+      // Update seluruh pesan dari dokter agar isRead = true
+      final messagesSnap = await _db
+          .collection('consultation_chats')
+          .doc(chatId)
+          .collection('messages')
+          .get();
+
+      final toUpdate = messagesSnap.docs.where((d) {
+        final data = d.data();
+        final role = data['senderRole']?.toString().toLowerCase().trim() ?? '';
+        final isFromDoctor = role == 'doctor' || role == 'dokter' || (role != 'pasien' && role != 'system');
+        final isRead = data['isRead'] as bool? ?? false;
+        return isFromDoctor && !isRead;
+      }).toList();
+
+      if (toUpdate.isNotEmpty) {
+        final batch = _db.batch();
+        for (final doc in toUpdate) {
+          batch.update(doc.reference, {'isRead': true});
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] markAsReadByPatient error: $e');
+    }
   }
 }

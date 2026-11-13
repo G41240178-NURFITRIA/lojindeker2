@@ -20,6 +20,7 @@ class ChatMessage {
   final bool isUser;
   final bool isSystem;
   final String time;
+  final bool isRead;
   final String type; // 'text' | 'image' | 'document' | 'system'
   final String? attachmentData;
   final String? attachmentName;
@@ -31,6 +32,7 @@ class ChatMessage {
     required this.isUser,
     this.isSystem = false,
     required this.time,
+    this.isRead = false,
     this.type = 'text',
     this.attachmentData,
     this.attachmentName,
@@ -44,6 +46,31 @@ class ChatMessage {
       isUser: rm.isPatient,
       isSystem: rm.isSystem,
       time: rm.time,
+      isRead: rm.isRead,
+      type: rm.type,
+      attachmentData: rm.attachmentData,
+      attachmentName: rm.attachmentName,
+      attachmentSize: rm.attachmentSize,
+    );
+  }
+
+  /// Factory optimistic: pesan dari pihak lain dianggap sudah terbaca
+  /// karena user sedang membuka layar chat sekarang.
+  /// [viewerIsPatient] = true  → pasien membuka layar, pesan dokter = isRead: true
+  /// [viewerIsPatient] = false → dokter membuka layar, pesan pasien = isRead: true
+  factory ChatMessage.fromRealtimeOptimistic(
+    RealtimeChatMessage rm, {
+    required bool viewerIsPatient,
+  }) {
+    // Jika pesan berasal dari pihak lain (bukan viewer), anggap sudah terbaca
+    final isFromOtherParty = viewerIsPatient ? rm.isDoctor : rm.isPatient;
+    return ChatMessage(
+      id: rm.id,
+      text: rm.text,
+      isUser: rm.isPatient,
+      isSystem: rm.isSystem,
+      time: rm.time,
+      isRead: isFromOtherParty ? true : rm.isRead,
       type: rm.type,
       attachmentData: rm.attachmentData,
       attachmentName: rm.attachmentName,
@@ -244,14 +271,51 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
       _messageSubscription =
           ChatService.instance.streamMessages(chatId).listen((items) {
         if (!mounted) return;
+        // Jika ada pesan dari dokter saat pasien sedang di chat, tandai terbaca
+        if (items.any((m) => m.isDoctor && !m.isRead)) {
+          ChatService.instance.markAsReadByPatient(chatId);
+        }
         final currentUid = ChatService.instance.currentUid ?? '';
+        final validItems = items
+            .where((m) =>
+                !m.isDeletedFor('pasien') &&
+                (currentUid.isEmpty || !m.isDeletedFor(currentUid)))
+            .toList();
+
         setState(() {
-          _messages = items
-              .where((m) =>
-                  !m.isDeletedFor('pasien') &&
-                  (currentUid.isEmpty || !m.isDeletedFor(currentUid)))
-              .map((m) => ChatMessage.fromRealtime(m))
-              .toList();
+          _messages = List.generate(validItems.length, (index) {
+            final m = validItems[index];
+            bool isReadComputed = m.isRead;
+
+            if (m.isDoctor) {
+              // Pesan dokter: tampil sebagai terbaca karena pasien sedang melihat layar chat
+              isReadComputed = true;
+            } else if (m.isPatient) {
+              // Pesan pasien: jika di Firestore sudah true, pakai true.
+              // Jika belum, cek apakah dokter sudah membalas setelah pesan ini
+              if (!isReadComputed) {
+                final hasSubsequentDoctorMsg = validItems
+                    .sublist(index + 1)
+                    .any((later) => later.isDoctor);
+                if (hasSubsequentDoctorMsg) {
+                  isReadComputed = true;
+                }
+              }
+            }
+
+            return ChatMessage(
+              id: m.id,
+              text: m.text,
+              isUser: m.isPatient,
+              isSystem: m.isSystem,
+              time: m.time,
+              isRead: isReadComputed,
+              type: m.type,
+              attachmentData: m.attachmentData,
+              attachmentName: m.attachmentName,
+              attachmentSize: m.attachmentSize,
+            );
+          });
         });
         _scrollToBottom();
       });
@@ -535,6 +599,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         attachmentName: attachmentName,
         attachmentSize: attachmentSize,
       );
+      ChatService.instance.markAsReadByPatient(_chatId!);
     } catch (e) {
       debugPrint('⚠️ Error sending message: $e');
     }
@@ -1988,10 +2053,10 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     ),
                   ),
                   const SizedBox(width: 3),
-                  const Icon(
-                    Icons.done_all_rounded,
+                  Icon(
+                    msg.isRead ? Icons.done_all_rounded : Icons.done_rounded,
                     size: 14,
-                    color: _primaryPink,
+                    color: msg.isRead ? _primaryPink : const Color(0xFF9E9E9E),
                   ),
                   const SizedBox(width: 4),
                   InkWell(
