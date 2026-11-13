@@ -25,8 +25,8 @@ class DoctorPrescriptionNoteScreen extends StatefulWidget {
   const DoctorPrescriptionNoteScreen({
     super.key,
     this.patientName = 'Widyatna Dwi',
-    this.rmNumber = 'RM-2026-0812',
-    this.age = '28 thn',
+    this.rmNumber = '',
+    this.age = '23 thn',
   });
 
   @override
@@ -176,13 +176,7 @@ class _DoctorPrescriptionNoteScreenState
                         _buildPatientCard(),
                         const SizedBox(height: 20),
 
-                        // Section 1: Status Kunjungan
-                        _buildSectionTitle('Status kunjungan'),
-                        const SizedBox(height: 10),
-                        _buildStatusSelector(),
-                        const SizedBox(height: 22),
-
-                        // Section 2: Resep Obat
+                        // Section: Resep Obat (Status kunjungan dihilangkan sesuai permintaan user)
                         _buildSectionTitle('Resep obat'),
                         const SizedBox(height: 10),
                         _buildMedicationsCard(),
@@ -309,15 +303,17 @@ class _DoctorPrescriptionNoteScreenState
                     color: const Color(0xFF2D2D2D),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'No. RM: ${widget.rmNumber}, ${widget.age}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF757575),
+                if (widget.age.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.age,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w400,
+                      color: const Color(0xFF757575),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
