@@ -4938,14 +4938,23 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           };
         });
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
+      void executeScroll() {
+        if (!mounted || !_scrollController.hasClients) return;
+        final target = _scrollController.position.maxScrollExtent;
+        if (target > 0) {
           _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent + 40,
-            duration: const Duration(milliseconds: 300),
+            target,
+            duration: const Duration(milliseconds: 250),
             curve: Curves.easeOut,
           );
         }
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        executeScroll();
+        Future.delayed(const Duration(milliseconds: 120), () {
+          if (mounted) executeScroll();
+        });
       });
     });
 
@@ -5619,6 +5628,8 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
         builder: (_) => PatientHistoryScreen(
           patientName: widget.patientName,
           glucoseNote: widget.glucoseNote,
+          patientId: widget.patientId,
+          doctorName: widget.doctorName,
         ),
       ),
     );
@@ -5986,7 +5997,10 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+              padding: const EdgeInsets.only(left: 14, right: 14, top: 16, bottom: 24),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               itemCount: _messages.isEmpty ? 2 : _messages.length + 1,
               itemBuilder: (ctx, idx) {
                 if (idx == 0) return _buildDateSeparator('Hari ini');
@@ -6091,10 +6105,11 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
     final String? attachmentName = m['attachmentName'] as String?;
     final String? attachmentSize = m['attachmentSize'] as String?;
 
-    Uint8List? imageBytes;
-    if (type == 'image' && attachmentData != null && attachmentData.isNotEmpty) {
+    Uint8List? imageBytes = m['_cachedBytes'] as Uint8List?;
+    if (type == 'image' && imageBytes == null && attachmentData != null && attachmentData.isNotEmpty) {
       try {
         imageBytes = base64Decode(attachmentData);
+        m['_cachedBytes'] = imageBytes;
       } catch (_) {}
     }
 
@@ -6140,15 +6155,39 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      constraints: const BoxConstraints(
-                        maxHeight: 200,
-                        maxWidth: 240,
-                      ),
+                      width: 220,
+                      height: 180,
                       color: Colors.black12,
                       child: Stack(
                         alignment: Alignment.bottomRight,
                         children: [
-                          Image.memory(imageBytes, fit: BoxFit.cover),
+                          Image.memory(
+                            imageBytes,
+                            width: 220,
+                            height: 180,
+                            fit: BoxFit.cover,
+                            gaplessPlayback: true,
+                            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                              if (wasSynchronouslyLoaded || frame != null) {
+                                return child;
+                              }
+                              return Container(
+                                width: 220,
+                                height: 180,
+                                color: Colors.black12,
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                           Container(
                             padding: const EdgeInsets.all(4),
                             margin: const EdgeInsets.all(6),
@@ -6533,11 +6572,15 @@ class _DoctorChatDetailScreenState extends State<DoctorChatDetailScreen> {
 class PatientHistoryScreen extends StatefulWidget {
   final String patientName;
   final String glucoseNote;
+  final String? patientId;
+  final String? doctorName;
 
   const PatientHistoryScreen({
     super.key,
     required this.patientName,
     required this.glucoseNote,
+    this.patientId,
+    this.doctorName,
   });
 
   @override
@@ -6546,9 +6589,247 @@ class PatientHistoryScreen extends StatefulWidget {
 
 class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   int _selectedTab = 0;
-  final List<String> _tabs = ['Semua', 'Hasil lab', 'Resep obat'];
+  // Tab hasil lab dihilangkan sesuai permintaan user
+  final List<String> _tabs = ['Semua', 'Resep obat'];
   final List<Map<String, dynamic>> _customVisits = [];
   final List<Map<String, dynamic>> _customResepList = [];
+  StreamSubscription? _prescriptionsSub;
+  StreamSubscription? _userProfileSub;
+
+  // Profil pasien asli dari Firestore untuk tampilan kartu sesuai gambar ke-2
+  String _patientEmail = '';
+  String _patientDob = '';
+  String _patientPhone = '';
+  String _resolvedPatientUid = '';
+  int? _patientAge;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPatientProfile();
+    _subscribeFirestorePrescriptions();
+  }
+
+  @override
+  void dispose() {
+    _prescriptionsSub?.cancel();
+    _userProfileSub?.cancel();
+    super.dispose();
+  }
+
+  int? _calculateAge(String dobStr) {
+    try {
+      final parts = dobStr.split('-');
+      if (parts.length == 3) {
+        final birthDate = DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
+        final today = DateTime.now();
+        int age = today.year - birthDate.year;
+        if (today.month < birthDate.month ||
+            (today.month == birthDate.month && today.day < birthDate.day)) {
+          age--;
+        }
+        return age > 0 ? age : null;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  void _loadPatientProfile() async {
+    try {
+      String uid = (widget.patientId ?? '').trim();
+      final targetName = widget.patientName.trim();
+
+      if (uid.isEmpty) {
+        final q1 = await FirebaseFirestore.instance
+            .collection('users')
+            .where('fullName', isEqualTo: targetName)
+            .limit(1)
+            .get();
+        if (q1.docs.isNotEmpty) {
+          uid = q1.docs.first.id;
+        } else {
+          final q2 = await FirebaseFirestore.instance
+              .collection('users')
+              .where('username', isEqualTo: targetName)
+              .limit(1)
+              .get();
+          if (q2.docs.isNotEmpty) {
+            uid = q2.docs.first.id;
+          }
+        }
+      }
+
+      if (uid.isNotEmpty) {
+        _resolvedPatientUid = uid;
+        _userProfileSub = FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .snapshots()
+            .listen((doc) {
+          if (!mounted || !doc.exists || doc.data() == null) return;
+          final d = doc.data()!;
+          final email = d['email']?.toString() ?? '';
+          final dob = d['dob']?.toString() ?? '';
+          final phone = d['phoneNumber']?.toString() ?? '';
+          setState(() {
+            _patientEmail = email;
+            _patientDob = dob;
+            _patientPhone = phone;
+            if (_patientDob.isNotEmpty) {
+              _patientAge = _calculateAge(_patientDob);
+            }
+          });
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error loading patient profile in doctor: $e');
+    }
+  }
+
+  void _subscribeFirestorePrescriptions() {
+    _prescriptionsSub?.cancel();
+    _prescriptionsSub = FirebaseFirestore.instance
+        .collection('prescriptions')
+        .snapshots()
+        .listen((snap) async {
+      if (!mounted) return;
+      final targetName = widget.patientName.trim().toLowerCase();
+      final targetId = (_resolvedPatientUid.isNotEmpty ? _resolvedPatientUid : (widget.patientId ?? '')).trim();
+
+      final List<Map<String, dynamic>> loadedResep = [];
+      final List<Map<String, dynamic>> loadedVisits = [];
+
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final pId = (data['patientId'] ?? '').toString().trim();
+        final pName = (data['patientName'] ?? '').toString().trim().toLowerCase();
+
+        bool isMatch = false;
+        if (targetId.isNotEmpty && pId.isNotEmpty && targetId == pId) {
+          isMatch = true;
+        } else if (targetName.isNotEmpty && pName.isNotEmpty &&
+            (targetName == pName || targetName.contains(pName) || pName.contains(targetName))) {
+          isMatch = true;
+        }
+
+        if (!isMatch) continue;
+
+        final rawMeds = (data['medicines'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+            (data['items'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+            [];
+        final dateStr = data['date']?.toString() ?? 'Hari ini';
+        final note = data['notes']?.toString() ?? '';
+        final status = data['visitStatus']?.toString() ?? data['status']?.toString() ?? 'Terkontrol baik';
+        final dName = data['doctorName']?.toString() ?? widget.doctorName ?? 'Dokter';
+
+        if (rawMeds.isNotEmpty) {
+          loadedResep.add({
+            'date': dateStr,
+            'items': rawMeds,
+          });
+        }
+
+        loadedVisits.add({
+          'date': dateStr,
+          'status': status,
+          'statusColor': (status.toLowerCase().contains('baik') || status.toLowerCase() == 'aktif')
+              ? const Color(0xFF4CAF50)
+              : const Color(0xFFFF9800),
+          'doctorName': dName,
+          'hospital': data['clinic']?.toString() ?? 'Poli Penyakit Dalam, RS D-Care',
+          'vitalItems': const <_VitalItem>[], // Hasil lab dihilangkan sesuai permintaan user
+          'prescriptions': rawMeds,
+          'doctorNote': note.isNotEmpty ? note : 'Tidak ada catatan tambahan.',
+        });
+      }
+
+      // Jika di Firestore pasien ini belum pernah memiliki resep sama sekali,
+      // otomatis inisialisasi resep default dokter ke Firestore agar langsung muncul di akun pasien!
+      if (loadedResep.isEmpty) {
+        _seedInitialPrescriptionsToFirestore();
+      } else {
+        setState(() {
+          _customResepList.clear();
+          _customResepList.addAll(loadedResep);
+          _customVisits.clear();
+          _customVisits.addAll(loadedVisits);
+        });
+      }
+    }, onError: (e) {
+      debugPrint('⚠️ Error listen prescriptions in doctor: $e');
+    });
+  }
+
+  /// Menyelaraskan resep default ke Firestore agar akun pasien langsung memiliki data resep
+  Future<void> _seedInitialPrescriptionsToFirestore() async {
+    try {
+      final pId = _resolvedPatientUid.isNotEmpty ? _resolvedPatientUid : (widget.patientId ?? '');
+      final pName = widget.patientName;
+      final docName = widget.doctorName ?? 'dr. Ariena Putri, Sp.PD';
+
+      final initialRx1 = {
+        'id': 'rx_init_1',
+        'patientId': pId,
+        'patientName': pName,
+        'doctorId': AuthService.instance.currentUser?.uid ?? '',
+        'doctorName': docName,
+        'doctorSpecialty': 'Spesialis Penyakit Dalam',
+        'clinic': 'Poli Penyakit Dalam, RS D-Care',
+        'status': 'Aktif',
+        'visitStatus': 'Terkontrol baik',
+        'medicines': [
+          'Metformin HCl 500 mg (2x1 sesudah makan)',
+          'Vitamin B Complex (1x1 pagi)',
+        ],
+        'items': [
+          'Metformin HCl 500 mg (2x1 sesudah makan)',
+          'Vitamin B Complex (1x1 pagi)',
+        ],
+        'notes': 'Kadar gula darah stabil dalam target. Pasien disiplin diet dan olahraga.',
+        'date': '20 Mei 2026',
+        'createdAt': Timestamp.fromDate(DateTime(2026, 5, 20)),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      final initialRx2 = {
+        'id': 'rx_init_2',
+        'patientId': pId,
+        'patientName': pName,
+        'doctorId': AuthService.instance.currentUser?.uid ?? '',
+        'doctorName': 'dr. Hendra Wijaya, Sp.PD',
+        'doctorSpecialty': 'Spesialis Penyakit Dalam',
+        'clinic': 'Poli Penyakit Dalam, RS D-Care',
+        'status': 'Selesai',
+        'visitStatus': 'Evaluasi dosis',
+        'medicines': [
+          'Metformin HCl 500 mg (3x1 sesudah makan)',
+          'Glibenclamide 5 mg (1x1 pagi)',
+        ],
+        'items': [
+          'Metformin HCl 500 mg (3x1 sesudah makan)',
+          'Glibenclamide 5 mg (1x1 pagi)',
+        ],
+        'notes': 'Dosis Metformin disesuaikan. Anjuran kurangi konsumsi karbohidrat sederhana.',
+        'date': '18 April 2026',
+        'createdAt': Timestamp.fromDate(DateTime(2026, 4, 18)),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await FirebaseFirestore.instance.collection('prescriptions').doc('rx_init_1').set(initialRx1);
+      await FirebaseFirestore.instance.collection('prescriptions').doc('rx_init_2').set(initialRx2);
+
+      if (pId.isNotEmpty) {
+        await FirebaseFirestore.instance.collection('users').doc(pId).collection('prescriptions').doc('rx_init_1').set(initialRx1);
+        await FirebaseFirestore.instance.collection('users').doc(pId).collection('prescriptions').doc('rx_init_2').set(initialRx2);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error seeding prescriptions: $e');
+    }
+  }
 
   Future<void> _openPrescriptionNoteScreen() async {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
@@ -6556,7 +6837,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         builder: (_) => DoctorPrescriptionNoteScreen(
           patientName: widget.patientName,
           rmNumber: 'RM-2026-0812',
-          age: '28 thn',
+          age: _patientAge != null ? '$_patientAge thn' : '23 thn',
         ),
       ),
     );
@@ -6568,44 +6849,104 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
       final String note = result['note'] ?? '';
       final String status = result['status'] ?? 'Terkontrol baik';
 
-      setState(() {
-        if (meds.isNotEmpty) {
-          _customResepList.insert(0, {
-            'date': 'Hari ini',
-            'items': meds,
-          });
-        }
-        if (note.isNotEmpty || meds.isNotEmpty) {
-          _customVisits.insert(0, {
-            'date': 'Hari ini',
-            'status': status,
-            'statusColor': status == 'Terkontrol baik'
-                ? const Color(0xFF4CAF50)
-                : const Color(0xFFFF9800),
-            'doctorName': 'dr. Saya (Dokter)',
-            'hospital': 'Poli Penyakit Dalam, RS D-Care',
-            'vitalItems': const [
-              _VitalItem('Gula darah puasa', '110 mg/dL'),
-              _VitalItem('Gula darah 2 jam PP', '140 mg/dL'),
-              _VitalItem('HbA1c', '6.4%'),
-              _VitalItem('Tekanan darah', '120/80 mmHg'),
-            ],
-            'prescriptions': meds,
-            'doctorNote': note.isNotEmpty ? note : 'Tidak ada catatan tambahan.',
-          });
-        }
-      });
+      // 1. Simpan ke Firestore agar terhubung secara real-time ke akun pasien
+      await _savePrescriptionToFirestore(
+        meds: meds,
+        note: note,
+        status: status,
+      );
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Resep & catatan berhasil disimpan ke riwayat.',
+            'Resep & catatan berhasil disimpan ke rekam medis pasien!',
             style: GoogleFonts.poppins(color: Colors.white),
           ),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  Future<void> _savePrescriptionToFirestore({
+    required List<String> meds,
+    required String note,
+    required String status,
+  }) async {
+    try {
+      String resolvedPatientId = _resolvedPatientUid.isNotEmpty
+          ? _resolvedPatientUid
+          : (widget.patientId ?? '');
+
+      // Cari patientId jika belum terisi
+      if (resolvedPatientId.isEmpty) {
+        final querySnap = await FirebaseFirestore.instance
+            .collection('users')
+            .where('fullName', isEqualTo: widget.patientName)
+            .limit(1)
+            .get();
+        if (querySnap.docs.isNotEmpty) {
+          resolvedPatientId = querySnap.docs.first.id;
+        } else {
+          final querySnap2 = await FirebaseFirestore.instance
+              .collection('users')
+              .where('username', isEqualTo: widget.patientName)
+              .limit(1)
+              .get();
+          if (querySnap2.docs.isNotEmpty) {
+            resolvedPatientId = querySnap2.docs.first.id;
+          }
+        }
+      }
+
+      final now = DateTime.now();
+      const months = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      final dateFormatted = '${now.day} ${months[now.month - 1]} ${now.year}';
+      final prescriptionId = 'rx_${now.millisecondsSinceEpoch}';
+
+      final Map<String, dynamic> docData = {
+        'id': prescriptionId,
+        'patientId': resolvedPatientId,
+        'patientName': widget.patientName,
+        'doctorId': AuthService.instance.currentUser?.uid ?? '',
+        'doctorName': widget.doctorName ?? 'dr. Spesialis',
+        'doctorSpecialty': 'Spesialis Penyakit Dalam',
+        'clinic': 'Poli Penyakit Dalam, RS D-Care',
+        'status': 'Aktif',
+        'visitStatus': status,
+        'medicines': meds,
+        'items': meds,
+        'notes': note.isNotEmpty ? note : 'Konsumsi obat teratur sesuai petunjuk dokter.',
+        'date': dateFormatted,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      // 1. Simpan di root collection prescriptions
+      await FirebaseFirestore.instance
+          .collection('prescriptions')
+          .doc(prescriptionId)
+          .set(docData);
+
+      // 2. Simpan di subcollection users/{patientId}/prescriptions jika ID pasien diketahui
+      if (resolvedPatientId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(resolvedPatientId)
+            .collection('prescriptions')
+            .doc(prescriptionId)
+            .set(docData);
+      }
+
+      debugPrint('✅ [Prescription] Berhasil menyimpan resep ke Firestore: $prescriptionId');
+    } catch (e) {
+      debugPrint('⚠️ [Prescription] Gagal menyimpan resep ke Firestore: $e');
     }
   }
 
@@ -6631,66 +6972,36 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                   const SizedBox(height: 14),
                   _buildVisitSectionHeader(),
                   const SizedBox(height: 10),
-                  if (_selectedTab == 0 || _selectedTab == 1) ...[
-                    ..._customVisits.map((v) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _ExpandableVisitCard(
-                            date: v['date'],
-                            status: v['status'],
-                            statusColor: v['statusColor'],
-                            doctorName: v['doctorName'],
-                            hospital: v['hospital'],
-                            vitalItems: v['vitalItems'] as List<_VitalItem>,
-                            prescriptions: v['prescriptions'] as List<String>,
-                            doctorNote: v['doctorNote'],
-                            initiallyExpanded: true,
+                  // Tab 0: Semua kunjungan medis
+                  if (_selectedTab == 0) ...[
+                    if (_customVisits.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            'Belum ada catatan kunjungan medis.',
+                            style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 13),
                           ),
-                        )),
-                    _ExpandableVisitCard(
-                      date: '20 Mei 2026',
-                      status: 'Terkontrol baik',
-                      statusColor: const Color(0xFF4CAF50),
-                      doctorName: 'dr. Ariena Putri, Sp.PD',
-                      hospital: 'Poli Penyakit Dalam dan Endokrin, RS D-Care',
-                      vitalItems: const [
-                        _VitalItem('Gula darah puasa', '108 mg/dL'),
-                        _VitalItem('Gula darah 2 jam PP', '135 mg/dL'),
-                        _VitalItem('HbA1c', '6.2%'),
-                        _VitalItem('Tekanan darah', '120/80 mmHg'),
-                        _VitalItem('Berat badan', '68 kg'),
-                      ],
-                      prescriptions: const [
-                        'Metformin HCl 500 mg (2x1 sesudah makan)',
-                        'Vitamin B Complex (1x1 pagi)',
-                      ],
-                      doctorNote:
-                          'Kadar gula darah stabil dalam target. Pasien disiplin diet dan olahraga. Jadwal kontrol berikutnya: 20 Juni 2026.',
-                      initiallyExpanded: true,
-                    ),
-                    const SizedBox(height: 12),
-                    _ExpandableVisitCard(
-                      date: '18 April 2026',
-                      status: 'Evaluasi dosis',
-                      statusColor: const Color(0xFFFF9800),
-                      doctorName: 'dr. Hendra Wijaya, Sp.PD',
-                      hospital: 'Poli Penyakit Dalam, RS D-Care',
-                      vitalItems: const [
-                        _VitalItem('Gula darah puasa', '142 mg/dL'),
-                        _VitalItem('Gula darah 2 jam PP', '198 mg/dL'),
-                        _VitalItem('HbA1c', '7.1%'),
-                        _VitalItem('Tekanan darah', '128/84 mmHg'),
-                        _VitalItem('Berat badan', '69 kg'),
-                      ],
-                      prescriptions: const [
-                        'Metformin HCl 500 mg (3x1 sesudah makan)',
-                        'Glibenclamide 5 mg (1x1 pagi)',
-                      ],
-                      doctorNote:
-                          'Gula darah belum terkontrol optimal. Dosis Metformin ditingkatkan. Anjuran kurangi konsumsi karbohidrat sederhana.',
-                      initiallyExpanded: false,
-                    ),
+                        ),
+                      )
+                    else
+                      ..._customVisits.map((v) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _ExpandableVisitCard(
+                              date: v['date'],
+                              status: v['status'],
+                              statusColor: v['statusColor'],
+                              doctorName: v['doctorName'],
+                              hospital: v['hospital'],
+                              vitalItems: const <_VitalItem>[], // Hasil lab dihilangkan
+                              prescriptions: v['prescriptions'] as List<String>,
+                              doctorNote: v['doctorNote'],
+                              initiallyExpanded: true,
+                            ),
+                          )),
                   ],
-                  if (_selectedTab == 2) _buildResepList(),
+                  // Tab 1: Resep Obat
+                  if (_selectedTab == 1) _buildResepList(),
                   const SizedBox(height: 80),
                 ],
               ),
@@ -6721,7 +7032,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
               ),
               Expanded(
                 child: Text(
-                  'Riwayat pasien',
+                  'Riwayat Pasien',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 16,
@@ -6730,7 +7041,6 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
                   ),
                 ),
               ),
-              // Spacer penyeimbang tombol kembali agar judul tetap berada di tengah
               const SizedBox(width: 48),
             ],
           ),
@@ -6739,7 +7049,14 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     );
   }
 
+  /// Tampilan Kartu Informasi Pasien di Akun Dokter dibuat PERSIS seperti Gambar ke-2
   Widget _buildPatientCard() {
+    final displayName = widget.patientName.isNotEmpty ? widget.patientName : 'widyaaaa01';
+    final email = _patientEmail.isNotEmpty ? _patientEmail : 'widyatna@gmail.com';
+    final ageStr = _patientAge != null ? '$_patientAge Thn' : '23 Thn';
+    final dobStr = _patientDob.isNotEmpty ? _patientDob : '2003-10-29';
+    final phoneStr = _patientPhone.isNotEmpty ? _patientPhone : '08573636272';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -6758,52 +7075,58 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                width: 52,
-                height: 52,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.25),
+                  color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: const Icon(Icons.person_rounded, color: Colors.white, size: 30),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.patientName,
+                      displayName,
                       style: GoogleFonts.poppins(
-                        fontSize: 15.5,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      'Diabetes mellitus tipe 2',
+                      email,
                       style: GoogleFonts.poppins(
                         fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
                         color: Colors.white.withValues(alpha: 0.9),
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 5),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'RM-2024-0127',
+                        'Pasien Terdaftar',
                         style: GoogleFonts.poppins(
-                          fontSize: 10,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w600,
                           color: Colors.white,
-                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -6813,16 +7136,14 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             ],
           ),
           const SizedBox(height: 14),
+          const Divider(color: Colors.white24, height: 1),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildPatientStat('Usia', '45 thn'),
-              _buildStatDividerV(),
-              _buildPatientStat('Gender', 'Wanita'),
-              _buildStatDividerV(),
-              _buildPatientStat('Gol. darah', 'O+'),
-              _buildStatDividerV(),
-              _buildPatientStat('Status', 'Rutin kontrol'),
+              _buildPatientStatItem('Usia', ageStr),
+              _buildPatientStatItem('Tgl. Lahir', dobStr),
+              _buildPatientStatItem('No. HP', phoneStr),
             ],
           ),
         ],
@@ -6830,33 +7151,26 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
     );
   }
 
-  Widget _buildPatientStat(String label, String value) {
+  Widget _buildPatientStatItem(String title, String value) {
     return Column(
       children: [
+        Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: 10.5,
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
+        ),
+        const SizedBox(height: 2),
         Text(
           value,
           style: GoogleFonts.poppins(
             fontSize: 12,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             color: Colors.white,
           ),
         ),
-        Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 9.5,
-            color: Colors.white.withValues(alpha: 0.85),
-          ),
-        ),
       ],
-    );
-  }
-
-  Widget _buildStatDividerV() {
-    return Container(
-      height: 28,
-      width: 1,
-      color: Colors.white.withValues(alpha: 0.3),
     );
   }
 
@@ -6899,6 +7213,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   }
 
   Widget _buildCatatanHeader() {
+    final count = _customResepList.length;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -6914,17 +7229,17 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppColors.softPinkCard,
+                  color: const Color(0xFFFFF0F5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.note_alt_outlined,
-                    size: 18, color: AppColors.primary),
+                    color: AppColors.primary, size: 18),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Text(
                 'Catatan dokter',
                 style: GoogleFonts.poppins(
-                  fontSize: 13.5,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: const Color(0xFF212121),
                 ),
@@ -6932,13 +7247,13 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             ],
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: AppColors.softPinkCard,
-              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFFFFF0F5),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '2 catatan',
+              '$count catatan',
               style: GoogleFonts.poppins(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -6952,25 +7267,26 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   }
 
   Widget _buildVisitSectionHeader() {
+    final count = _customResepList.length;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           'Riwayat kunjungan medis',
           style: GoogleFonts.poppins(
-            fontSize: 14,
+            fontSize: 13.5,
             fontWeight: FontWeight.w700,
             color: const Color(0xFF212121),
           ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: AppColors.softPinkCard,
-            borderRadius: BorderRadius.circular(20),
+            color: const Color(0xFFFFF0F5),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            '2 catatan',
+            '$count catatan',
             style: GoogleFonts.poppins(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -6983,31 +7299,26 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
   }
 
   Widget _buildResepList() {
+    if (_customResepList.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 30),
+        child: Center(
+          child: Text(
+            'Belum ada resep obat untuk pasien ini.\nKlik tombol di bawah untuk menulis resep.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(color: Colors.grey.shade600, fontSize: 13),
+          ),
+        ),
+      );
+    }
     return Column(
-      children: [
-        ..._customResepList.map((r) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildResepCard(
-                date: r['date'],
-                items: r['items'] as List<String>,
-              ),
-            )),
-        _buildResepCard(
-          date: '20 Mei 2026',
-          items: const [
-            'Metformin HCl 500 mg (2x1 sesudah makan)',
-            'Vitamin B Complex (1x1 pagi)',
-          ],
+      children: _customResepList.map((r) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _buildResepCard(
+          date: r['date'],
+          items: r['items'] as List<String>,
         ),
-        const SizedBox(height: 12),
-        _buildResepCard(
-          date: '18 April 2026',
-          items: const [
-            'Metformin HCl 500 mg (3x1 sesudah makan)',
-            'Glibenclamide 5 mg (1x1 pagi)',
-          ],
-        ),
-      ],
+      )).toList(),
     );
   }
 
@@ -7097,7 +7408,7 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.35),
+                  color: AppColors.primary.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -7106,13 +7417,14 @@ class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.edit_outlined, color: Colors.white, size: 18),
+                const Icon(Icons.edit_note_rounded,
+                    color: Colors.white, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   'Tulis resep dan catatan',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                 ),
