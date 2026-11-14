@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/auth_service.dart';
 import 'consultation_list_screen.dart';
+import 'detail_resep_screen.dart';
 import 'riwayat_resep_screen.dart';
 
 class MedicalRecordsScreen extends StatefulWidget {
@@ -28,12 +30,29 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
   String _email = '';
   int? _age;
 
+  StreamSubscription? _userDocSub;
+  StreamSubscription? _consultationChatsSub;
+  StreamSubscription? _userPrescriptionsSub;
+  StreamSubscription? _rootPrescriptionsSub;
+
+  final Map<String, _MedicalRecordItem> _consultationMap = {};
+  final Map<String, _MedicalRecordItem> _prescriptionMap = {};
+
   @override
   void initState() {
     super.initState();
     _patientDisplayName = widget.patientName;
     _records = [];
-    _loadPatientData();
+    _subscribeRealtimeData();
+  }
+
+  @override
+  void dispose() {
+    _userDocSub?.cancel();
+    _consultationChatsSub?.cancel();
+    _userPrescriptionsSub?.cancel();
+    _rootPrescriptionsSub?.cancel();
+    super.dispose();
   }
 
   int? _calculateAge(String dobStr) {
@@ -65,54 +84,67 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  void _loadPatientData() async {
+  /// Berlangganan data rekam medis dan resep obat secara real-time dari Firestore
+  void _subscribeRealtimeData() {
     final user = AuthService.instance.currentUser;
-    if (user == null) {
-      if (mounted) {
-        setState(() {
-          _records = [];
-        });
-      }
-      return;
-    }
+    if (user == null) return;
 
-    // 1. Muat profil user dari Firestore
-    try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      if (doc.exists && doc.data() != null && mounted) {
-        final data = doc.data()!;
-        final fullName = (data['fullName'] ?? data['profileName'])?.toString();
-        final dobStr = data['dob']?.toString() ?? '';
-        final phone = data['phoneNumber']?.toString() ?? '';
-        final mail = data['email']?.toString() ?? user.email ?? '';
+    // 1. Profil pasien real-time
+    _userDocSub?.cancel();
+    _userDocSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .snapshots()
+        .listen((doc) {
+      if (!mounted || !doc.exists || doc.data() == null) return;
+      final data = doc.data()!;
+      final fullName = (data['fullName'] ?? data['profileName'])?.toString();
+      final dobStr = data['dob']?.toString() ?? '';
+      final phone = data['phoneNumber']?.toString() ?? '';
+      final mail = data['email']?.toString() ?? user.email ?? '';
 
-        setState(() {
-          if (fullName != null && fullName.trim().isNotEmpty) {
-            _patientDisplayName = fullName.trim();
-          }
-          _dob = dobStr.trim();
-          _phoneNumber = phone.trim();
-          _email = mail.trim();
-          if (_dob.isNotEmpty) {
-            _age = _calculateAge(_dob);
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading patient data in MedicalRecordsScreen: $e');
-    }
+      setState(() {
+        if (fullName != null && fullName.trim().isNotEmpty) {
+          _patientDisplayName = fullName.trim();
+        }
+        _dob = dobStr.trim();
+        _phoneNumber = phone.trim();
+        _email = mail.trim();
+        if (_dob.isNotEmpty) {
+          _age = _calculateAge(_dob);
+        }
+      });
+    }, onError: (e) {
+      debugPrint('⚠️ Error listen user doc: $e');
+    });
 
-    final List<_MedicalRecordItem> loadedRecords = [];
+    // 2. Konsultasi Pasien real-time
+    _consultationChatsSub?.cancel();
+    _consultationChatsSub = FirebaseFirestore.instance
+        .collection('consultation_chats')
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      final targetUid = user.uid;
+      final targetName = _patientDisplayName.toLowerCase().trim();
 
-    // 2. Muat riwayat konsultasi asli pasien dari Firestore
-    try {
-      final chatsSnap = await FirebaseFirestore.instance
-          .collection('consultation_chats')
-          .where('patientId', isEqualTo: user.uid)
-          .get();
+      _consultationMap.clear();
 
-      for (final chatDoc in chatsSnap.docs) {
+      for (final chatDoc in snap.docs) {
         final cData = chatDoc.data();
+        final pId = (cData['patientId'] ?? '').toString().trim();
+        final pName = (cData['patientName'] ?? '').toString().toLowerCase().trim();
+
+        bool isMine = false;
+        if (pId.isNotEmpty && pId == targetUid) {
+          isMine = true;
+        } else if (targetName.isNotEmpty && pName.isNotEmpty &&
+            (pName == targetName || pName.contains(targetName) || targetName.contains(pName))) {
+          isMine = true;
+        }
+
+        if (!isMine) continue;
+
         final doctorName = cData['doctorName']?.toString() ?? 'Dokter';
         final specialty = cData['doctorSpecialty']?.toString() ?? 'Spesialis Penyakit Dalam';
         final statusRaw = cData['status']?.toString().toLowerCase() ?? 'selesai';
@@ -131,62 +163,117 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
             cData['glucoseNote']?.toString() ??
             'Sesi konsultasi dokter.';
 
-        loadedRecords.add(
-          _MedicalRecordItem(
-            date: _formatIndonesianDate(date),
-            doctorName: doctorName,
-            clinic: '$specialty • Konsultasi Online',
-            status: isActive ? 'Aktif' : 'Selesai',
-            statusColor: isActive ? const Color(0xFF1976D2) : const Color(0xFF2E7D32),
-            medicines: const [],
-            notes: notes.isNotEmpty ? notes : 'Sesi konsultasi dokter selesai.',
-            categoryType: 'Konsultasi',
-          ),
+        _consultationMap[chatDoc.id] = _MedicalRecordItem(
+          id: chatDoc.id,
+          date: _formatIndonesianDate(date),
+          timestamp: date,
+          doctorName: doctorName,
+          clinic: '$specialty • Konsultasi Online',
+          status: isActive ? 'Aktif' : 'Selesai',
+          statusColor: isActive ? const Color(0xFF1976D2) : const Color(0xFF2E7D32),
+          medicines: const [],
+          notes: notes.isNotEmpty ? notes : 'Sesi konsultasi dokter selesai.',
+          categoryType: 'Konsultasi',
         );
       }
-    } catch (e) {
-      debugPrint('Error loading consultation records: $e');
-    }
 
-    // 3. Muat riwayat resep obat pasien jika tersimpan di subcollection prescriptions
-    try {
-      final prescriptionsSnap = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('prescriptions')
-          .get();
+      _syncRecords();
+    }, onError: (e) {
+      debugPrint('⚠️ Error listen consultation chats: $e');
+    });
 
-      for (final pDoc in prescriptionsSnap.docs) {
-        final pData = pDoc.data();
-        final doctorName = pData['doctorName']?.toString() ?? 'dr. Spesialis';
-        final clinic = pData['clinic']?.toString() ?? 'Resep Dokter Resmi';
-        final status = pData['status']?.toString() ?? 'Aktif';
-        final dateStr = pData['date']?.toString() ?? _formatIndonesianDate(DateTime.now());
-        final notes = pData['notes']?.toString() ?? 'Konsumsi obat sesuai aturan pakai dokter.';
-        final medsList = (pData['medicines'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
-            (pData['items'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
-            [];
-
-        loadedRecords.add(
-          _MedicalRecordItem(
-            date: dateStr,
-            doctorName: doctorName,
-            clinic: clinic,
-            status: status,
-            statusColor: status.toLowerCase() == 'aktif' ? const Color(0xFF1976D2) : const Color(0xFF757575),
-            medicines: medsList,
-            notes: notes,
-            categoryType: 'Resep Obat',
-          ),
-        );
+    // 3. Resep Obat Pasien dari subcollection users/{uid}/prescriptions secara real-time
+    _userPrescriptionsSub?.cancel();
+    _userPrescriptionsSub = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('prescriptions')
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      for (final pDoc in snap.docs) {
+        _parseAndInsertPrescription(pDoc.id, pDoc.data());
       }
-    } catch (e) {
-      debugPrint('Error loading prescription records: $e');
+      _syncRecords();
+    }, onError: (e) {
+      debugPrint('⚠️ Error listen user prescriptions: $e');
+    });
+
+    // 4. Resep Obat Pasien dari root collection prescriptions secara real-time
+    _rootPrescriptionsSub?.cancel();
+    _rootPrescriptionsSub = FirebaseFirestore.instance
+        .collection('prescriptions')
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      final targetUid = user.uid;
+      final targetName = _patientDisplayName.toLowerCase().trim();
+
+      for (final pDoc in snap.docs) {
+        final data = pDoc.data();
+        final pId = (data['patientId'] ?? '').toString().trim();
+        final pName = (data['patientName'] ?? '').toString().toLowerCase().trim();
+
+        bool isMine = false;
+        if (pId.isNotEmpty && pId == targetUid) {
+          isMine = true;
+        } else if (targetName.isNotEmpty && pName.isNotEmpty &&
+            (pName == targetName || pName.contains(targetName) || targetName.contains(pName))) {
+          isMine = true;
+        }
+
+        if (isMine) {
+          _parseAndInsertPrescription(pDoc.id, data);
+        }
+      }
+      _syncRecords();
+    }, onError: (e) {
+      debugPrint('⚠️ Error listen root prescriptions: $e');
+    });
+  }
+
+  void _parseAndInsertPrescription(String id, Map<String, dynamic> pData) {
+    final doctorName = pData['doctorName']?.toString() ?? 'dr. Spesialis';
+    final clinic = pData['clinic']?.toString() ?? 'Resep Dokter Resmi';
+    final status = pData['status']?.toString() ?? 'Aktif';
+
+    DateTime date = DateTime.now();
+    if (pData['createdAt'] is Timestamp) {
+      date = (pData['createdAt'] as Timestamp).toDate();
+    } else if (pData['updatedAt'] is Timestamp) {
+      date = (pData['updatedAt'] as Timestamp).toDate();
     }
+    final dateStr = pData['date']?.toString() ?? _formatIndonesianDate(date);
+    final notes = pData['notes']?.toString() ?? 'Konsumsi obat sesuai aturan pakai dokter.';
+    final medsList = (pData['medicines'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+        (pData['items'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+        [];
+
+    _prescriptionMap[id] = _MedicalRecordItem(
+      id: id,
+      date: dateStr,
+      timestamp: date,
+      doctorName: doctorName,
+      clinic: clinic,
+      status: status,
+      statusColor: status.toLowerCase() == 'aktif' ? const Color(0xFF1976D2) : const Color(0xFF757575),
+      medicines: medsList,
+      notes: notes,
+      categoryType: 'Resep Obat',
+    );
+  }
+
+  void _syncRecords() {
+    final combined = [
+      ..._consultationMap.values,
+      ..._prescriptionMap.values,
+    ];
+    // Urutkan dari resep & konsultasi yang paling baru di paling atas
+    combined.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     if (mounted) {
       setState(() {
-        _records = loadedRecords;
+        _records = combined;
       });
     }
   }
@@ -888,6 +975,59 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
                       ),
                     ),
                   ],
+
+                  if (!isConsultation) ...[
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () {
+                        final medsModel = item.medicines.map((m) {
+                          return MedicineModel(
+                            name: m,
+                            dosage: '',
+                            instruction: 'Sesuai aturan pakai dokter',
+                            quantity: '',
+                          );
+                        }).toList();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => DetailResepScreen(
+                              date: item.date,
+                              status: item.status,
+                              doctorName: item.doctorName,
+                              doctorSpecialty: 'Spesialis Penyakit Dalam',
+                              medicines: medsModel,
+                              doctorNotes: item.notes,
+                              isReminderActive: item.status.toLowerCase() == 'aktif',
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD81B60),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.info_outline_rounded, color: Colors.white, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Lihat Detail Resep & Pasang Pengingat',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -899,7 +1039,9 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> {
 }
 
 class _MedicalRecordItem {
+  final String id;
   final String date;
+  final DateTime timestamp;
   final String doctorName;
   final String clinic;
   final String status;
@@ -910,7 +1052,9 @@ class _MedicalRecordItem {
   bool isExpanded;
 
   _MedicalRecordItem({
+    required this.id,
     required this.date,
+    required this.timestamp,
     required this.doctorName,
     required this.clinic,
     required this.status,

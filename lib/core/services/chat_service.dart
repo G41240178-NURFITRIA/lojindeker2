@@ -51,10 +51,11 @@ class RealtimeChatMessage {
   factory RealtimeChatMessage.fromFirestore(DocumentSnapshot doc) {
     final data = (doc.data() as Map<String, dynamic>?) ?? {};
     final ts = data['timestamp'] as Timestamp?;
-    final dt = ts?.toDate();
-    final timeStr = dt != null
+    final dt = ts?.toDate() ?? DateTime.now();
+    final timeStr = ts != null
         ? '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}'
-        : data['time']?.toString() ?? '';
+        : (data['time']?.toString() ??
+            '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}');
 
     return RealtimeChatMessage(
       id: doc.id,
@@ -588,8 +589,18 @@ class ChatService {
         .collection('messages')
         .orderBy('timestamp', descending: false)
         .snapshots()
-        .map((snap) =>
-            snap.docs.map((doc) => RealtimeChatMessage.fromFirestore(doc)).toList());
+        .map((snap) {
+      final list = snap.docs
+          .map((doc) => RealtimeChatMessage.fromFirestore(doc))
+          .toList();
+      // Pastikan urutan selalu stabil menaik (pending write tidak lompat ke paling atas)
+      list.sort((a, b) {
+        final tA = a.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final tB = b.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return tA.compareTo(tB);
+      });
+      return list;
+    });
   }
 
   /// Kirim pesan chat (baik oleh pasien maupun dokter)
@@ -627,6 +638,9 @@ class ChatService {
     }
 
     final actualSenderId = senderId ?? currentUid ?? '';
+    final now = DateTime.now();
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
     // 1. Tambah dokumen pesan ke subcollection messages
     final messageDoc = <String, dynamic>{
@@ -635,6 +649,7 @@ class ChatService {
       'senderName': senderName,
       'senderId': actualSenderId,
       'timestamp': FieldValue.serverTimestamp(),
+      'time': timeStr,
       'isRead': false,
       'type': type,
     };
@@ -839,7 +854,32 @@ class ChatService {
           .collection('consultation_chats')
           .doc(chatId)
           .update({'unreadCountForDoctor': 0});
-    } catch (_) {}
+
+      // Update seluruh pesan dari pasien agar isRead = true
+      final messagesSnap = await _db
+          .collection('consultation_chats')
+          .doc(chatId)
+          .collection('messages')
+          .get();
+
+      final toUpdate = messagesSnap.docs.where((d) {
+        final data = d.data();
+        final role = data['senderRole']?.toString().toLowerCase().trim() ?? '';
+        final isFromPatient = role == 'pasien' || role == 'patient';
+        final isRead = data['isRead'] as bool? ?? false;
+        return isFromPatient && !isRead;
+      }).toList();
+
+      if (toUpdate.isNotEmpty) {
+        final batch = _db.batch();
+        for (final doc in toUpdate) {
+          batch.update(doc.reference, {'isRead': true});
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] markAsReadByDoctor error: $e');
+    }
   }
 
   /// Tandai chat telah dibaca oleh pasien
@@ -849,6 +889,31 @@ class ChatService {
           .collection('consultation_chats')
           .doc(chatId)
           .update({'unreadCountForPatient': 0});
-    } catch (_) {}
+
+      // Update seluruh pesan dari dokter agar isRead = true
+      final messagesSnap = await _db
+          .collection('consultation_chats')
+          .doc(chatId)
+          .collection('messages')
+          .get();
+
+      final toUpdate = messagesSnap.docs.where((d) {
+        final data = d.data();
+        final role = data['senderRole']?.toString().toLowerCase().trim() ?? '';
+        final isFromDoctor = role == 'doctor' || role == 'dokter' || (role != 'pasien' && role != 'system');
+        final isRead = data['isRead'] as bool? ?? false;
+        return isFromDoctor && !isRead;
+      }).toList();
+
+      if (toUpdate.isNotEmpty) {
+        final batch = _db.batch();
+        for (final doc in toUpdate) {
+          batch.update(doc.reference, {'isRead': true});
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      debugPrint('⚠️ [ChatService] markAsReadByPatient error: $e');
+    }
   }
 }

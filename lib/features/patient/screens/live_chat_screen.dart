@@ -20,10 +20,12 @@ class ChatMessage {
   final bool isUser;
   final bool isSystem;
   final String time;
+  final bool isRead;
   final String type; // 'text' | 'image' | 'document' | 'system'
   final String? attachmentData;
   final String? attachmentName;
   final String? attachmentSize;
+  Uint8List? _cachedBytes;
 
   ChatMessage({
     required this.id,
@@ -31,11 +33,23 @@ class ChatMessage {
     required this.isUser,
     this.isSystem = false,
     required this.time,
+    this.isRead = false,
     this.type = 'text',
     this.attachmentData,
     this.attachmentName,
     this.attachmentSize,
-  });
+    Uint8List? preloadedBytes,
+  }) : _cachedBytes = preloadedBytes;
+
+  Uint8List? get decodedBytes {
+    if (_cachedBytes != null) return _cachedBytes;
+    if (attachmentData != null && attachmentData!.isNotEmpty) {
+      try {
+        _cachedBytes = base64Decode(attachmentData!);
+      } catch (_) {}
+    }
+    return _cachedBytes;
+  }
 
   factory ChatMessage.fromRealtime(RealtimeChatMessage rm) {
     return ChatMessage(
@@ -44,6 +58,31 @@ class ChatMessage {
       isUser: rm.isPatient,
       isSystem: rm.isSystem,
       time: rm.time,
+      isRead: rm.isRead,
+      type: rm.type,
+      attachmentData: rm.attachmentData,
+      attachmentName: rm.attachmentName,
+      attachmentSize: rm.attachmentSize,
+    );
+  }
+
+  /// Factory optimistic: pesan dari pihak lain dianggap sudah terbaca
+  /// karena user sedang membuka layar chat sekarang.
+  /// [viewerIsPatient] = true  → pasien membuka layar, pesan dokter = isRead: true
+  /// [viewerIsPatient] = false → dokter membuka layar, pesan pasien = isRead: true
+  factory ChatMessage.fromRealtimeOptimistic(
+    RealtimeChatMessage rm, {
+    required bool viewerIsPatient,
+  }) {
+    // Jika pesan berasal dari pihak lain (bukan viewer), anggap sudah terbaca
+    final isFromOtherParty = viewerIsPatient ? rm.isDoctor : rm.isPatient;
+    return ChatMessage(
+      id: rm.id,
+      text: rm.text,
+      isUser: rm.isPatient,
+      isSystem: rm.isSystem,
+      time: rm.time,
+      isRead: isFromOtherParty ? true : rm.isRead,
       type: rm.type,
       attachmentData: rm.attachmentData,
       attachmentName: rm.attachmentName,
@@ -244,14 +283,51 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
       _messageSubscription =
           ChatService.instance.streamMessages(chatId).listen((items) {
         if (!mounted) return;
+        // Jika ada pesan dari dokter saat pasien sedang di chat, tandai terbaca
+        if (items.any((m) => m.isDoctor && !m.isRead)) {
+          ChatService.instance.markAsReadByPatient(chatId);
+        }
         final currentUid = ChatService.instance.currentUid ?? '';
+        final validItems = items
+            .where((m) =>
+                !m.isDeletedFor('pasien') &&
+                (currentUid.isEmpty || !m.isDeletedFor(currentUid)))
+            .toList();
+
         setState(() {
-          _messages = items
-              .where((m) =>
-                  !m.isDeletedFor('pasien') &&
-                  (currentUid.isEmpty || !m.isDeletedFor(currentUid)))
-              .map((m) => ChatMessage.fromRealtime(m))
-              .toList();
+          _messages = List.generate(validItems.length, (index) {
+            final m = validItems[index];
+            bool isReadComputed = m.isRead;
+
+            if (m.isDoctor) {
+              // Pesan dokter: tampil sebagai terbaca karena pasien sedang melihat layar chat
+              isReadComputed = true;
+            } else if (m.isPatient) {
+              // Pesan pasien: jika di Firestore sudah true, pakai true.
+              // Jika belum, cek apakah dokter sudah membalas setelah pesan ini
+              if (!isReadComputed) {
+                final hasSubsequentDoctorMsg = validItems
+                    .sublist(index + 1)
+                    .any((later) => later.isDoctor);
+                if (hasSubsequentDoctorMsg) {
+                  isReadComputed = true;
+                }
+              }
+            }
+
+            return ChatMessage(
+              id: m.id,
+              text: m.text,
+              isUser: m.isPatient,
+              isSystem: m.isSystem,
+              time: m.time,
+              isRead: isReadComputed,
+              type: m.type,
+              attachmentData: m.attachmentData,
+              attachmentName: m.attachmentName,
+              attachmentSize: m.attachmentSize,
+            );
+          });
         });
         _scrollToBottom();
       });
@@ -465,14 +541,25 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     super.dispose();
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+  void _scrollToBottom({bool delayed = true}) {
+    void executeScroll() {
+      if (!mounted || !_scrollController.hasClients) return;
+      final target = _scrollController.position.maxScrollExtent;
+      if (target > 0) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent + 80,
-          duration: const Duration(milliseconds: 300),
+          target,
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      executeScroll();
+      if (delayed) {
+        Future.delayed(const Duration(milliseconds: 120), () {
+          if (mounted) executeScroll();
+        });
       }
     });
   }
@@ -535,6 +622,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
         attachmentName: attachmentName,
         attachmentSize: attachmentSize,
       );
+      ChatService.instance.markAsReadByPatient(_chatId!);
     } catch (e) {
       debugPrint('⚠️ Error sending message: $e');
     }
@@ -1386,8 +1474,10 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
           Expanded(
             child: ListView(
               controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.only(left: 16, right: 16, top: 10, bottom: 24),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
               children: [
                 // Pill tanggal "Hari ini"
                 Center(
@@ -1444,7 +1534,10 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     ),
                   )
                 else
-                  ..._messages.map((msg) => _buildMessageBubble(msg)),
+                  ..._messages.map((msg) => KeyedSubtree(
+                        key: ValueKey('msg_${msg.id}'),
+                        child: _buildMessageBubble(msg),
+                      )),
               ],
             ),
           ),
@@ -1819,13 +1912,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     final isUser = msg.isUser;
     final isImage = msg.type == 'image';
     final isDocument = msg.type == 'document';
-
-    Uint8List? imageBytes;
-    if (isImage && msg.attachmentData != null && msg.attachmentData!.isNotEmpty) {
-      try {
-        imageBytes = base64Decode(msg.attachmentData!);
-      } catch (_) {}
-    }
+    final imageBytes = isImage ? msg.decodedBytes : null;
 
     if (isUser) {
       // Bubble User / Pasien (Soft Pink Gradient)
@@ -1868,19 +1955,43 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     // Lampiran Gambar Pasien
                     if (isImage && imageBytes != null) ...[
                       GestureDetector(
-                        onTap: () => _openFullScreenImage(imageBytes!, msg.attachmentName),
+                        onTap: () => _openFullScreenImage(imageBytes, msg.attachmentName),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
-                            constraints: const BoxConstraints(
-                              maxHeight: 200,
-                              maxWidth: 240,
-                            ),
+                            width: 220,
+                            height: 180,
                             color: Colors.black12,
                             child: Stack(
                               alignment: Alignment.bottomRight,
                               children: [
-                                Image.memory(imageBytes, fit: BoxFit.cover),
+                                Image.memory(
+                                  imageBytes,
+                                  width: 220,
+                                  height: 180,
+                                  fit: BoxFit.cover,
+                                  gaplessPlayback: true,
+                                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                                    if (wasSynchronouslyLoaded || frame != null) {
+                                      return child;
+                                    }
+                                    return Container(
+                                      width: 220,
+                                      height: 180,
+                                      color: Colors.black12,
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                                 Container(
                                   padding: const EdgeInsets.all(4),
                                   margin: const EdgeInsets.all(6),
@@ -1988,10 +2099,10 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     ),
                   ),
                   const SizedBox(width: 3),
-                  const Icon(
-                    Icons.done_all_rounded,
+                  Icon(
+                    msg.isRead ? Icons.done_all_rounded : Icons.done_rounded,
                     size: 14,
-                    color: _primaryPink,
+                    color: msg.isRead ? _primaryPink : const Color(0xFF9E9E9E),
                   ),
                   const SizedBox(width: 4),
                   InkWell(
@@ -2062,19 +2173,43 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                           // Lampiran Gambar Dokter
                           if (isImage && imageBytes != null) ...[
                             GestureDetector(
-                              onTap: () => _openFullScreenImage(imageBytes!, msg.attachmentName),
+                              onTap: () => _openFullScreenImage(imageBytes, msg.attachmentName),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Container(
-                                  constraints: const BoxConstraints(
-                                    maxHeight: 200,
-                                    maxWidth: 240,
-                                  ),
+                                  width: 220,
+                                  height: 180,
                                   color: Colors.black12,
                                   child: Stack(
                                     alignment: Alignment.bottomRight,
                                     children: [
-                                      Image.memory(imageBytes, fit: BoxFit.cover),
+                                      Image.memory(
+                                        imageBytes,
+                                        width: 220,
+                                        height: 180,
+                                        fit: BoxFit.cover,
+                                        gaplessPlayback: true,
+                                        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                                          if (wasSynchronouslyLoaded || frame != null) {
+                                            return child;
+                                          }
+                                          return Container(
+                                            width: 220,
+                                            height: 180,
+                                            color: Colors.black12,
+                                            child: const Center(
+                                              child: SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                       Container(
                                         padding: const EdgeInsets.all(4),
                                         margin: const EdgeInsets.all(6),
