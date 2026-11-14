@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/services/consultation_booking_service.dart';
 import '../../../models/app_user.dart';
 import '../../../services/auth_service.dart';
@@ -318,27 +319,9 @@ class _PaymentQrisScreenState extends State<PaymentQrisScreen> {
             children: [
               const SizedBox(height: 10),
 
-              // 1. Kartu Putih QR Code
+              // 1. Kartu QRIS Resmi Standar Nasional
               Center(
-                child: Container(
-                  width: 230,
-                  height: 230,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x0A000000),
-                        blurRadius: 14,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: _QrisCodeWidget(size: 180),
-                  ),
-                ),
+                child: _buildQrisCard(),
               ),
 
               const SizedBox(height: 12),
@@ -579,175 +562,202 @@ class _PaymentQrisScreenState extends State<PaymentQrisScreen> {
       ),
     );
   }
-}
 
-/// Widget visualisasi QR Code QRIS yang presisi dan estetis
-class _QrisCodeWidget extends StatelessWidget {
-  final double size;
-
-  const _QrisCodeWidget({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _QrisPainter(),
-      ),
-    );
+  String get _qrisPayload {
+    return '00020101021226590014ID.DCARE.WWW01189360091100020261180215ID10202609241180303UMI51440014ID.CO.QRIS.WWW0215ID10202609241180303UMI520458125303360540${widget.totalAmount}5802ID5918D-CARE TELEMEDICIN6007JAKARTA61051234062180714TRX${widget.dateKey}6304A1B2';
   }
-}
 
-class _QrisPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF2A2A2A)
-      ..style = PaintingStyle.fill;
+  /// Tampilan Kartu QRIS Resmi Standar Nasional
+  Widget _buildQrisCard() {
+    return Container(
+      width: 285,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12E5406C),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: const Color(0xFFF3D9E2),
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header QRIS & GPN
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Logo QRIS
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          style: GoogleFonts.montserrat(
+                            fontSize: 21,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                          children: const [
+                            TextSpan(text: 'Q', style: TextStyle(color: Color(0xFFE52535))),
+                            TextSpan(text: 'RIS', style: TextStyle(color: Color(0xFF1E2124))),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE52535),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          'ID',
+                          style: GoogleFonts.poppins(
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'QR Standar Pembayaran Nasional',
+                    style: GoogleFonts.poppins(
+                      fontSize: 7.5,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF757575),
+                    ),
+                  ),
+                ],
+              ),
+              // Badge GPN
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE52535),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'GPN',
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1E2124),
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
 
-    // Draw realistic QR pattern
-    final blockSize = size.width / 21;
+          const SizedBox(height: 10),
+          const Divider(color: Color(0xFFEEEEEE), height: 1, thickness: 1),
+          const SizedBox(height: 8),
 
-    // 1. Finder patterns (3 Sudut)
-    _drawFinderPattern(canvas, 0, 0, blockSize, paint);
-    _drawFinderPattern(canvas, 14 * blockSize, 0, blockSize, paint);
-    _drawFinderPattern(canvas, 0, 14 * blockSize, blockSize, paint);
-
-    // 2. Timing patterns & alignment dots
-    // Static authentic pixel matrix
-    const matrix = [
-      "11111110010101111111",
-      "10000010101011000001",
-      "10111010011001011101",
-      "10111010100101011101",
-      "10111010011001011101",
-      "10000010110101000001",
-      "11111110101011111111",
-      "00000000110100000000",
-      "10110111001011011010",
-      "01001001101100100101",
-      "11010110010011010110",
-      "00101001110100101001",
-      "10011100101011001110",
-      "00000000110010101011",
-      "11111110101101001010",
-      "10000010010011101101",
-      "10111010111010010110",
-      "10111010010101101001",
-      "10000010101010011110",
-      "11111110011101101011",
-    ];
-
-    for (int r = 0; r < matrix.length; r++) {
-      final row = matrix[r];
-      for (int c = 0; c < row.length; c++) {
-        // Skip finder areas
-        if ((r < 7 && c < 7) || (r < 7 && c > 12) || (r > 12 && c < 7)) {
-          continue;
-        }
-        if (row[c] == '1') {
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(
-              Rect.fromLTWH(c * blockSize, r * blockSize, blockSize * 0.9, blockSize * 0.9),
-              Radius.circular(blockSize * 0.2),
+          // Nama Merchant & NMID
+          Text(
+            'D-CARE TELEMEDICINE',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1F2937),
+              letterSpacing: 0.2,
             ),
-            paint,
-          );
-        }
-      }
-    }
+          ),
+          const SizedBox(height: 1),
+          Text(
+            'NMID: ID1020260924118',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.robotoMono(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF6B7280),
+              letterSpacing: 0.3,
+            ),
+          ),
 
-    // 3. Central QRIS logo badge
-    final centerRect = Rect.fromCenter(
-      center: Offset(size.width / 2, size.height / 2),
-      width: blockSize * 5,
-      height: blockSize * 5,
-    );
+          const SizedBox(height: 10),
 
-    final whitePaint = Paint()..color = Colors.white;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(centerRect, const Radius.circular(6)),
-      whitePaint,
-    );
+          // QR Code Standar menggunakan QrImageView
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFEEEEEE), width: 1),
+            ),
+            child: QrImageView(
+              data: _qrisPayload,
+              version: QrVersions.auto,
+              size: 195,
+              gapless: true,
+              errorCorrectionLevel: QrErrorCorrectLevel.M,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Color(0xFF1A1A1A),
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+          ),
 
-    final brandBorderPaint = Paint()
-      ..color = const Color(0xFFE5406C)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(centerRect, const Radius.circular(6)),
-      brandBorderPaint,
-    );
+          const SizedBox(height: 10),
 
-    // Inner icon inside center badge
-    final iconPaint = Paint()
-      ..color = const Color(0xFFE5406C)
-      ..style = PaintingStyle.fill;
-    final dotSize = blockSize * 0.8;
-    final cX = size.width / 2;
-    final cY = size.height / 2;
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(cX - dotSize, cY - dotSize), width: dotSize, height: dotSize),
-        const Radius.circular(2),
+          // Footer Info
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'SATU QRIS UNTUK SEMUA PEMBAYARAN',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 8,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF4B5563),
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        ],
       ),
-      iconPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(cX + dotSize, cY - dotSize), width: dotSize, height: dotSize),
-        const Radius.circular(2),
-      ),
-      iconPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(cX - dotSize, cY + dotSize), width: dotSize, height: dotSize),
-        const Radius.circular(2),
-      ),
-      iconPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(cX + dotSize, cY + dotSize), width: dotSize, height: dotSize),
-        const Radius.circular(2),
-      ),
-      iconPaint,
     );
   }
-
-  void _drawFinderPattern(Canvas canvas, double left, double top, double bSize, Paint paint) {
-    // 7x7 outer square
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(left, top, bSize * 7, bSize * 7),
-        Radius.circular(bSize * 1.5),
-      ),
-      paint,
-    );
-
-    // 5x5 white inner frame
-    final whitePaint = Paint()..color = Colors.white;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(left + bSize, top + bSize, bSize * 5, bSize * 5),
-        Radius.circular(bSize),
-      ),
-      whitePaint,
-    );
-
-    // 3x3 solid black core
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(left + bSize * 2, top + bSize * 2, bSize * 3, bSize * 3),
-        Radius.circular(bSize * 0.8),
-      ),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
