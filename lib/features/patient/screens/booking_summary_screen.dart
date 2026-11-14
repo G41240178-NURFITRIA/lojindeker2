@@ -612,7 +612,6 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
           const SizedBox(height: 8),
           ...banks.map((b) {
             final isBankSelected = _selectedBank == b['id'];
-            final bankColor = Color(b['color'] as int);
 
             return InkWell(
               onTap: () {
@@ -634,25 +633,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 52,
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: bankColor.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Center(
-                        child: Text(
-                          b['code'] as String,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: bankColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
+                    _buildBankLogoBadge(b['id'] as String),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         b['name'] as String,
@@ -685,6 +667,196 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
         ],
       ),
     );
+  }
+
+  /// Badge Logo Resmi masing-masing Bank (Mandiri, BRI, BNI, BCA)
+  Widget _buildBankLogoBadge(String bankId) {
+    switch (bankId) {
+      case 'mandiri':
+        return Container(
+          width: 68,
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFD6E4F0), width: 1),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A003D79),
+                blurRadius: 4,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Pita gelombang emas khas Bank Mandiri
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  width: 26,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFB700), Color(0xFFFFD54F)],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                'mandiri',
+                style: GoogleFonts.poppins(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  fontStyle: FontStyle.italic,
+                  color: const Color(0xFF003D79),
+                  height: 1.0,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'bri':
+        return Container(
+          width: 68,
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFD6E4F0), width: 1),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A00529C),
+                blurRadius: 4,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00529C),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Center(
+                  child: Text(
+                    'B',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'BRI',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF00529C),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'bni':
+        return Container(
+          width: 68,
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFF3DCD4), width: 1),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0AE05A1F),
+                blurRadius: 4,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 8,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE55300),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'BNI',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF006677),
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'bca':
+      default:
+        return Container(
+          width: 68,
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFD6E4F0), width: 1),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A005BAC),
+                blurRadius: 4,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.shield_rounded,
+                size: 14,
+                color: Color(0xFF005BAC),
+              ),
+              const SizedBox(width: 3),
+              Text(
+                'BCA',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  fontStyle: FontStyle.italic,
+                  color: const Color(0xFF005BAC),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        );
+    }
   }
 
   /// Detail Saldo GoPay dan Rincian Pemotongan

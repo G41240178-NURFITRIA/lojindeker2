@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/risk_assessment_model.dart';
 import 'consultation_list_screen.dart';
 import '../../../core/services/patient_activity_service.dart';
+import '../../../naive_bayes_model.dart';
 
 /// Halaman Detail Risiko Diabetes sesuai desain referensi (Image 2)
 /// Fokus murni ke hasil Cek Risiko tanpa tab Konsultasi dan Resep.
@@ -21,10 +22,13 @@ class RiskDetailScreen extends StatefulWidget {
   final bool smokingHistory;
   final bool hypertensionHistory;
   final bool cardiovascularHistory;
+  final bool vegetableConsumption;
+  final bool fruitConsumption;
+  final bool physicalActivity;
+  final HasilPrediksi? hasilPrediksiNb;
   final RiskAssessmentModel? assessment;
 
-  /// Hasil prediksi dari Flask API (misal: "Berisiko" / "Tidak Berisiko")
-  /// Null jika API tidak tersedia (fallback ke kalkulasi manual)
+  /// Hasil prediksi dari Flask API / Naive Bayes
   final String? hasilPrediksiApi;
 
   const RiskDetailScreen({
@@ -39,6 +43,10 @@ class RiskDetailScreen extends StatefulWidget {
     this.smokingHistory = false,
     this.hypertensionHistory = false,
     this.cardiovascularHistory = false,
+    this.vegetableConsumption = true,
+    this.fruitConsumption = true,
+    this.physicalActivity = true,
+    this.hasilPrediksiNb,
     this.assessment,
     this.hasilPrediksiApi,
   });
@@ -57,7 +65,9 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final score = calculatedScore;
         final String status;
-        if (score < 30) {
+        if (widget.hasilPrediksiNb != null) {
+          status = widget.hasilPrediksiNb!.berisiko ? 'Tinggi' : 'Rendah';
+        } else if (score < 30) {
           status = 'Rendah';
         } else if (score <= 60) {
           status = 'Sedang';
@@ -89,6 +99,9 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
 
   /// Hitung total skor risiko diabetes (rentang 0 - 100)
   int get calculatedScore {
+    if (widget.hasilPrediksiNb != null) {
+      return (widget.hasilPrediksiNb!.probabilitasDiabetes * 100).round().clamp(0, 100);
+    }
     if (widget.assessment != null) {
       return widget.assessment!.score;
     }
@@ -129,8 +142,9 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final score = calculatedScore;
+    final nb = widget.hasilPrediksiNb;
 
-    // Konfigurasi alert box berdasarkan level risiko
+    // Konfigurasi alert box berdasarkan level risiko / Naive Bayes
     final String riskTitle;
     final String riskDescription;
     final Color notifBgColor;
@@ -138,7 +152,26 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
     final Color notifIconColor;
     final Color notifTextColor;
 
-    if (score < 30) {
+    if (nb != null) {
+      final persenStr = (nb.probabilitasDiabetes * 100).toStringAsFixed(1);
+      if (nb.berisiko) {
+        riskTitle = 'Risiko Tinggi ($persenStr%) : ';
+        riskDescription =
+            'Hasil prediksi menunjukkan indikasi risiko Diabetes Melitus Tipe 2. Sangat disarankan berkonsultasi dengan dokter untuk pemeriksaan lebih lanjut.';
+        notifBgColor = const Color(0xFFFFEBEE);
+        notifBorderColor = const Color(0xFFFFCDD2);
+        notifIconColor = const Color(0xFFC62828);
+        notifTextColor = const Color(0xFFB71C1C);
+      } else {
+        riskTitle = 'Risiko Rendah ($persenStr%) : ';
+        riskDescription =
+            'Hasil prediksi menunjukkan Non Diabetes Melitus Tipe 2. Pertahankan gaya hidup sehat, olahraga rutin, dan pola makan seimbang.';
+        notifBgColor = const Color(0xFFF1F8E9);
+        notifBorderColor = const Color(0xFFC8E6C9);
+        notifIconColor = const Color(0xFF2E7D32);
+        notifTextColor = const Color(0xFF1B5E20);
+      }
+    } else if (score < 30) {
       riskTitle = 'Risiko Rendah : ';
       riskDescription = 'Pertahankan gaya hidup sehat Anda. Lanjutkan olahraga rutin dan pola makan seimbang.';
       notifBgColor = const Color(0xFFF1F8E9);
@@ -236,7 +269,10 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
     required Color notifTextColor,
     String? hasilPrediksiApi,
   }) {
-    final double markerPercent = (score / 100.0).clamp(0.0, 1.0);
+    final nb = widget.hasilPrediksiNb;
+    final double markerPercent = nb != null
+        ? nb.probabilitasDiabetes.clamp(0.0, 1.0)
+        : (score / 100.0).clamp(0.0, 1.0);
 
     return Container(
       width: double.infinity,
@@ -256,17 +292,17 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Badge hasil ML dari API — disembunyikan karena prediksi tidak akurat
-          if (false && hasilPrediksiApi != null) ...[
+          // Badge Hasil Prediksi Naive Bayes
+          if (nb != null || hasilPrediksiApi != null) ...[
             Builder(
               builder: (context) {
-                // Konversi label API ke teks yang lebih user-friendly
-                final bool tidakDiabetes = hasilPrediksiApi
-                    .toLowerCase()
-                    .contains('tidak');
-                final String labelTampil = tidakDiabetes
-                    ? 'Tidak Terdeteksi Diabetes Mellitus Tipe 2'
-                    : 'Diabetes Mellitus Tipe 2';
+                final bool berisiko = nb != null
+                    ? nb.berisiko
+                    : !(hasilPrediksiApi ?? '').toLowerCase().contains('rendah') &&
+                      !(hasilPrediksiApi ?? '').toLowerCase().contains('tidak');
+                final String labelTampil = berisiko
+                    ? 'Prediksi: Berisiko Diabetes Melitus Tipe 2'
+                    : 'Prediksi: Non Diabetes Melitus Tipe 2';
 
                 return Container(
                   padding: const EdgeInsets.symmetric(
@@ -274,37 +310,39 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: tidakDiabetes
-                        ? const Color(0xFFE8F5E9)
-                        : const Color(0xFFFFEBEE),
+                    color: berisiko
+                        ? const Color(0xFFFFEBEE)
+                        : const Color(0xFFE8F5E9),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: tidakDiabetes
-                          ? const Color(0xFFA5D6A7)
-                          : const Color(0xFFEF9A9A),
+                      color: berisiko
+                          ? const Color(0xFFEF9A9A)
+                          : const Color(0xFFA5D6A7),
                     ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        tidakDiabetes
-                            ? Icons.check_circle_outline
-                            : Icons.warning_amber_rounded,
-                        size: 15,
-                        color: tidakDiabetes
-                            ? const Color(0xFF2E7D32)
-                            : const Color(0xFFC62828),
+                        berisiko
+                            ? Icons.warning_amber_rounded
+                            : Icons.check_circle_outline,
+                        size: 16,
+                        color: berisiko
+                            ? const Color(0xFFC62828)
+                            : const Color(0xFF2E7D32),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        labelTampil,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: tidakDiabetes
-                              ? const Color(0xFF2E7D32)
-                              : const Color(0xFFC62828),
+                      Flexible(
+                        child: Text(
+                          labelTampil,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: berisiko
+                                ? const Color(0xFFC62828)
+                                : const Color(0xFF2E7D32),
+                          ),
                         ),
                       ),
                     ],
@@ -315,7 +353,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
             const SizedBox(height: 12),
           ],
           Text(
-            'Skor Risiko Saat Ini',
+            nb != null ? 'Probabilitas Risiko Diabetes' : 'Skor Risiko Saat Ini',
             style: GoogleFonts.poppins(
               fontSize: 13.5,
               fontWeight: FontWeight.w500,
@@ -325,9 +363,11 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           const SizedBox(height: 6),
 
           Text(
-            '$score / 100',
+            nb != null
+                ? '${(nb.probabilitasDiabetes * 100).toStringAsFixed(1)}% ($score / 100)'
+                : '$score / 100',
             style: GoogleFonts.poppins(
-              fontSize: 26,
+              fontSize: 24,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF212121),
               letterSpacing: 0.2,
@@ -478,12 +518,46 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 10),
+
+          // Catatan bukan diagnosis medis
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFFE082)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.medical_information_outlined,
+                  size: 16,
+                  color: Color(0xFFF57F17),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Catatan: Hasil prediksi ini merupakan skrining awal dan bukan diagnosis medis.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF795548),
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  /// Card Putih 2: "Prediksi Kontribusi Faktor" sesuai Screenshot 2
+  /// Card Putih 2: "Prediksi Kontribusi Faktor" sesuai 10 variabel dataset
   Widget _buildFactorsCard() {
     return Container(
       width: double.infinity,
@@ -513,18 +587,9 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           ),
           const SizedBox(height: 16),
 
-          // 1. Riwayat Keluarga Diabetes
+          // 1. Indeks Massa Tubuh (IMT)
           _buildFactorRow(
-            title: 'Riwayat Keluarga Diabetes',
-            dotColor: widget.familyHistory
-                ? const Color(0xFFE53935)
-                : const Color(0xFF2E7D32),
-          ),
-          const SizedBox(height: 14),
-
-          // 2. BMI
-          _buildFactorRow(
-            title: 'BMI',
+            title: 'Indeks Massa Tubuh (${widget.imtCategory})',
             dotColor: widget.imt < 23.0
                 ? const Color(0xFF2E7D32)
                 : (widget.imt < 25.0
@@ -533,7 +598,43 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           ),
           const SizedBox(height: 14),
 
-          // 3. Riwayat Hipertensi
+          // 2. Usia
+          _buildFactorRow(
+            title: 'Usia (${widget.age} Tahun)',
+            dotColor: widget.age < 35
+                ? const Color(0xFF2E7D32)
+                : (widget.age < 50
+                      ? const Color(0xFFFFA000)
+                      : const Color(0xFFE53935)),
+          ),
+          const SizedBox(height: 14),
+
+          // 3. Jenis Kelamin
+          _buildFactorRow(
+            title: 'Jenis Kelamin (${widget.gender})',
+            dotColor: const Color(0xFF2E7D32),
+          ),
+          const SizedBox(height: 14),
+
+          // 4. Riwayat Keluarga DM
+          _buildFactorRow(
+            title: 'Riwayat Keluarga DM',
+            dotColor: widget.familyHistory
+                ? const Color(0xFFE53935)
+                : const Color(0xFF2E7D32),
+          ),
+          const SizedBox(height: 14),
+
+          // 5. Riwayat Merokok
+          _buildFactorRow(
+            title: 'Riwayat Merokok',
+            dotColor: widget.smokingHistory
+                ? const Color(0xFFE53935)
+                : const Color(0xFF2E7D32),
+          ),
+          const SizedBox(height: 14),
+
+          // 6. Riwayat Hipertensi
           _buildFactorRow(
             title: 'Riwayat Hipertensi',
             dotColor: widget.hypertensionHistory
@@ -542,7 +643,7 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           ),
           const SizedBox(height: 14),
 
-          // 4. Riwayat Kardiovaskuler
+          // 7. Riwayat Kardiovaskuler
           _buildFactorRow(
             title: 'Riwayat Kardiovaskuler',
             dotColor: widget.cardiovascularHistory
@@ -551,23 +652,30 @@ class _RiskDetailScreenState extends State<RiskDetailScreen> {
           ),
           const SizedBox(height: 14),
 
-          // 5. Merokok
+          // 8. Konsumsi Sayuran
           _buildFactorRow(
-            title: 'Merokok',
-            dotColor: widget.smokingHistory
-                ? const Color(0xFFE53935)
-                : const Color(0xFF2E7D32),
+            title: 'Konsumsi Sayuran',
+            dotColor: widget.vegetableConsumption
+                ? const Color(0xFF2E7D32)
+                : const Color(0xFFE53935),
           ),
           const SizedBox(height: 14),
 
-          // 6. Usia
+          // 9. Konsumsi Buah-buahan
           _buildFactorRow(
-            title: 'Usia',
-            dotColor: widget.age < 45
+            title: 'Konsumsi Buah-buahan',
+            dotColor: widget.fruitConsumption
                 ? const Color(0xFF2E7D32)
-                : (widget.age < 55
-                      ? const Color(0xFFFFA000)
-                      : const Color(0xFFE53935)),
+                : const Color(0xFFE53935),
+          ),
+          const SizedBox(height: 14),
+
+          // 10. Aktivitas Fisik
+          _buildFactorRow(
+            title: 'Aktivitas Fisik',
+            dotColor: widget.physicalActivity
+                ? const Color(0xFF2E7D32)
+                : const Color(0xFFE53935),
           ),
         ],
       ),

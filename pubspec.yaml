@@ -1,4 +1,4 @@
-﻿name: d_care
+name: d_care
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -76,6 +76,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/model_nb_dcare.json
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
