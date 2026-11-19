@@ -61,6 +61,8 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
 
   int get _totalAmount => widget.consultationFee + widget.serviceFee;
 
+  bool get _isGopaySufficient => _gopayBalance >= _totalAmount;
+
   static const List<String> _monthNames = [
     'Januari',
     'Februari',
@@ -159,7 +161,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
           ),
         ),
       );
-    } else if (_selectedPaymentMethod == 'gopay') {
+    } else if (_selectedPaymentMethod == 'gopay' && _isGopaySufficient) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -523,7 +525,9 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
 
   Widget _buildPaymentOptions() {
     final isVaSelected = _selectedPaymentMethod == 'va';
-    final isGopaySelected = _selectedPaymentMethod == 'gopay';
+    final isGopaySufficient = _isGopaySufficient;
+    final isGopaySelected =
+        _selectedPaymentMethod == 'gopay' && isGopaySufficient;
 
     return Column(
       children: [
@@ -548,27 +552,15 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
 
         const SizedBox(height: 10),
 
-        // 3. GoPay (Menampilkan saldo langsung & rincian saat dipilih)
+        // 3. GoPay (Menampilkan saldo langsung & rincian saat dipilih; nonaktif jika saldo kurang)
         _buildPaymentOptionItem(
           id: 'gopay',
           title: 'GoPay',
-          subtitle: 'Saldo e-wallet GoPay: ${_formatCurrency(_gopayBalance)}',
+          subtitle: isGopaySufficient
+              ? 'Saldo e-wallet GoPay: ${_formatCurrency(_gopayBalance)}'
+              : 'Saldo e-wallet GoPay: ${_formatCurrency(_gopayBalance)} (Saldo tidak cukup)',
           icon: Icons.account_balance_wallet_outlined,
-          badge: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color: const Color(0xFFD4F7E7),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              '✓ Cukup',
-              style: GoogleFonts.poppins(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF00875A),
-              ),
-            ),
-          ),
+          isEnabled: isGopaySufficient,
           extraContent: isGopaySelected ? _buildGopayBalanceDetail() : null,
         ),
       ],
@@ -932,121 +924,146 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
     required IconData icon,
     Widget? badge,
     Widget? extraContent,
+    bool isEnabled = true,
   }) {
-    final isSelected = _selectedPaymentMethod == id;
+    final isSelected = isEnabled && _selectedPaymentMethod == id;
 
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedPaymentMethod = id;
-        });
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? _selectedBorderPink : _unselectedBorder,
-            width: isSelected ? 1.5 : 1.2,
-          ),
-          boxShadow: isSelected
-              ? const [
-                  BoxShadow(
-                    color: Color(0x14E5406C),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ]
+    return IgnorePointer(
+      ignoring: !isEnabled,
+      child: Opacity(
+        opacity: isEnabled ? 1.0 : 0.55,
+        child: InkWell(
+          onTap: isEnabled
+              ? () {
+                  setState(() {
+                    _selectedPaymentMethod = id;
+                  });
+                }
               : null,
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                // Ikon kotak soft pink
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFCE7EE),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      icon,
-                      size: 22,
-                      color: _headerPink,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Teks Judul & Subjudul
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            title,
-                            style: GoogleFonts.poppins(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: _textDark,
-                            ),
-                          ),
-                          if (badge != null) ...[
-                            const SizedBox(width: 8),
-                            badge,
-                          ],
-                        ],
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isEnabled
+                  ? Colors.white
+                  : const Color(0xFFE0E0E0).withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: !isEnabled
+                    ? const Color(0xFFBDBDBD)
+                    : (isSelected ? _selectedBorderPink : _unselectedBorder),
+                width: isSelected ? 1.5 : 1.2,
+              ),
+              boxShadow: isSelected
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x14E5406C),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w400,
-                          color: _textGrey,
+                    ]
+                  : null,
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    // Ikon kotak soft pink (abu-abu jika nonaktif)
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: isEnabled
+                            ? const Color(0xFFFCE7EE)
+                            : const Color(0xFFD6D6D6),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          icon,
+                          size: 22,
+                          color: isEnabled
+                              ? _headerPink
+                              : const Color(0xFF8A8A8A),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-                // Radio Button Custom
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? _headerPink : const Color(0xFFCECECE),
-                      width: isSelected ? 2 : 1.8,
                     ),
-                  ),
-                  child: isSelected
-                      ? Center(
-                          child: Container(
-                            width: 10,
-                            height: 10,
-                            decoration: const BoxDecoration(
-                              color: _headerPink,
-                              shape: BoxShape.circle,
+                    const SizedBox(width: 12),
+
+                    // Teks Judul & Subjudul
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                title,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isEnabled
+                                      ? _textDark
+                                      : const Color(0xFF757575),
+                                ),
+                              ),
+                              if (badge != null) ...[
+                                const SizedBox(width: 8),
+                                badge,
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w400,
+                              color: isEnabled
+                                  ? _textGrey
+                                  : const Color(0xFF8E8E8E),
                             ),
                           ),
-                        )
-                      : null,
+                        ],
+                      ),
+                    ),
+
+                    // Radio Button Custom
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: !isEnabled
+                              ? const Color(0xFFBDBDBD)
+                              : (isSelected
+                                  ? _headerPink
+                                  : const Color(0xFFCECECE)),
+                          width: isSelected ? 2 : 1.8,
+                        ),
+                      ),
+                      child: isSelected
+                          ? Center(
+                              child: Container(
+                                width: 10,
+                                height: 10,
+                                decoration: const BoxDecoration(
+                                  color: _headerPink,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                  ],
                 ),
+                if (extraContent != null) extraContent,
               ],
             ),
-            if (extraContent != null) extraContent,
-          ],
+          ),
         ),
       ),
     );
