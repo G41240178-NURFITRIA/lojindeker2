@@ -14,6 +14,10 @@ class NotificationService {
 
   bool _isInitialized = false;
 
+  /// Menyimpan daftar pesan masuk per ID percakapan agar notifikasi tampil bertumpuk seperti WhatsApp
+  final Map<int, List<Message>> _chatMessageHistory = {};
+  static const int _maxStackedMessages = 6;
+
   Future<void> init() async {
     if (_isInitialized) return;
 
@@ -107,10 +111,16 @@ class NotificationService {
     Future.delayed(Duration(seconds: delaySeconds), () async {
       await showDoctorReplyNotification(
         id: 88888,
-        doctorName: 'dr. Yosua (Uji Coba)',
-        message: 'Halo! Ini adalah contoh pesan dokter. Notifikasi di HP Anda sudah aktif dan berhasil! 🎉',
+        doctorName: 'dr. Yosua',
+        message: 'Halo! Ini adalah contoh pesan masuk. Notifikasi di HP Anda sudah aktif dan tampil seperti WhatsApp.',
       );
     });
+  }
+
+  /// Menghapus riwayat tumpukan pesan & membatalkan notifikasi chat saat percakapan sudah dibaca/dibuka
+  Future<void> clearChatNotification(int id) async {
+    if (_chatMessageHistory.remove(id) == null) return;
+    await cancelReminderNotification(id);
   }
 
   // =====================================================================
@@ -289,37 +299,65 @@ class NotificationService {
     );
   }
 
-  /// Menampilkan notifikasi sistem saat pasien menerima balasan chat dari dokter
-  Future<void> showDoctorReplyNotification({
+  /// Menampilkan notifikasi sistem bergaya pesan WhatsApp (MessagingStyle)
+  Future<void> _showWhatsAppStyleChatNotification({
     required int id,
-    required String doctorName,
+    required String channelId,
+    required String channelName,
+    required String channelDescription,
+    required String senderName,
     required String message,
     String? payload,
   }) async {
     await init();
 
-    final BigTextStyleInformation bigTextStyle = BigTextStyleInformation(
-      message,
-      htmlFormatBigText: false,
-      contentTitle: '💬 Balasan dari $doctorName',
-      htmlFormatContentTitle: false,
-      summaryText: 'Pesan Konsultasi',
-      htmlFormatSummaryText: false,
+    final String cleanSender =
+        senderName.trim().isNotEmpty ? senderName.trim() : 'Pesan Baru';
+
+    final Person sender = Person(
+      key: '${channelId}_$id',
+      name: cleanSender,
+      important: true,
+    );
+
+    const Person me = Person(
+      key: 'current_user',
+      name: 'Saya',
+    );
+
+    final List<Message> history =
+        _chatMessageHistory.putIfAbsent(id, () => <Message>[]);
+    history.add(
+      Message(
+        message,
+        DateTime.now(),
+        sender,
+      ),
+    );
+    if (history.length > _maxStackedMessages) {
+      history.removeRange(0, history.length - _maxStackedMessages);
+    }
+
+    final MessagingStyleInformation messagingStyle = MessagingStyleInformation(
+      me,
+      groupConversation: false,
+      messages: List<Message>.from(history),
     );
 
     final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'doctor_chat_channel_v2',
-      'Pesan Konsultasi Dokter',
-      channelDescription: 'Notifikasi balasan pesan konsultasi dari dokter',
+      channelId,
+      channelName,
+      channelDescription: channelDescription,
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
       enableVibration: true,
       showWhen: true,
       visibility: NotificationVisibility.public,
-      styleInformation: bigTextStyle,
+      styleInformation: messagingStyle,
       category: AndroidNotificationCategory.message,
+      groupKey: 'dcare_chat_$id',
     );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -336,9 +374,27 @@ class NotificationService {
 
     await _plugin.show(
       id: id,
-      title: '💬 Balasan dari $doctorName',
+      title: cleanSender,
       body: message,
       notificationDetails: platformDetails,
+      payload: payload,
+    );
+  }
+
+  /// Menampilkan notifikasi sistem saat pasien menerima balasan chat dari dokter (gaya WhatsApp)
+  Future<void> showDoctorReplyNotification({
+    required int id,
+    required String doctorName,
+    required String message,
+    String? payload,
+  }) async {
+    await _showWhatsAppStyleChatNotification(
+      id: id,
+      channelId: 'doctor_chat_channel_v2',
+      channelName: 'Pesan Konsultasi Dokter',
+      channelDescription: 'Notifikasi balasan pesan konsultasi dari dokter',
+      senderName: doctorName,
+      message: message,
       payload: payload,
     );
   }
@@ -409,56 +465,20 @@ class NotificationService {
     } catch (_) {}
   }
 
-  /// Menampilkan notifikasi sistem saat dokter menerima pesan chat dari pasien
+  /// Menampilkan notifikasi sistem saat dokter menerima pesan chat dari pasien (gaya WhatsApp)
   Future<void> showPatientMessageNotification({
     required int id,
     required String patientName,
     required String message,
     String? payload,
   }) async {
-    await init();
-
-    final BigTextStyleInformation bigTextStyle = BigTextStyleInformation(
-      message,
-      htmlFormatBigText: false,
-      contentTitle: '💬 Pesan dari $patientName',
-      htmlFormatContentTitle: false,
-      summaryText: 'Konsultasi Pasien',
-      htmlFormatSummaryText: false,
-    );
-
-    final AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'patient_chat_channel_v2',
-      'Pesan dari Pasien',
-      channelDescription: 'Notifikasi pesan baru dari pasien',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      enableVibration: true,
-      showWhen: true,
-      visibility: NotificationVisibility.public,
-      styleInformation: bigTextStyle,
-      category: AndroidNotificationCategory.message,
-    );
-
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      interruptionLevel: InterruptionLevel.timeSensitive,
-    );
-
-    final NotificationDetails platformDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await _plugin.show(
+    await _showWhatsAppStyleChatNotification(
       id: id,
-      title: '💬 Pesan dari $patientName',
-      body: message,
-      notificationDetails: platformDetails,
+      channelId: 'patient_chat_channel_v2',
+      channelName: 'Pesan dari Pasien',
+      channelDescription: 'Notifikasi pesan baru dari pasien',
+      senderName: patientName,
+      message: message,
       payload: payload,
     );
   }

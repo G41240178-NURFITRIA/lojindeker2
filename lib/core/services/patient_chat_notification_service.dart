@@ -108,7 +108,9 @@ class PatientChatNotificationService {
 
       // Jika bukan snapshot pertama kali load dan ada pesan baru dari dokter
       if (!_isFirstSnapshot) {
-        if (lastSenderRole == 'doctor' &&
+        if (unread == 0) {
+          NotificationService().clearChatNotification(doc.id.hashCode);
+        } else if (lastSenderRole == 'doctor' &&
             unread > 0 &&
             lastMsg.isNotEmpty &&
             lastMsg != previousMsg) {
