@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'risk_detail_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../../../../services/user_repository.dart';
 import '../../../../naive_bayes_model.dart';
 import '../../../../risk_helpers.dart';
 
@@ -47,7 +45,6 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserDob();
     _loadModel();
   }
 
@@ -55,26 +52,6 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
   Future<void> _loadModel() async {
     final m = await NaiveBayesModel.muat();
     if (mounted) setState(() => _nbModel = m);
-  }
-
-  /// Memuat tanggal lahir pasien dari Firestore secara otomatis jika sudah tersimpan di profil
-  Future<void> _loadUserDob() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final appUser = await UserRepository.instance.findByUid(user.uid);
-        if (appUser != null && appUser.dob.isNotEmpty && mounted) {
-          final parsed = DateTime.tryParse(appUser.dob);
-          if (parsed != null) {
-            final age = _calculateAge(parsed);
-            setState(() {
-              _selectedBirthDate = parsed;
-              _ageController.text = age.toString();
-            });
-          }
-        }
-      }
-    } catch (_) {}
   }
 
   /// Hitung usia secara presisi berdasarkan tanggal lahir menggunakan risk_helpers.dart
@@ -697,6 +674,7 @@ class _RiskCheckScreenState extends State<RiskCheckScreen> {
 
     // Validasi semua field terisi
     if (_calculatedImt == null ||
+        _selectedBirthDate == null ||
         age == null ||
         _familyHistory == null ||
         _gender == null ||
