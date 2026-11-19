@@ -4,11 +4,10 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import '../constants/app_colors.dart';
 
-/// Layar Kamera Interaktif D-Care (Lensa Kamera Live dengan Viewfinder Medis)
+/// Layar Kamera Interaktif D-Care (Lensa Kamera Live dengan Viewfinder Bersih)
 /// Menampilkan feed kamera aktif secara langsung (tanpa layar hitam),
-/// dilengkapi garis bidik medis, toggle flash, flip kamera, dan tombol jepret langsung (1 langkah).
+/// dilengkapi garis bidik, toggle flash, flip kamera, dan tombol jepret langsung (1 langkah).
 /// Juga dilengkapi fallback otomatis ke kamera HP bawaan bila diperlukan.
 class InAppCameraScreen extends StatefulWidget {
   final String title;
@@ -27,7 +26,7 @@ class InAppCameraScreen extends StatefulWidget {
 }
 
 class _InAppCameraScreenState extends State<InAppCameraScreen>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   List<CameraDescription> _cameras = [];
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
@@ -38,7 +37,6 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
   String? _initError;
   Uint8List? _capturedImageBytes;
   late AnimationController _shutterAnimController;
-  late AnimationController _scannerAnimController;
 
   final ImagePicker _picker = ImagePicker();
 
@@ -51,10 +49,6 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
       vsync: this,
       duration: const Duration(milliseconds: 90),
     );
-    _scannerAnimController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2400),
-    )..repeat(reverse: true);
 
     _initCamera();
   }
@@ -152,7 +146,6 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
     WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
     _shutterAnimController.dispose();
-    _scannerAnimController.dispose();
     super.dispose();
   }
 
@@ -374,10 +367,10 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                                 width: 68,
                                 height: 68,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  color: Colors.white.withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.4),
+                                    color: Colors.white.withValues(alpha: 0.35),
                                     width: 1.5,
                                   ),
                                 ),
@@ -388,14 +381,14 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                                           height: 28,
                                           child: CircularProgressIndicator(
                                             strokeWidth: 2.5,
-                                            color: AppColors.primary,
+                                            color: Colors.white,
                                           ),
                                         ),
                                       )
                                     : const Center(
                                         child: Icon(
                                           Icons.photo_camera_rounded,
-                                          color: AppColors.primary,
+                                          color: Colors.white,
                                           size: 32,
                                         ),
                                       ),
@@ -403,7 +396,7 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                               const SizedBox(height: 16),
                               Text(
                                 _isLoading
-                                    ? 'Menyiapkan Kamera Medis...'
+                                    ? 'Menyiapkan Kamera...'
                                     : 'Kamera Siap Digunakan',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.poppins(
@@ -428,18 +421,18 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                               ElevatedButton.icon(
                                 onPressed: _pickFromNativeCamera,
                                 icon: const Icon(Icons.camera_alt_rounded,
-                                    size: 17, color: Colors.white),
+                                    size: 17, color: Colors.black87),
                                 label: Text(
                                   'Buka Kamera HP Langsung',
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 12.5,
-                                    color: Colors.white,
+                                    color: Colors.black87,
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.black87,
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 18, vertical: 11),
                                   shape: RoundedRectangleBorder(
@@ -509,62 +502,16 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                     ],
                   ),
 
-                  // Garis Pemindai Laser Medis (Animasi Bergerak Naik-Turun)
-                  AnimatedBuilder(
-                    animation: _scannerAnimController,
-                    builder: (ctx, child) {
-                      return Align(
-                        alignment: Alignment(
-                          0,
-                          -0.85 + (_scannerAnimController.value * 1.7),
-                        ),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 24),
-                          height: 2.5,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.transparent,
-                                AppColors.primary.withValues(alpha: 0.9),
-                                Colors.white,
-                                AppColors.primary.withValues(alpha: 0.9),
-                                Colors.transparent,
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.7),
-                                blurRadius: 10,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  // Lingkaran Fokus di Tengah
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.8),
-                        width: 2,
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.filter_center_focus_rounded,
-                        color: Colors.white,
-                        size: 32,
-                      ),
+                  // Ikon Fokus di Tengah
+                  const Center(
+                    child: Icon(
+                      Icons.filter_center_focus_rounded,
+                      color: Colors.white70,
+                      size: 32,
                     ),
                   ),
 
-                  // Sudut Viewfinder Siku Pink
+                  // Sudut Viewfinder Siku Putih
                   Positioned(
                     top: 14,
                     left: 14,
@@ -756,14 +703,14 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
-                                  color: AppColors.primary,
+                                  color: Colors.black87,
                                 ),
                               ),
                             )
                           : const Center(
                               child: Icon(
                                 Icons.camera_alt_rounded,
-                                color: Color(0xFFD81B60),
+                                color: Colors.black87,
                                 size: 30,
                               ),
                             ),
@@ -896,18 +843,19 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
                   onPressed: _confirmAndSend,
                   icon: const Icon(
                     Icons.check_circle_rounded,
-                    color: Colors.white,
+                    color: Colors.black87,
                     size: 20,
                   ),
                   label: Text(
                     'Gunakan Foto',
                     style: GoogleFonts.poppins(
-                      color: Colors.white,
+                      color: Colors.black87,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -922,11 +870,11 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
     );
   }
 
-  /// Helper Gambar Sudut Siku-Siku Merah Muda (Corner Frame)
+  /// Helper Gambar Sudut Siku-Siku Putih (Corner Frame)
   Widget _buildCorner({required bool top, required bool left}) {
     const double size = 26;
     const double thickness = 3.5;
-    const color = Color(0xFFFF2D55);
+    final color = Colors.white.withValues(alpha: 0.8);
 
     return SizedBox(
       width: size,
