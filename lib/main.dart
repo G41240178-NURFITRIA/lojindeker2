@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/widgets/device_preview_wrapper.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/session_service.dart';
+import 'core/services/app_background_service.dart';
 
 import 'auth_gate.dart';
 
@@ -18,6 +19,9 @@ void main() async {
 
   // Inisialisasi SessionService untuk auto-timeout
   await SessionService.instance.init();
+
+  // Inisialisasi Background Service agar notifikasi chat tetap jalan saat recent apps di-swipe
+  await AppBackgroundService.instance.initialize();
 
   // Set system UI overlay style to match status bar
   SystemChrome.setSystemUIOverlayStyle(

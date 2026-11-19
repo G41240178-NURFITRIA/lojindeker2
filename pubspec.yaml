@@ -51,6 +51,7 @@ dependencies:
   camera: ^0.12.1
   android_intent_plus: ^5.1.0
   qr_flutter: ^4.1.0
+  flutter_background_service: ^5.1.0
 
 
 dev_dependencies:

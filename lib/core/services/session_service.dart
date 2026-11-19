@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/session_config.dart';
 import '../../features/auth/screens/login_screen.dart';
+import 'app_background_service.dart';
 
 /// Service singleton untuk mengelola Session Timeout otomatis aplikasi D-Care.
 /// - Background timeout (5 menit): memeriksa selisih waktu saat app di-minimize, mati layar, atau di-kill.
@@ -87,6 +88,7 @@ class SessionService with WidgetsBindingObserver {
     _stopWarningTimer();
     await clearBackgroundEnteredAt();
     await clearLastActive();
+    await AppBackgroundService.instance.stopKeepAlive();
   }
 
   /// Simpan timestamp saat aplikasi masuk ke background

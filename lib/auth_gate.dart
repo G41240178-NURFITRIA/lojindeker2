@@ -12,6 +12,7 @@ import 'features/patient/screens/patient_dashboard_screen.dart';
 import 'core/services/patient_chat_notification_service.dart';
 import 'core/services/doctor_chat_notification_service.dart';
 import 'core/services/patient_activity_service.dart';
+import 'core/services/app_background_service.dart';
 
 /// AuthGate mengontrol aliran autentikasi aplikasi berdasarkan status login
 /// FirebaseAuth, pemeriksaan timeout cold start, dan role pengguna di Firestore.
@@ -154,6 +155,11 @@ class _AuthGateState extends State<AuthGate> {
                   appUser.uid,
                   doctorName: appUser.fullName,
                 );
+                AppBackgroundService.instance.startKeepAlive(
+                  uid: appUser.uid,
+                  role: 'doctor',
+                  name: appUser.fullName,
+                );
                 return DoctorDashboardScreen(
                   doctorName: appUser.fullName,
                   doctorId: appUser.uid,
@@ -162,6 +168,11 @@ class _AuthGateState extends State<AuthGate> {
                 PatientChatNotificationService.instance.startListening(
                   appUser.uid,
                   patientName: appUser.fullName,
+                );
+                AppBackgroundService.instance.startKeepAlive(
+                  uid: appUser.uid,
+                  role: 'pasien',
+                  name: appUser.fullName,
                 );
                 PatientActivityService.instance.loadUserDataFromFirestore();
                 return PatientDashboardScreen(patientName: appUser.fullName);
