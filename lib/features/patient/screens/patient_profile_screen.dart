@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/profile_image_service.dart';
 import '../../../core/widgets/doctor_avatar_widget.dart';
 import '../../../core/widgets/in_app_camera_screen.dart';
@@ -39,6 +41,9 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
   static const Color _cardBorder = Color(0xFFF8BBD0);
   static const Color _navIconInactive = Color(0xFFEFB3B5);
   static const Color _navIconActive = Color(0xFFD81B60);
+
+  // Nomor WhatsApp Customer Care D-Care (format internasional tanpa + atau 0 di depan)
+  static const String _customerCareWaNumber = '6285706420034';
 
   @override
   void initState() {
@@ -169,6 +174,65 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 
+  Future<void> _openCustomerCareWhatsApp(BuildContext context) async {
+    final message = Uri.encodeComponent(
+      'Halo Admin D-Care, saya $_currentName membutuhkan bantuan terkait aplikasi D-Care.',
+    );
+    final waAppUri = Uri.parse(
+      'whatsapp://send?phone=$_customerCareWaNumber&text=$message',
+    );
+    final waWebUri = Uri.parse(
+      'https://wa.me/$_customerCareWaNumber?text=$message',
+    );
+
+    try {
+      bool launched = false;
+      if (!kIsWeb && await canLaunchUrl(waAppUri)) {
+        launched = await launchUrl(
+          waAppUri,
+          mode: LaunchMode.externalApplication,
+        );
+      }
+      if (!launched) {
+        launched = await launchUrl(
+          waWebUri,
+          mode: LaunchMode.externalApplication,
+        );
+      }
+      if (!launched && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Tidak dapat membuka WhatsApp. Pastikan aplikasi WhatsApp terpasang.',
+              style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+            ),
+            backgroundColor: _darkRose,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal membuka WhatsApp. Silakan coba lagi.',
+              style: GoogleFonts.poppins(fontSize: 12.5, color: Colors.white),
+            ),
+            backgroundColor: _darkRose,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
   void _showHelpDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -207,7 +271,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   ),
                 ),
                 subtitle: Text(
-                  'Hubungi tim layanan 24/7 melalui WhatsApp atau Call Center',
+                  'Hubungi tim layanan 24/7 melalui WhatsApp',
                   style: GoogleFonts.poppins(
                     fontSize: 11.5,
                     color: const Color(0xFF666666),
@@ -217,35 +281,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   Icons.chevron_right_rounded,
                   color: _darkRose,
                 ),
-                onTap: () => Navigator.pop(ctx),
-              ),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(
-                  Icons.menu_book_rounded,
-                  color: _primaryPink,
-                  size: 28,
-                ),
-                title: Text(
-                  'Panduan & FAQ Aplikasi',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  'Pelajari cara menggunakan fitur monitoring, konsultasi, dan cek risiko',
-                  style: GoogleFonts.poppins(
-                    fontSize: 11.5,
-                    color: const Color(0xFF666666),
-                  ),
-                ),
-                trailing: const Icon(
-                  Icons.chevron_right_rounded,
-                  color: _darkRose,
-                ),
-                onTap: () => Navigator.pop(ctx),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _openCustomerCareWhatsApp(context);
+                },
               ),
             ],
           ),
