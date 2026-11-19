@@ -287,18 +287,137 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: _capturedImageBytes != null
-            ? _buildPreviewScreen()
-            : _buildViewfinderScreen(),
-      ),
+      body: _capturedImageBytes != null
+          ? _buildPreviewScreen()
+          : _buildViewfinderScreen(),
     );
   }
 
-  /// Tampilan Kamera Aktif / Viewfinder Live
+  /// Tampilan Kamera Aktif / Viewfinder Live Full Layar
   Widget _buildViewfinderScreen() {
     return Stack(
+      fit: StackFit.expand,
       children: [
+        // 1. Feed Kamera Live Full Layar (Tanpa Garis Tepi / Bingkai)
+        Positioned.fill(
+          child: (_cameraController != null &&
+                  _isCameraInitialized &&
+                  _cameraController!.value.isInitialized)
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    final size = constraints.biggest;
+                    var scale = size.aspectRatio *
+                        _cameraController!.value.aspectRatio;
+                    if (scale < 1) scale = 1 / scale;
+
+                    return ClipRect(
+                      child: Transform.scale(
+                        scale: scale,
+                        child: Center(
+                          child: CameraPreview(_cameraController!),
+                        ),
+                      ),
+                    );
+                  },
+                )
+              : Container(
+                  color: const Color(0xFF161928),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 68,
+                            height: 68,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.35),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: _isLoading
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 28,
+                                      height: 28,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : const Center(
+                                    child: Icon(
+                                      Icons.photo_camera_rounded,
+                                      color: Colors.white,
+                                      size: 32,
+                                    ),
+                                  ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _isLoading
+                                ? 'Menyiapkan Kamera...'
+                                : 'Kamera Siap Digunakan',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _isLoading
+                                ? 'Sedang menghubungkan ke sensor kamera perangkat Anda'
+                                : (_initError ??
+                                    'Gunakan kamera bawaan HP atau pilih dari galeri untuk mengambil berkas medis Anda'),
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white70,
+                              fontSize: 11.5,
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          ElevatedButton.icon(
+                            onPressed: _pickFromNativeCamera,
+                            icon: const Icon(
+                              Icons.camera_alt_rounded,
+                              size: 17,
+                              color: Colors.black87,
+                            ),
+                            label: Text(
+                              'Buka Kamera HP Langsung',
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12.5,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black87,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 11,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+
         // Efek Flash Shutter Putih
         AnimatedBuilder(
           animation: _shutterAnimController,
@@ -315,431 +434,206 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
           },
         ),
 
-        // 1. Area Viewfinder Tengah dengan Feed Kamera Langsung (Bukan Layar Hitam)
-        Center(
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(20, 68, 20, 115),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.35),
-                width: 1.5,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: Stack(
-                alignment: Alignment.center,
-                fit: StackFit.expand,
-                children: [
-                  // Feed Kamera Live dengan Scale Responsif
-                  if (_cameraController != null &&
-                      _isCameraInitialized &&
-                      _cameraController!.value.isInitialized)
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final size = constraints.biggest;
-                        var scale = size.aspectRatio *
-                            _cameraController!.value.aspectRatio;
-                        if (scale < 1) scale = 1 / scale;
-
-                        return ClipRect(
-                          child: Transform.scale(
-                            scale: scale,
-                            child: Center(
-                              child: CameraPreview(_cameraController!),
-                            ),
-                          ),
-                        );
-                      },
-                    )
-                  else
-                    // Tampilan Viewfinder Ramah Saat Kamera Menyiapkan / Butuh Kamera HP
-                    Container(
-                      color: const Color(0xFF161928),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 68,
-                                height: 68,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.35),
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: _isLoading
-                                    ? const Center(
-                                        child: SizedBox(
-                                          width: 28,
-                                          height: 28,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      )
-                                    : const Center(
-                                        child: Icon(
-                                          Icons.photo_camera_rounded,
-                                          color: Colors.white,
-                                          size: 32,
-                                        ),
-                                      ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _isLoading
-                                    ? 'Menyiapkan Kamera...'
-                                    : 'Kamera Siap Digunakan',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _isLoading
-                                    ? 'Sedang menghubungkan ke sensor kamera perangkat Anda'
-                                    : (_initError ?? 'Gunakan kamera bawaan HP atau pilih dari galeri untuk mengambil berkas medis Anda'),
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white70,
-                                  fontSize: 11.5,
-                                  height: 1.4,
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              ElevatedButton.icon(
-                                onPressed: _pickFromNativeCamera,
-                                icon: const Icon(Icons.camera_alt_rounded,
-                                    size: 17, color: Colors.black87),
-                                label: Text(
-                                  'Buka Kamera HP Langsung',
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12.5,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.black87,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 18, vertical: 11),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // Efek Grid Kamera 3x3
-                  Column(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.15),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.15),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const Expanded(child: SizedBox()),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              right: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.15),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              right: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.15),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const Expanded(child: SizedBox()),
-                    ],
-                  ),
-
-                  // Ikon Fokus di Tengah
-                  const Center(
-                    child: Icon(
-                      Icons.filter_center_focus_rounded,
-                      color: Colors.white70,
-                      size: 32,
-                    ),
-                  ),
-
-                  // Sudut Viewfinder Siku Putih
-                  Positioned(
-                    top: 14,
-                    left: 14,
-                    child: _buildCorner(top: true, left: true),
-                  ),
-                  Positioned(
-                    top: 14,
-                    right: 14,
-                    child: _buildCorner(top: true, left: false),
-                  ),
-                  Positioned(
-                    bottom: 14,
-                    left: 14,
-                    child: _buildCorner(top: false, left: true),
-                  ),
-                  Positioned(
-                    bottom: 14,
-                    right: 14,
-                    child: _buildCorner(top: false, left: false),
-                  ),
-
-                  // Label Petunjuk di dalam bingkai
-                  Positioned(
-                    bottom: 18,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.65),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.document_scanner_rounded,
-                            color: Colors.white70,
-                            size: 15,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Posisikan berkas / foto di dalam bingkai',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // 2. Bar Bagian Atas (Header Controls)
+        // 2. Bar Bagian Atas (Header Controls mengambang transparan)
         Positioned(
           top: 0,
           left: 0,
           right: 0,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            color: Colors.black.withValues(alpha: 0.75),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.title,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.7),
+                  Colors.black.withValues(alpha: 0.35),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                        size: 28,
                       ),
-                      Text(
-                        _isCameraInitialized
-                            ? (_isFrontCamera
-                                ? 'Kamera Depan'
-                                : 'Kamera Utama')
-                            : 'Kamera HP Aktif',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white60,
-                          fontSize: 10.5,
-                        ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.title,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            _isCameraInitialized
+                                ? (_isFrontCamera
+                                    ? 'Kamera Depan'
+                                    : 'Kamera Utama')
+                                : 'Kamera HP Aktif',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white70,
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    // Tombol Pilihan Cepat Kamera HP
+                    IconButton(
+                      tooltip: 'Gunakan Kamera HP Bawaan',
+                      onPressed: _pickFromNativeCamera,
+                      icon: const Icon(
+                        Icons.phone_android_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _toggleFlash,
+                      icon: Icon(
+                        _flashMode == 0
+                            ? Icons.flash_auto_rounded
+                            : _flashMode == 1
+                                ? Icons.flash_on_rounded
+                                : Icons.flash_off_rounded,
+                        color: _flashMode == 1 ? Colors.amber : Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ],
                 ),
-                // Tombol Pilihan Cepat Kamera HP
-                IconButton(
-                  tooltip: 'Gunakan Kamera HP Bawaan',
-                  onPressed: _pickFromNativeCamera,
-                  icon: const Icon(
-                    Icons.phone_android_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-                IconButton(
-                  onPressed: _toggleFlash,
-                  icon: Icon(
-                    _flashMode == 0
-                        ? Icons.flash_auto_rounded
-                        : _flashMode == 1
-                            ? Icons.flash_on_rounded
-                            : Icons.flash_off_rounded,
-                    color: _flashMode == 1 ? Colors.amber : Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
 
-        // 3. Bar Bagian Bawah (Tombol Jepret & Navigasi)
+        // 3. Bar Bagian Bawah (Tombol Jepret & Navigasi mengambang transparan)
         Positioned(
           bottom: 0,
           left: 0,
           right: 0,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-            color: Colors.black.withValues(alpha: 0.85),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                // Tombol Ambil dari Galeri
-                InkWell(
-                  onTap: _pickFromGallery,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.75),
+                  Colors.black.withValues(alpha: 0.35),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    // Tombol Ambil dari Galeri
+                    InkWell(
+                      onTap: _pickFromGallery,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.photo_library_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                     ),
-                    child: const Icon(
-                      Icons.photo_library_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
 
-                // Tombol Shutter Utama (Jepret Foto Langsung 1 Langkah)
-                GestureDetector(
-                  onTap: _capturePhoto,
-                  child: Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                    padding: const EdgeInsets.all(5),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                      child: _isCapturing
-                          ? const Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.black87,
+                    // Tombol Shutter Utama (Jepret Foto Langsung 1 Langkah)
+                    GestureDetector(
+                      onTap: _capturePhoto,
+                      child: Container(
+                        width: 76,
+                        height: 76,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 4),
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                        padding: const EdgeInsets.all(5),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                          child: _isCapturing
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                )
+                              : const Center(
+                                  child: Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: Colors.black87,
+                                    size: 30,
+                                  ),
                                 ),
-                              ),
-                            )
-                          : const Center(
-                              child: Icon(
-                                Icons.camera_alt_rounded,
-                                color: Colors.black87,
-                                size: 30,
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-
-                // Tombol Putar Kamera (Flip)
-                InkWell(
-                  onTap: _flipCamera,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
+                        ),
                       ),
                     ),
-                    child: const Icon(
-                      Icons.flip_camera_android_rounded,
-                      color: Colors.white,
-                      size: 24,
+
+                    // Tombol Putar Kamera (Flip)
+                    InkWell(
+                      onTap: _flipCamera,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.flip_camera_android_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -749,164 +643,109 @@ class _InAppCameraScreenState extends State<InAppCameraScreen>
 
   /// Tampilan Pratinjau Sebelum Mengirim
   Widget _buildPreviewScreen() {
-    return Column(
-      children: [
-        // Header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          color: Colors.black,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () {
-                  setState(() => _capturedImageBytes = null);
-                },
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-              Text(
-                'Pratinjau Hasil Foto',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                ),
-              ),
-              const SizedBox(width: 48), // Spacer penyeimbang
-            ],
-          ),
-        ),
-
-        // Foto Hasil Jepretan
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: Image.memory(
-                _capturedImageBytes!,
-                fit: BoxFit.contain,
-                width: double.infinity,
-              ),
-            ),
-          ),
-        ),
-
-        // Action Buttons: Ulangi / Kirim
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          color: Colors.black.withValues(alpha: 0.85),
-          child: Row(
-            children: [
-              // Tombol Ulangi Foto
-              Expanded(
-                child: OutlinedButton.icon(
+    return SafeArea(
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Colors.black,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
                   onPressed: () {
                     setState(() => _capturedImageBytes = null);
                   },
                   icon: const Icon(
-                    Icons.refresh_rounded,
+                    Icons.arrow_back_ios_new_rounded,
                     color: Colors.white,
-                    size: 20,
-                  ),
-                  label: Text(
-                    'Ulangi',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.white54),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                    size: 22,
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              // Tombol Kirim Foto
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _confirmAndSend,
-                  icon: const Icon(
-                    Icons.check_circle_rounded,
-                    color: Colors.black87,
-                    size: 20,
-                  ),
-                  label: Text(
-                    'Gunakan Foto',
-                    style: GoogleFonts.poppins(
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                Text(
+                  'Pratinjau Hasil Foto',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Helper Gambar Sudut Siku-Siku Putih (Corner Frame)
-  Widget _buildCorner({required bool top, required bool left}) {
-    const double size = 26;
-    const double thickness = 3.5;
-    final color = Colors.white.withValues(alpha: 0.8);
-
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        children: [
-          // Garis horizontal
-          Positioned(
-            top: top ? 0 : null,
-            bottom: top ? null : 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: thickness,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(2),
-              ),
+                const SizedBox(width: 48), // Spacer penyeimbang
+              ],
             ),
           ),
-          // Garis vertikal
-          Positioned(
-            top: 0,
-            bottom: 0,
-            left: left ? 0 : null,
-            right: left ? null : 0,
-            child: Container(
-              width: thickness,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(2),
-              ),
+
+          // Foto Hasil Jepretan Full Layar (Tanpa Garis Tepi)
+          Expanded(
+            child: Image.memory(
+              _capturedImageBytes!,
+              fit: BoxFit.contain,
+              width: double.infinity,
+            ),
+          ),
+
+          // Action Buttons: Ulangi / Kirim
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            color: Colors.black.withValues(alpha: 0.85),
+            child: Row(
+              children: [
+                // Tombol Ulangi Foto
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() => _capturedImageBytes = null);
+                    },
+                    icon: const Icon(
+                      Icons.refresh_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    label: Text(
+                      'Ulangi',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.white54),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // Tombol Kirim Foto
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _confirmAndSend,
+                    icon: const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.black87,
+                      size: 20,
+                    ),
+                    label: Text(
+                      'Gunakan Foto',
+                      style: GoogleFonts.poppins(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
