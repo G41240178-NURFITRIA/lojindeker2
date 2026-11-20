@@ -84,6 +84,17 @@ class NotificationService {
           enableVibration: true,
         );
         await androidImpl?.createNotificationChannel(patientChatChannel);
+
+        const AndroidNotificationChannel bgKeepAliveChannel =
+            AndroidNotificationChannel(
+          'dcare_background_keepalive',
+          'Layanan Latar Belakang D-Care',
+          description: 'Menjaga koneksi notifikasi chat saat aplikasi di latar belakang',
+          importance: Importance.low,
+          playSound: false,
+          enableVibration: false,
+        );
+        await androidImpl?.createNotificationChannel(bgKeepAliveChannel);
       }
 
       _isInitialized = true;

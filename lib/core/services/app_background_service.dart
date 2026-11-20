@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/firebase_config.dart';
 import '../constants/session_config.dart';
 import 'notification_service.dart';
 
@@ -32,11 +34,13 @@ class AppBackgroundService {
       androidConfiguration: AndroidConfiguration(
         onStart: onStart,
         autoStart: false,
+        autoStartOnBoot: false,
         isForegroundMode: true,
         notificationChannelId: 'dcare_background_keepalive',
         initialNotificationTitle: 'D-Care Siaga Latar Belakang',
         initialNotificationContent: 'Memantau pesan masuk (sesi aktif 2 menit)...',
         foregroundServiceNotificationId: 99999,
+        foregroundServiceTypes: [AndroidForegroundType.dataSync],
       ),
       iosConfiguration: IosConfiguration(
         autoStart: false,
@@ -101,8 +105,11 @@ class AppBackgroundService {
 /// Fungsi latar belakang yang dieksekusi di Isolate terpisah oleh Android OS
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  DartPluginRegistrant.ensureInitialized();
+
   try {
-    await Firebase.initializeApp();
+    await FirebaseConfig.initialize();
   } catch (_) {}
 
   final notificationService = NotificationService();
