@@ -111,7 +111,6 @@ void onStart(ServiceInstance service) async {
   final prefs = await SharedPreferences.getInstance();
   String? currentUid = prefs.getString('dcare_bg_active_user_id');
   String? currentRole = prefs.getString('dcare_bg_active_user_role');
-  String? currentName = prefs.getString('dcare_bg_active_user_name');
 
   StreamSubscription? chatSubscription;
   final Map<String, String> lastKnownMessages = {};
@@ -119,7 +118,8 @@ void onStart(ServiceInstance service) async {
 
   void startFirestoreStream() {
     chatSubscription?.cancel();
-    if (currentUid == null || currentUid.isEmpty) return;
+    final uid = currentUid;
+    if (uid == null || uid.isEmpty) return;
 
     isFirstSnapshot = true;
 
@@ -127,7 +127,7 @@ void onStart(ServiceInstance service) async {
         .collection('consultation_chats')
         .snapshots()
         .listen((snapshot) {
-      final myUid = currentUid ?? '';
+      final myUid = uid;
       final myRole = currentRole ?? 'pasien';
 
       for (final doc in snapshot.docs) {
@@ -205,7 +205,6 @@ void onStart(ServiceInstance service) async {
     if (event != null) {
       currentUid = event['uid'] as String?;
       currentRole = event['role'] as String?;
-      currentName = event['name'] as String?;
       startFirestoreStream();
     }
   });
