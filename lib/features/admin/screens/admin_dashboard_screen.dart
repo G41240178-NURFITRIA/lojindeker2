@@ -28,7 +28,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _selectedTabIndex = 0;
   String _adminDisplayName = 'Administrator';
   List<AdminArticleModel> _adminArticles = [];
+  Set<String> _deletedBuiltinIds = {};
   StreamSubscription<List<AdminArticleModel>>? _articleSub;
+  StreamSubscription<Set<String>>? _deletedBuiltinSub;
 
   @override
   void initState() {
@@ -45,11 +47,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         });
       }
     });
+    _deletedBuiltinSub = ArticleService.instance.streamDeletedBuiltinIds().listen((deletedIds) {
+      if (mounted) {
+        setState(() {
+          _deletedBuiltinIds = deletedIds;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _articleSub?.cancel();
+    _deletedBuiltinSub?.cancel();
     super.dispose();
   }
 
@@ -358,7 +368,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       _buildManagementTile(
                         iconWidget: const _ArticlesOutlineIcon(color: Colors.white, size: 18),
                         title: 'Kelola Artikel Edukasi',
-                        subtitle: '${educationalArticles.length} artikel aktif',
+                        subtitle: '${educationalArticles.where((a) => !_deletedBuiltinIds.contains(a.id)).length + _adminArticles.length} artikel aktif',
                         onTap: () => _showKelolaArtikelSheet(context),
                       ),
                       const SizedBox(height: 10),
@@ -1579,10 +1589,23 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
 
   void _showArticleForm({AdminArticleModel? articleToEdit}) {
     final isEditing = articleToEdit != null;
+    final urlCtrl = TextEditingController(text: articleToEdit?.sourceUrl ?? '');
+    final initialImg = (articleToEdit?.imageUrl ?? '').trim();
+    final imageUrlCtrl = TextEditingController(
+      text: initialImg.startsWith('http') ? initialImg : '',
+    );
+    final sourceNameCtrl = TextEditingController(text: articleToEdit?.sourceName ?? '');
+    final authorCtrl = TextEditingController(text: articleToEdit?.author ?? '');
+    final publishedDateCtrl = TextEditingController(text: articleToEdit?.publishedDate ?? '');
     final titleCtrl = TextEditingController(text: articleToEdit?.title ?? '');
     final subtitleCtrl = TextEditingController(text: articleToEdit?.subtitle ?? '');
     final contentCtrl = TextEditingController(text: articleToEdit?.content ?? '');
     final reviewerCtrl = TextEditingController(text: articleToEdit?.reviewer ?? '');
+    bool isFetchingUrl = false;
+    bool hasAttemptedImageFetch = false;
+    bool imageFetchFailed = false;
+    Timer? urlDebounceTimer;
+    String lastAutoFetchedUrl = '';
     final List<String> doctorOptions = ['Lainnya (Ketik Manual)'];
     String selectedDoctor = 'Lainnya (Ketik Manual)';
     if (articleToEdit != null && (articleToEdit.reviewer).isNotEmpty) {
@@ -1699,6 +1722,229 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // ── FITUR AMBIL DARI URL OTOMATIS ──
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFCF8F9),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x0A000000), blurRadius: 6, offset: Offset(0, 2)),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.auto_awesome_rounded, size: 20, color: Color(0xFFD81B60)),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Impor Otomatis dari URL Website',
+                                      style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFFD81B60)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Masukkan link artikel (Kemenkes, Alodokter, Halodoc, dll.). Sistem akan menarik judul, gambar, dan ringkasan secara otomatis.',
+                                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF616161), height: 1.35),
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: urlCtrl,
+                                        style: GoogleFonts.poppins(fontSize: 12),
+                                        onChanged: (val) {
+                                          final trimmed = val.trim();
+                                          urlDebounceTimer?.cancel();
+                                          if ((trimmed.startsWith('http://') || trimmed.startsWith('https://')) &&
+                                              trimmed.length > 15 &&
+                                              trimmed != lastAutoFetchedUrl &&
+                                              !isFetchingUrl) {
+                                            urlDebounceTimer = Timer(const Duration(milliseconds: 650), () async {
+                                              if (!ctx.mounted || isFetchingUrl) return;
+                                              lastAutoFetchedUrl = trimmed;
+                                              setModalState(() => isFetchingUrl = true);
+                                              final meta = await ArticleService.instance.fetchMetadataFromUrl(trimmed);
+                                              if (!ctx.mounted) return;
+                                              setModalState(() => isFetchingUrl = false);
+                                              if (meta != null) {
+                                                hasAttemptedImageFetch = true;
+                                                if (meta.title.isNotEmpty) titleCtrl.text = meta.title;
+                                                if (meta.summary.isNotEmpty) subtitleCtrl.text = meta.summary;
+                                                if (meta.sourceName.isNotEmpty) sourceNameCtrl.text = meta.sourceName;
+                                                if (meta.author.isNotEmpty) authorCtrl.text = meta.author;
+                                                if (meta.publishedDate.isNotEmpty) publishedDateCtrl.text = meta.publishedDate;
+                                                if (meta.content.isNotEmpty) contentCtrl.text = meta.content;
+                                                if (readTimes.contains(meta.readTime)) {
+                                                  selectedReadTime = meta.readTime;
+                                                }
+                                                final fetchedImg = meta.imageUrl.trim();
+                                                if (fetchedImg.startsWith('http://') || fetchedImg.startsWith('https://')) {
+                                                  imageUrlCtrl.text = fetchedImg;
+                                                  imageFetchFailed = false;
+                                                } else {
+                                                  imageUrlCtrl.text = '';
+                                                  imageFetchFailed = true;
+                                                }
+                                                setModalState(() {});
+                                              }
+                                            });
+                                          }
+                                        },
+                                        decoration: InputDecoration(
+                                          hintText: 'https://keslan.kemkes.go.id/...',
+                                          hintStyle: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade400),
+                                          filled: true,
+                                          fillColor: Colors.white,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFF8BBD0))),
+                                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFF8BBD0))),
+                                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFD81B60), width: 1.5)),
+                                          prefixIcon: const Icon(Icons.link_rounded, size: 18, color: Color(0xFFD81B60)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ElevatedButton(
+                                      onPressed: isFetchingUrl
+                                          ? null
+                                          : () async {
+                                              final raw = urlCtrl.text.trim();
+                                              if (raw.isEmpty) {
+                                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                                  SnackBar(content: Text('Masukkan URL website terlebih dahulu', style: GoogleFonts.poppins(fontSize: 12))),
+                                                );
+                                                return;
+                                              }
+                                              urlDebounceTimer?.cancel();
+                                              lastAutoFetchedUrl = raw;
+                                              setModalState(() => isFetchingUrl = true);
+                                              final meta = await ArticleService.instance.fetchMetadataFromUrl(raw);
+                                              setModalState(() => isFetchingUrl = false);
+
+                                              if (meta != null) {
+                                                hasAttemptedImageFetch = true;
+                                                if (meta.title.isNotEmpty) titleCtrl.text = meta.title;
+                                                if (meta.summary.isNotEmpty) subtitleCtrl.text = meta.summary;
+                                                if (meta.sourceName.isNotEmpty) sourceNameCtrl.text = meta.sourceName;
+                                                if (meta.author.isNotEmpty) authorCtrl.text = meta.author;
+                                                if (meta.publishedDate.isNotEmpty) publishedDateCtrl.text = meta.publishedDate;
+                                                if (meta.content.isNotEmpty) contentCtrl.text = meta.content;
+                                                if (readTimes.contains(meta.readTime)) {
+                                                  selectedReadTime = meta.readTime;
+                                                }
+
+                                                final fetchedImg = meta.imageUrl.trim();
+                                                if (fetchedImg.startsWith('http://') || fetchedImg.startsWith('https://')) {
+                                                  imageUrlCtrl.text = fetchedImg;
+                                                  imageFetchFailed = false;
+                                                } else {
+                                                  imageUrlCtrl.text = '';
+                                                  imageFetchFailed = true;
+                                                }
+                                                setModalState(() {});
+
+                                                if (ctx.mounted) {
+                                                  if (imageFetchFailed) {
+                                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          'Gambar artikel tidak berhasil diambil',
+                                                          style: GoogleFonts.poppins(fontSize: 12),
+                                                        ),
+                                                        backgroundColor: Colors.red.shade700,
+                                                      ),
+                                                    );
+                                                  } else {
+                                                    ScaffoldMessenger.of(ctx).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          'Berhasil mengambil judul, ringkasan, sumber, dan gambar asli dari ${meta.sourceName.isNotEmpty ? meta.sourceName : "Website"}!',
+                                                          style: GoogleFonts.poppins(fontSize: 12),
+                                                        ),
+                                                        backgroundColor: const Color(0xFF2E7D32),
+                                                      ),
+                                                    );
+                                                  }
+                                                }
+                                              } else {
+                                                hasAttemptedImageFetch = true;
+                                                imageFetchFailed = true;
+                                                imageUrlCtrl.text = '';
+                                                setModalState(() {});
+                                                if (ctx.mounted) {
+                                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Gambar artikel tidak berhasil diambil',
+                                                        style: GoogleFonts.poppins(fontSize: 12),
+                                                      ),
+                                                      backgroundColor: Colors.red.shade700,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                            },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFFD81B60),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                      ),
+                                      child: isFetchingUrl
+                                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                          : Text('Ambil Data', style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white)),
+                                    ),
+                                  ],
+                                ),
+                                if (imageUrlCtrl.text.trim().isNotEmpty || (hasAttemptedImageFetch && imageFetchFailed)) ...[
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Preview Gambar Thumbnail:',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFFD81B60),
+                                        ),
+                                      ),
+                                      if (imageUrlCtrl.text.trim().startsWith('http'))
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            'Gambar Asli Website',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF2E7D32),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  buildArticleThumbnailWidget(
+                                    imageUrl: imageUrlCtrl.text.trim(),
+                                    height: 140,
+                                    borderRadius: BorderRadius.circular(10),
+                                    showErrorMessage: true,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
                           _formLabel('Kategori'),
                           const SizedBox(height: 6),
                           Container(
@@ -1721,9 +1967,44 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                           const SizedBox(height: 6),
                           _formField(titleCtrl, 'Contoh: Cara Mengontrol Gula Darah...'),
                           const SizedBox(height: 14),
-                          _formLabel('Subjudul / Deskripsi Singkat'),
+                          _formLabel('Subjudul / Ringkasan Singkat'),
                           const SizedBox(height: 6),
                           _formField(subtitleCtrl, 'Rangkuman singkat isi artikel...', maxLines: 2),
+                          const SizedBox(height: 14),
+                          _formLabel('Nama Sumber / Portal Media'),
+                          const SizedBox(height: 6),
+                          _formField(sourceNameCtrl, 'Terisi otomatis dari website sumber...'),
+                          const SizedBox(height: 14),
+                          _formLabel('Nama Penulis Artikel (Opsional)'),
+                          const SizedBox(height: 6),
+                          _formField(authorCtrl, 'Terisi otomatis jika tersedia di artikel sumber...'),
+                          const SizedBox(height: 14),
+                          _formLabel('Tanggal Publikasi (Opsional)'),
+                          const SizedBox(height: 6),
+                          _formField(publishedDateCtrl, 'Terisi otomatis jika tersedia di artikel sumber...'),
+                          const SizedBox(height: 14),
+                          _formLabel('URL Gambar Thumbnail (Terisi Otomatis)'),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: imageUrlCtrl,
+                            readOnly: true,
+                            style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF616161)),
+                            decoration: InputDecoration(
+                              hintText: 'Terisi otomatis saat klik Ambil Data',
+                              filled: true,
+                              fillColor: const Color(0xFFF5F0F2),
+                              prefixIcon: const Icon(Icons.image_rounded, size: 18, color: Color(0xFFD81B60)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFF8BBD0)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFF8BBD0)),
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 14),
                           _formLabel('Isi Artikel'),
                           const SizedBox(height: 6),
@@ -1792,6 +2073,17 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                                     ? (reviewerCtrl.text.trim().isNotEmpty ? reviewerCtrl.text.trim() : 'Tim Medis LojinDeker')
                                     : selectedDoctor;
 
+                                // Jika admin memasukkan URL website tetapi belum sempat menekan Ambil Data, tarik gambar otomatis sebelum simpan
+                                if (imageUrlCtrl.text.trim().isEmpty && urlCtrl.text.trim().isNotEmpty) {
+                                  final autoMeta = await ArticleService.instance.fetchMetadataFromUrl(urlCtrl.text.trim());
+                                  if (autoMeta != null && autoMeta.imageUrl.trim().startsWith('http')) {
+                                    imageUrlCtrl.text = autoMeta.imageUrl.trim();
+                                    if (sourceNameCtrl.text.trim().isEmpty && autoMeta.sourceName.isNotEmpty) {
+                                      sourceNameCtrl.text = autoMeta.sourceName;
+                                    }
+                                  }
+                                }
+
                                 try {
                                   if (isEditing) {
                                     final updatedArticle = articleToEdit.copyWith(
@@ -1801,6 +2093,11 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                                       content: contentCtrl.text.trim(),
                                       readTime: selectedReadTime,
                                       reviewer: reviewerText,
+                                      sourceUrl: urlCtrl.text.trim(),
+                                      imageUrl: imageUrlCtrl.text.trim(),
+                                      sourceName: sourceNameCtrl.text.trim(),
+                                      author: authorCtrl.text.trim(),
+                                      publishedDate: publishedDateCtrl.text.trim(),
                                       updatedAt: DateTime.now(),
                                     );
                                     await ArticleService.instance.updateArticle(updatedArticle);
@@ -1827,6 +2124,11 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                                       content: contentCtrl.text.trim(),
                                       readTime: selectedReadTime,
                                       reviewer: reviewerText,
+                                      sourceUrl: urlCtrl.text.trim(),
+                                      imageUrl: imageUrlCtrl.text.trim(),
+                                      sourceName: sourceNameCtrl.text.trim(),
+                                      author: authorCtrl.text.trim(),
+                                      publishedDate: publishedDateCtrl.text.trim(),
                                       createdAt: DateTime.now(),
                                     );
                                     await ArticleService.instance.addArticle(newArticle);
@@ -1938,19 +2240,71 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
     );
   }
 
+  void _confirmDeleteBuiltin(EducationArticle article) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Hapus Artikel Bawaan?', style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+        content: Text('Artikel "${article.title}" akan dihapus dari aplikasi.', style: GoogleFonts.poppins(fontSize: 13)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Batal', style: GoogleFonts.poppins(color: Colors.grey))),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ArticleService.instance.deleteBuiltinArticle(article.id);
+                AdminActivityService.instance.logHapusArtikel(
+                  title: article.title,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Artikel "${article.title}" dihapus.', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: const Color(0xFF2E7D32)),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Gagal menghapus: $e', style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: Colors.red.shade700),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            child: Text('Hapus', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<AdminArticleModel>>(
       stream: ArticleService.instance.streamArticles(),
       builder: (context, snapshot) {
         final adminArticles = snapshot.data ?? [];
-        final totalArticles = educationalArticles.length + adminArticles.length;
-        return _buildContent(context, adminArticles, totalArticles);
+        return StreamBuilder<Set<String>>(
+          stream: ArticleService.instance.streamDeletedBuiltinIds(),
+          builder: (context, deletedSnap) {
+            final deletedBuiltinIds = deletedSnap.data ?? <String>{};
+            final visibleBuiltinArticles = educationalArticles
+                .where((a) => !deletedBuiltinIds.contains(a.id))
+                .toList();
+            final totalArticles = visibleBuiltinArticles.length + adminArticles.length;
+            return _buildContent(context, adminArticles, visibleBuiltinArticles, totalArticles);
+          },
+        );
       },
     );
   }
 
-  Widget _buildContent(BuildContext context, List<AdminArticleModel> adminArticles, int totalArticles) {
+  Widget _buildContent(
+    BuildContext context,
+    List<AdminArticleModel> adminArticles,
+    List<EducationArticle> visibleBuiltinArticles,
+    int totalArticles,
+  ) {
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
@@ -2031,22 +2385,24 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                       const SizedBox(height: 8),
                     ],
                     // Label artikel bawaan
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: const Color(0xFF757575).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                          child: Text('Artikel Bawaan', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF757575))),
-                        ),
-                        const SizedBox(width: 8),
-                        Text('${educationalArticles.length} artikel', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    ...educationalArticles.map((article) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _buildArticleItemCard(context, article),
-                    )),
+                    if (visibleBuiltinArticles.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(color: const Color(0xFF757575).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                            child: Text('Artikel Bawaan', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF757575))),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('${visibleBuiltinArticles.length} artikel', style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF9E9E9E))),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ...visibleBuiltinArticles.map((article) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildArticleItemCard(context, article),
+                      )),
+                    ],
                   ],
                 ),
               ),
@@ -2084,72 +2440,82 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD81B60).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        article.category,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFFD81B60),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                    Expanded(
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF2E7D32),
-                              shape: BoxShape.circle,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD81B60).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              article.category,
+                              style: GoogleFonts.poppins(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFD81B60),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Live ke Pasien',
-                            style: GoogleFonts.poppins(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF2E7D32),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 5.5,
+                                  height: 5.5,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF2E7D32),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Live',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF2E7D32),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Spacer(),
-                    // Tombol Edit Real-Time
+                    const SizedBox(width: 6),
+                    // Tombol Pratinjau Baca di Aplikasi
                     InkWell(
-                      onTap: () => _showArticleForm(articleToEdit: article),
+                      onTap: () => showAdminArticleDetailSheet(context, article),
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4.5),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFCE4EC),
+                          color: const Color(0xFFFCF8F9),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFF8BBD0)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.edit_rounded, size: 14, color: Color(0xFFD81B60)),
-                            const SizedBox(width: 4),
+                            const Icon(Icons.menu_book_rounded, size: 13, color: Color(0xFFD81B60)),
+                            const SizedBox(width: 3),
                             Text(
-                              'Edit',
+                              'Baca',
                               style: GoogleFonts.poppins(
-                                fontSize: 11,
+                                fontSize: 10.5,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFFD81B60),
                               ),
@@ -2158,22 +2524,58 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 5),
+                    // Tombol Edit Real-Time
+                    InkWell(
+                      onTap: () => _showArticleForm(articleToEdit: article),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFCE4EC),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.edit_rounded, size: 13, color: Color(0xFFD81B60)),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Edit',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFFD81B60),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
                     // Tombol Hapus
                     InkWell(
                       onTap: () => _confirmDelete(article),
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.all(5),
+                        padding: const EdgeInsets.all(4.5),
                         decoration: BoxDecoration(
                           color: Colors.red.shade50,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red.shade700),
+                        child: Icon(Icons.delete_outline_rounded, size: 15, color: Colors.red.shade700),
                       ),
                     ),
                   ],
                 ),
+                if (article.imageUrl.trim().isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  buildArticleThumbnailWidget(
+                    imageUrl: article.imageUrl,
+                    height: 125,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   article.title,
@@ -2191,6 +2593,19 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                     style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF616161), height: 1.35),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (article.sourceName.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.language_rounded, size: 12, color: Color(0xFFD81B60)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Sumber: ${article.sourceName}',
+                        style: GoogleFonts.poppins(fontSize: 10.5, fontWeight: FontWeight.w600, color: const Color(0xFFD81B60)),
+                      ),
+                    ],
                   ),
                 ],
                 const SizedBox(height: 8),
@@ -2274,7 +2689,7 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Category Capsule & Read Time
+                // Category Capsule & Tombol Hapus
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -2287,6 +2702,32 @@ class _KelolaArtikelModalContentState extends State<_KelolaArtikelModalContent> 
                       child: Text(
                         article.category,
                         style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w700, color: article.categoryColor),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => _confirmDeleteBuiltin(article),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4.5),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.delete_outline_rounded, size: 15, color: Colors.red.shade700),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Hapus',
+                              style: GoogleFonts.poppins(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.red.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],

@@ -17,7 +17,9 @@ class SupportMenuScreen extends StatefulWidget {
 class _SupportMenuScreenState extends State<SupportMenuScreen> {
   static const Color _maroon = Color(0xFFB81018);
   List<AdminArticleModel> _adminArticles = [];
+  Set<String> _deletedBuiltinIds = {};
   StreamSubscription<List<AdminArticleModel>>? _articleSub;
+  StreamSubscription<Set<String>>? _deletedBuiltinSub;
 
   @override
   void initState() {
@@ -29,11 +31,15 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
     _articleSub = ArticleService.instance.streamArticles().listen((articles) {
       if (mounted) setState(() => _adminArticles = articles);
     });
+    _deletedBuiltinSub = ArticleService.instance.streamDeletedBuiltinIds().listen((deletedIds) {
+      if (mounted) setState(() => _deletedBuiltinIds = deletedIds);
+    });
   }
 
   @override
   void dispose() {
     _articleSub?.cancel();
+    _deletedBuiltinSub?.cancel();
     super.dispose();
   }
 
@@ -115,7 +121,7 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${educationalArticles.length + _adminArticles.length} Artikel',
+                      '${educationalArticles.where((a) => !_deletedBuiltinIds.contains(a.id)).length + _adminArticles.length} Artikel',
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -128,30 +134,38 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
               const SizedBox(height: 16),
 
               // Horizontal list of articles (Admin articles real-time + preset articles)
-              SizedBox(
-                height: 295,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: _adminArticles.length + educationalArticles.length,
-                  itemBuilder: (context, index) {
-                    final isAdminArticle = index < _adminArticles.length;
-                    final isLast = index == _adminArticles.length + educationalArticles.length - 1;
-                    if (isAdminArticle) {
-                      final article = _adminArticles[index];
-                      return Padding(
-                        padding: EdgeInsets.only(right: isLast ? 0 : 12),
-                        child: _buildAdminArticleCard(article: article),
-                      );
-                    } else {
-                      final article = educationalArticles[index - _adminArticles.length];
-                      return Padding(
-                        padding: EdgeInsets.only(right: isLast ? 0 : 12),
-                        child: _buildArticleCard(article: article),
-                      );
-                    }
-                  },
-                ),
+              Builder(
+                builder: (context) {
+                  final visibleBuiltin = educationalArticles
+                      .where((a) => !_deletedBuiltinIds.contains(a.id))
+                      .toList();
+                  final totalCount = _adminArticles.length + visibleBuiltin.length;
+                  return SizedBox(
+                    height: 295,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: totalCount,
+                      itemBuilder: (context, index) {
+                        final isAdminArticle = index < _adminArticles.length;
+                        final isLast = index == totalCount - 1;
+                        if (isAdminArticle) {
+                          final article = _adminArticles[index];
+                          return Padding(
+                            padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                            child: _buildAdminArticleCard(article: article),
+                          );
+                        } else {
+                          final article = visibleBuiltin[index - _adminArticles.length];
+                          return Padding(
+                            padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                            child: _buildArticleCard(article: article),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 24),
 
@@ -516,22 +530,13 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header gradien dengan badge 'Baru'
+              // Header gambar artikel / gradien dengan badge 'Baru'
               Stack(
                 children: [
-                  Container(
+                  buildArticleThumbnailWidget(
+                    imageUrl: article.imageUrl,
                     height: 145,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFD81B60), Color(0xFFF06292)],
-                      ),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-                    ),
-                    child: Center(
-                      child: Icon(Icons.article_rounded, size: 50, color: Colors.white.withValues(alpha: 0.85)),
-                    ),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
                   ),
                   Positioned(
                     top: 8,
@@ -542,6 +547,24 @@ class _SupportMenuScreenState extends State<SupportMenuScreen> {
                       child: Text('Baru', style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFFD81B60))),
                     ),
                   ),
+                  if (article.sourceName.isNotEmpty)
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          article.sourceName,
+                          style: GoogleFonts.poppins(fontSize: 8.5, fontWeight: FontWeight.w600, color: Colors.white),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                 ],
               ),
               Expanded(

@@ -45,7 +45,9 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
 
   // Artikel admin dari Firestore (real-time)
   List<AdminArticleModel> _adminArticles = [];
+  Set<String> _deletedBuiltinIds = {};
   StreamSubscription<List<AdminArticleModel>>? _articleSub;
+  StreamSubscription<Set<String>>? _deletedBuiltinSub;
 
   @override
   void initState() {
@@ -69,6 +71,11 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
       },
       onError: (e) {
         debugPrint('⚠️ [PatientDashboard] Gagal memuat artikel admin: $e');
+      },
+    );
+    _deletedBuiltinSub = ArticleService.instance.streamDeletedBuiltinIds().listen(
+      (deletedIds) {
+        if (mounted) setState(() => _deletedBuiltinIds = deletedIds);
       },
     );
   }
@@ -101,6 +108,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
   @override
   void dispose() {
     _articleSub?.cancel();
+    _deletedBuiltinSub?.cancel();
     _homeScrollController.dispose();
     super.dispose();
   }
@@ -1038,7 +1046,7 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                   border: Border.all(color: const Color(0xFFF8BBD0)),
                 ),
                 child: Text(
-                  '${educationalArticles.length + _adminArticles.length} Artikel',
+                  '${educationalArticles.where((a) => !_deletedBuiltinIds.contains(a.id)).length + _adminArticles.length} Artikel',
                   style: GoogleFonts.poppins(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
@@ -1050,31 +1058,39 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Horizontal List: Artikel admin (Firestore real-time) + artikel bawaan
-          SizedBox(
-            height: 295,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: _adminArticles.length + educationalArticles.length,
-              itemBuilder: (context, index) {
-                final isAdminArticle = index < _adminArticles.length;
-                final isLast = index == _adminArticles.length + educationalArticles.length - 1;
-                if (isAdminArticle) {
-                  final article = _adminArticles[index];
-                  return Padding(
-                    padding: EdgeInsets.only(right: isLast ? 0 : 12),
-                    child: _buildAdminArticleCard(article),
-                  );
-                } else {
-                  final article = educationalArticles[index - _adminArticles.length];
-                  return Padding(
-                    padding: EdgeInsets.only(right: isLast ? 0 : 12),
-                    child: _buildHomeArticleCard(article),
-                  );
-                }
-              },
-            ),
+          // Horizontal List: Artikel admin (Firestore real-time) + artikel bawaan yang masih aktif
+          Builder(
+            builder: (context) {
+              final visibleBuiltin = educationalArticles
+                  .where((a) => !_deletedBuiltinIds.contains(a.id))
+                  .toList();
+              final totalCount = _adminArticles.length + visibleBuiltin.length;
+              return SizedBox(
+                height: 295,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: totalCount,
+                  itemBuilder: (context, index) {
+                    final isAdminArticle = index < _adminArticles.length;
+                    final isLast = index == totalCount - 1;
+                    if (isAdminArticle) {
+                      final article = _adminArticles[index];
+                      return Padding(
+                        padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                        child: _buildAdminArticleCard(article),
+                      );
+                    } else {
+                      final article = visibleBuiltin[index - _adminArticles.length];
+                      return Padding(
+                        padding: EdgeInsets.only(right: isLast ? 0 : 12),
+                        child: _buildHomeArticleCard(article),
+                      );
+                    }
+                  },
+                ),
+              );
+            },
           ),
           const SizedBox(height: 16),
 
@@ -1351,22 +1367,13 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header berwarna dengan badge 'Baru'
+            // Header gambar artikel / gradien dengan badge 'Baru'
             Stack(
               children: [
-                Container(
+                buildArticleThumbnailWidget(
+                  imageUrl: article.imageUrl,
                   height: 120,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFFD81B60), Color(0xFFF06292)],
-                    ),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-                  ),
-                  child: Center(
-                    child: Icon(Icons.article_rounded, size: 48, color: Colors.white.withValues(alpha: 0.8)),
-                  ),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                 ),
                 Positioned(
                   top: 8, right: 8,
@@ -1376,6 +1383,23 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                     child: Text('Baru', style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFFD81B60))),
                   ),
                 ),
+                if (article.sourceName.isNotEmpty)
+                  Positioned(
+                    bottom: 8, left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        article.sourceName,
+                        style: GoogleFonts.poppins(fontSize: 8.5, fontWeight: FontWeight.w600, color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
               ],
             ),
             Expanded(
